@@ -381,6 +381,7 @@ Tell the user: "This will take some time — I'll run the optimization loop in t
 
 Save the eval set to the workspace, then run in the background:
 
+**Claude Code:**
 ```bash
 python -m scripts.run_loop \
   --eval-set <path-to-trigger-eval.json> \
@@ -390,6 +391,19 @@ python -m scripts.run_loop \
   --verbose
 ```
 
+**Codex CLI:**
+```bash
+python -m scripts.run_loop \
+  --eval-set <path-to-trigger-eval.json> \
+  --skill-path <path-to-skill> \
+  --model <model-id-powering-this-session> \
+  --cli codex \
+  --max-iterations 5 \
+  --verbose
+```
+
+The `--cli` flag selects which CLI to use (`claude` or `codex`). If omitted, the script auto-detects based on which CLI is available in PATH. You can also set the `SKILL_EVAL_CLI` environment variable.
+
 Use the model ID from your system prompt (the one powering the current session) so the triggering test matches what the user actually experiences.
 
 While it runs, periodically tail the output to give the user updates on which iteration it's on and what the scores look like.
@@ -398,9 +412,15 @@ This handles the full optimization loop automatically. It splits the eval set in
 
 ### How skill triggering works
 
-Understanding the triggering mechanism helps design better eval queries. Skills appear in Claude's `available_skills` list with their name + description, and Claude decides whether to consult a skill based on that description. The important thing to know is that Claude only consults skills for tasks it can't easily handle on its own — simple, one-step queries like "read this PDF" may not trigger a skill even if the description matches perfectly, because Claude can handle them directly with basic tools. Complex, multi-step, or specialized queries reliably trigger skills when the description matches.
+Understanding the triggering mechanism helps design better eval queries.
 
-This means your eval queries should be substantive enough that Claude would actually benefit from consulting a skill. Simple queries like "read file X" are poor test cases — they won't trigger skills regardless of description quality.
+**Claude Code:** Skills appear in Claude's `available_skills` list with their name + description, and Claude decides whether to consult a skill based on that description.
+
+**Codex CLI:** Skills are discovered from `.codex/skills/` (and `.agents/skills/`). Codex reads the SKILL.md frontmatter (`name` and `description`) to decide when to use a skill. The triggering mechanism is semantically similar to Claude Code's.
+
+In both cases, the agent only consults skills for tasks it can't easily handle on its own — simple, one-step queries like "read this PDF" may not trigger a skill even if the description matches perfectly, because the agent can handle them directly with basic tools. Complex, multi-step, or specialized queries reliably trigger skills when the description matches.
+
+This means your eval queries should be substantive enough that the agent would actually benefit from consulting a skill. Simple queries like "read file X" are poor test cases — they won't trigger skills regardless of description quality.
 
 ### Step 4: Apply the result
 
@@ -432,7 +452,7 @@ In Claude.ai, the core workflow is the same (draft → test → review → impro
 
 **The iteration loop**: Same as before — improve the skill, rerun the test cases, ask for feedback — just without the browser reviewer in the middle. You can still organize results into iteration directories on the filesystem if you have one.
 
-**Description optimization**: This section requires the `claude` CLI tool (specifically `claude -p`) which is only available in Claude Code. Skip it if you're on Claude.ai.
+**Description optimization**: This section requires either the `claude` CLI tool (`claude -p`) or `codex` CLI tool (`codex exec`). Use `--cli codex` when running with Codex. Skip it if you're on Claude.ai.
 
 **Blind comparison**: Requires subagents. Skip it.
 

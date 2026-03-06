@@ -1,6 +1,48 @@
 """Shared utilities for skill-creator scripts."""
 
+import os
+import shutil
 from pathlib import Path
+
+CLI_CLAUDE = "claude"
+CLI_CODEX = "codex"
+
+
+def detect_cli(explicit: str | None = None) -> str:
+    """Detect which CLI to use. Returns CLI_CLAUDE or CLI_CODEX.
+
+    Priority: explicit flag > SKILL_EVAL_CLI env var > auto-detect.
+    """
+    if explicit:
+        if explicit not in (CLI_CLAUDE, CLI_CODEX):
+            raise ValueError(f"Unknown CLI: {explicit}. Use 'claude' or 'codex'.")
+        return explicit
+
+    env_val = os.environ.get("SKILL_EVAL_CLI")
+    if env_val:
+        if env_val not in (CLI_CLAUDE, CLI_CODEX):
+            raise ValueError(f"Unknown SKILL_EVAL_CLI value: {env_val}. Use 'claude' or 'codex'.")
+        return env_val
+
+    if shutil.which("claude"):
+        return CLI_CLAUDE
+    if shutil.which("codex"):
+        return CLI_CODEX
+
+    raise RuntimeError("Neither 'claude' nor 'codex' CLI found in PATH")
+
+
+def find_project_root(cli_type: str = CLI_CLAUDE) -> Path:
+    """Find the project root by walking up from cwd.
+
+    Looks for .claude/ (Claude Code) or .codex/ (Codex CLI).
+    """
+    current = Path.cwd()
+    marker = ".claude" if cli_type == CLI_CLAUDE else ".codex"
+    for parent in [current, *current.parents]:
+        if (parent / marker).is_dir():
+            return parent
+    return current
 
 
 
