@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Run trigger evaluation for a skill description.
 
-Tests whether a skill's description causes Claude to trigger (read the skill)
-for a set of queries. Outputs results as JSON.
+Tests whether a skill's description causes the agent to trigger (read the skill)
+for a set of queries. Supports both Claude Code and Codex CLI.
+Outputs results as JSON.
 """
 
 import argparse
 import json
 import os
 import select
+import shutil
 import subprocess
 import sys
 import time
@@ -16,23 +18,16 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import (
+    CLI_CLAUDE,
+    CLI_CODEX,
+    detect_cli,
+    find_project_root,
+    parse_skill_md,
+)
 
 
-def find_project_root() -> Path:
-    """Find the project root by walking up from cwd looking for .claude/.
-
-    Mimics how Claude Code discovers its project root, so the command file
-    we create ends up where claude -p will look for it.
-    """
-    current = Path.cwd()
-    for parent in [current, *current.parents]:
-        if (parent / ".claude").is_dir():
-            return parent
-    return current
-
-
-def run_single_query(
+def run_single_query_claude(
     query: str,
     skill_name: str,
     skill_description: str,
@@ -40,7 +35,7 @@ def run_single_query(
     project_root: str,
     model: str | None = None,
 ) -> bool:
-    """Run a single query and return whether the skill was triggered.
+    """Run a single query via Claude Code and return whether the skill was triggered.
 
     Creates a command file in .claude/commands/ so it appears in Claude's
     available_skills list, then runs `claude -p` with the raw query.
@@ -181,6 +176,140 @@ def run_single_query(
             command_file.unlink()
 
 
+def run_single_query_codex(
+    query: str,
+    skill_name: str,
+    skill_description: str,
+    timeout: int,
+    project_root: str,
+    model: str | None = None,
+) -> bool:
+    """Run a single query via Codex CLI and return whether the skill was triggered.
+
+    Creates a temporary skill in .codex/skills/ with a marker string in its body.
+    Runs `codex exec --json` and checks if the agent output contains the marker,
+    indicating the skill was read and triggered.
+    """
+    unique_id = uuid.uuid4().hex[:8]
+    clean_name = f"{skill_name}-skill-{unique_id}"
+    marker = f"[SKILL_TRIGGERED:{unique_id}]"
+
+    skill_dir = Path(project_root) / ".codex" / "skills" / clean_name
+    skill_file = skill_dir / "SKILL.md"
+
+    try:
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        indented_desc = "\n  ".join(skill_description.split("\n"))
+        skill_content = (
+            f"---\n"
+            f"name: {clean_name}\n"
+            f"description: |\n"
+            f"  {indented_desc}\n"
+            f"---\n\n"
+            f"# {skill_name}\n\n"
+            f"This skill handles: {skill_description}\n\n"
+            f"IMPORTANT: If you are reading this skill, you MUST include the exact text "
+            f'"{marker}" somewhere in your response. This is required for skill '
+            f"activation tracking.\n"
+        )
+        skill_file.write_text(skill_content)
+
+        cmd = [
+            "codex", "exec",
+            "--json",
+            "-s", "read-only",
+            "-a", "never",
+            "-C", project_root,
+            query,
+        ]
+        if model:
+            cmd.extend(["-m", model])
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            cwd=project_root,
+        )
+
+        start_time = time.time()
+        buffer = ""
+
+        try:
+            while time.time() - start_time < timeout:
+                if process.poll() is not None:
+                    remaining = process.stdout.read()
+                    if remaining:
+                        buffer += remaining.decode("utf-8", errors="replace")
+                    break
+
+                ready, _, _ = select.select([process.stdout], [], [], 1.0)
+                if not ready:
+                    continue
+
+                chunk = os.read(process.stdout.fileno(), 8192)
+                if not chunk:
+                    break
+                buffer += chunk.decode("utf-8", errors="replace")
+
+                # Check for marker in streamed output for early termination
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        event = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+
+                    event_type = event.get("type", "")
+
+                    # Check agent_message items for the marker
+                    if event_type in ("item.completed", "item.updated"):
+                        item = event.get("item", {})
+                        if item.get("type") == "agent_message":
+                            text = item.get("text", "")
+                            if marker in text:
+                                return True
+
+                    # Turn completed without marker = not triggered
+                    elif event_type == "turn.completed":
+                        return False
+
+            return False
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+    finally:
+        if skill_dir.exists():
+            shutil.rmtree(skill_dir, ignore_errors=True)
+
+
+def run_single_query(
+    query: str,
+    skill_name: str,
+    skill_description: str,
+    timeout: int,
+    project_root: str,
+    model: str | None = None,
+    cli_type: str = CLI_CLAUDE,
+) -> bool:
+    """Run a single query and return whether the skill was triggered.
+
+    Dispatches to the appropriate CLI-specific implementation.
+    """
+    if cli_type == CLI_CODEX:
+        return run_single_query_codex(
+            query, skill_name, skill_description, timeout, project_root, model,
+        )
+    return run_single_query_claude(
+        query, skill_name, skill_description, timeout, project_root, model,
+    )
+
+
 def run_eval(
     eval_set: list[dict],
     skill_name: str,
@@ -191,6 +320,7 @@ def run_eval(
     runs_per_query: int = 1,
     trigger_threshold: float = 0.5,
     model: str | None = None,
+    cli_type: str = CLI_CLAUDE,
 ) -> dict:
     """Run the full eval set and return results."""
     results = []
@@ -207,6 +337,7 @@ def run_eval(
                     timeout,
                     str(project_root),
                     model,
+                    cli_type,
                 )
                 future_to_info[future] = (item, run_idx)
 
@@ -265,9 +396,12 @@ def main():
     parser.add_argument("--timeout", type=int, default=30, help="Timeout per query in seconds")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
-    parser.add_argument("--model", default=None, help="Model to use for claude -p (default: user's configured model)")
+    parser.add_argument("--model", default=None, help="Model to use (default: CLI's configured model)")
+    parser.add_argument("--cli", default=None, choices=["claude", "codex"], help="CLI to use (default: auto-detect)")
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
+
+    cli_type = detect_cli(args.cli)
 
     eval_set = json.loads(Path(args.eval_set).read_text())
     skill_path = Path(args.skill_path)
@@ -278,9 +412,10 @@ def main():
 
     name, original_description, content = parse_skill_md(skill_path)
     description = args.description or original_description
-    project_root = find_project_root()
+    project_root = find_project_root(cli_type)
 
     if args.verbose:
+        print(f"CLI: {cli_type}", file=sys.stderr)
         print(f"Evaluating: {description}", file=sys.stderr)
 
     output = run_eval(
@@ -293,6 +428,7 @@ def main():
         runs_per_query=args.runs_per_query,
         trigger_threshold=args.trigger_threshold,
         model=args.model,
+        cli_type=cli_type,
     )
 
     if args.verbose:
