@@ -8,25 +8,42 @@ CLI_CLAUDE = "claude"
 CLI_CODEX = "codex"
 
 
+def get_cli_command(cli_type: str, explicit_path: str | None = None) -> str:
+    """Return the actual CLI command for the given CLI type.
+
+    Priority: explicit_path argument > environment variable > default name.
+      - SKILL_CREATOR_CLAUDE_COMMAND: override the 'claude' binary (e.g. '/usr/local/bin/claude')
+      - SKILL_CREATOR_CODEX_COMMAND: override the 'codex' binary (e.g. '/opt/bin/codex')
+    """
+    if explicit_path:
+        return explicit_path
+    if cli_type == CLI_CLAUDE:
+        return os.environ.get("SKILL_CREATOR_CLAUDE_COMMAND", "claude")
+    if cli_type == CLI_CODEX:
+        return os.environ.get("SKILL_CREATOR_CODEX_COMMAND", "codex")
+    return cli_type
+
+
 def detect_cli(explicit: str | None = None) -> str:
     """Detect which CLI to use. Returns CLI_CLAUDE or CLI_CODEX.
 
-    Priority: explicit flag > SKILL_EVAL_CLI env var > auto-detect.
+    Priority: explicit flag > SKILL_CREATOR_EVAL_CLI env var > auto-detect.
+    Auto-detection respects SKILL_CREATOR_CLAUDE_COMMAND / SKILL_CREATOR_CODEX_COMMAND env vars.
     """
     if explicit:
         if explicit not in (CLI_CLAUDE, CLI_CODEX):
             raise ValueError(f"Unknown CLI: {explicit}. Use 'claude' or 'codex'.")
         return explicit
 
-    env_val = os.environ.get("SKILL_EVAL_CLI")
+    env_val = os.environ.get("SKILL_CREATOR_EVAL_CLI")
     if env_val:
         if env_val not in (CLI_CLAUDE, CLI_CODEX):
-            raise ValueError(f"Unknown SKILL_EVAL_CLI value: {env_val}. Use 'claude' or 'codex'.")
+            raise ValueError(f"Unknown SKILL_CREATOR_EVAL_CLI value: {env_val}. Use 'claude' or 'codex'.")
         return env_val
 
-    if shutil.which("claude"):
+    if shutil.which(get_cli_command(CLI_CLAUDE)):
         return CLI_CLAUDE
-    if shutil.which("codex"):
+    if shutil.which(get_cli_command(CLI_CODEX)):
         return CLI_CODEX
 
     raise RuntimeError("Neither 'claude' nor 'codex' CLI found in PATH")

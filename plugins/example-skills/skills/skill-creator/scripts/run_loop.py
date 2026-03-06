@@ -20,7 +20,7 @@ import anthropic
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
 from scripts.run_eval import run_eval
-from scripts.utils import CLI_CLAUDE, detect_cli, find_project_root, parse_skill_md
+from scripts.utils import CLI_CLAUDE, detect_cli, find_project_root, get_cli_command, parse_skill_md
 
 
 def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tuple[list[dict], list[dict]]:
@@ -61,6 +61,7 @@ def run_loop(
     live_report_path: Path | None = None,
     log_dir: Path | None = None,
     cli_type: str = CLI_CLAUDE,
+    cli_command: str | None = None,
 ) -> dict:
     """Run the eval + improvement loop."""
     project_root = find_project_root(cli_type)
@@ -101,6 +102,7 @@ def run_loop(
             trigger_threshold=trigger_threshold,
             model=model,
             cli_type=cli_type,
+            cli_command=cli_command,
         )
         eval_elapsed = time.time() - t0
 
@@ -263,6 +265,7 @@ def main():
     parser.add_argument("--report", default="auto", help="Generate HTML report at this path (default: 'auto' for temp file, 'none' to disable)")
     parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")
     parser.add_argument("--cli", default=None, choices=["claude", "codex"], help="CLI to use (default: auto-detect)")
+    parser.add_argument("--cli-command", default=None, help="Path to CLI binary (e.g. /usr/local/bin/claude)")
     args = parser.parse_args()
 
     cli_type = detect_cli(args.cli)
@@ -314,6 +317,7 @@ def main():
         live_report_path=live_report_path,
         log_dir=log_dir,
         cli_type=cli_type,
+        cli_command=args.cli_command,
     )
 
     # Save JSON output

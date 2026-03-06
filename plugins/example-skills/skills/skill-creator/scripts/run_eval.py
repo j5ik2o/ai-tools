@@ -23,6 +23,7 @@ from scripts.utils import (
     CLI_CODEX,
     detect_cli,
     find_project_root,
+    get_cli_command,
     parse_skill_md,
 )
 
@@ -34,6 +35,7 @@ def run_single_query_claude(
     timeout: int,
     project_root: str,
     model: str | None = None,
+    cli_command: str | None = None,
 ) -> bool:
     """Run a single query via Claude Code and return whether the skill was triggered.
 
@@ -63,7 +65,7 @@ def run_single_query_claude(
         command_file.write_text(command_content)
 
         cmd = [
-            "claude",
+            get_cli_command(CLI_CLAUDE, cli_command),
             "-p", query,
             "--output-format", "stream-json",
             "--verbose",
@@ -183,6 +185,7 @@ def run_single_query_codex(
     timeout: int,
     project_root: str,
     model: str | None = None,
+    cli_command: str | None = None,
 ) -> bool:
     """Run a single query via Codex CLI and return whether the skill was triggered.
 
@@ -215,7 +218,7 @@ def run_single_query_codex(
         skill_file.write_text(skill_content)
 
         cmd = [
-            "codex", "exec",
+            get_cli_command(CLI_CODEX, cli_command), "exec",
             "--json",
             "-s", "read-only",
             "-a", "never",
@@ -296,6 +299,7 @@ def run_single_query(
     project_root: str,
     model: str | None = None,
     cli_type: str = CLI_CLAUDE,
+    cli_command: str | None = None,
 ) -> bool:
     """Run a single query and return whether the skill was triggered.
 
@@ -304,9 +308,11 @@ def run_single_query(
     if cli_type == CLI_CODEX:
         return run_single_query_codex(
             query, skill_name, skill_description, timeout, project_root, model,
+            cli_command,
         )
     return run_single_query_claude(
         query, skill_name, skill_description, timeout, project_root, model,
+        cli_command,
     )
 
 
@@ -321,6 +327,7 @@ def run_eval(
     trigger_threshold: float = 0.5,
     model: str | None = None,
     cli_type: str = CLI_CLAUDE,
+    cli_command: str | None = None,
 ) -> dict:
     """Run the full eval set and return results."""
     results = []
@@ -338,6 +345,7 @@ def run_eval(
                     str(project_root),
                     model,
                     cli_type,
+                    cli_command,
                 )
                 future_to_info[future] = (item, run_idx)
 
@@ -398,6 +406,7 @@ def main():
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
     parser.add_argument("--model", default=None, help="Model to use (default: CLI's configured model)")
     parser.add_argument("--cli", default=None, choices=["claude", "codex"], help="CLI to use (default: auto-detect)")
+    parser.add_argument("--cli-command", default=None, help="Path to CLI binary (e.g. /usr/local/bin/claude)")
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
@@ -429,6 +438,7 @@ def main():
         trigger_threshold=args.trigger_threshold,
         model=args.model,
         cli_type=cli_type,
+        cli_command=args.cli_command,
     )
 
     if args.verbose:
