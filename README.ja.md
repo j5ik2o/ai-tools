@@ -1,4 +1,4 @@
-# j5ik2o-agent-skills
+# j5ik2o-ai-plugins
 
 [English](README.md)
 
