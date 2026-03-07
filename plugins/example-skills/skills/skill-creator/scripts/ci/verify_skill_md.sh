@@ -12,6 +12,12 @@ if ! command -v uv &>/dev/null; then
   exit 1
 fi
 
+# Claude Code セッション内からの claude -p ネスト実行は動作しないためスキップ
+if [[ -n "${CLAUDECODE:-}" || -n "${CLAUDE_CODE_ENTRYPOINT:-}" ]]; then
+  echo "SKIP: Running inside Claude Code session. Integration tests require a standalone terminal." >&2
+  exit 0
+fi
+
 if ! command -v claude &>/dev/null; then
   if [[ -n "${CI:-}" ]]; then
     echo "ERROR: claude CLI not found in PATH in CI." >&2

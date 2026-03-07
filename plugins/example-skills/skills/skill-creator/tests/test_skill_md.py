@@ -14,6 +14,7 @@ SKILL.md のトリガー動作を Given/When/Then で検証する。
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -33,9 +34,12 @@ TRIGGER_THRESHOLD = float(os.environ.get("SKILL_EVAL_THRESHOLD", "0.5"))
 _EVALS = json.loads(EVALS_PATH.read_text())
 
 claude_available = shutil.which("claude") is not None
+inside_claude_code = bool(os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_CODE_ENTRYPOINT"))
 requires_claude = pytest.mark.skipif(
-    not claude_available,
-    reason="claude CLI not found in PATH",
+    not claude_available or inside_claude_code,
+    reason="claude CLI not found in PATH"
+    if not claude_available
+    else "Running inside Claude Code session (claude -p nesting not supported)",
 )
 
 # ── フィクスチャ ──────────────────────────────────────────────────────────────
@@ -57,6 +61,9 @@ def project_root():
     """
     tmp_dir = tempfile.mkdtemp(prefix="skill-creator-test-")
     tmp_path = Path(tmp_dir)
+
+    # claude -p requires a git repository to function correctly
+    subprocess.run(["git", "init", "-q"], cwd=tmp_dir, check=True)
 
     (tmp_path / ".claude" / "commands").mkdir(parents=True)
 
