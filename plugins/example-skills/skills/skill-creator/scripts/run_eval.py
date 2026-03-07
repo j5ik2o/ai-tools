@@ -168,11 +168,12 @@ def run_single_query_claude(
                         return triggered
         finally:
             # Clean up process on any exit path (return, exception, timeout)
-            if process.poll() is None:
+            we_killed_it = process.poll() is None
+            if we_killed_it:
                 process.kill()
                 process.wait()
-            # Check for CLI execution errors
-            if process.returncode and process.returncode != 0:
+            # Check for CLI execution errors (only if process exited on its own)
+            if not we_killed_it and process.returncode and process.returncode != 0:
                 stderr_output = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
                 raise RuntimeError(
                     f"Claude CLI exited with code {process.returncode}: {stderr_output[:500]}"
@@ -288,11 +289,12 @@ def run_single_query_codex(
 
             return False
         finally:
-            if process.poll() is None:
+            we_killed_it = process.poll() is None
+            if we_killed_it:
                 process.kill()
                 process.wait()
-            # Check for CLI execution errors
-            if process.returncode and process.returncode != 0:
+            # Check for CLI execution errors (only if process exited on its own)
+            if not we_killed_it and process.returncode and process.returncode != 0:
                 stderr_output = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
                 raise RuntimeError(
                     f"Codex CLI exited with code {process.returncode}: {stderr_output[:500]}"
