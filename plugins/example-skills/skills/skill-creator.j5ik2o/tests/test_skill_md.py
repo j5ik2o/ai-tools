@@ -57,7 +57,7 @@ def project_root():
 
     claude が動作するために必要な構造:
       .claude/commands/              ← run_single_query_claude が一時コマンドファイルを置く場所
-      .claude/skills/skill-creator/ ← claude が SKILL.md 本体を読みに来る場所
+      .claude/skills/skill-creator.j5ik2o/ ← claude が SKILL.md 本体を読みに来る場所
     """
     tmp_dir = tempfile.mkdtemp(prefix="skill-creator-test-")
     tmp_path = Path(tmp_dir)
@@ -68,7 +68,7 @@ def project_root():
     (tmp_path / ".claude" / "commands").mkdir(parents=True)
 
     _IGNORE = shutil.ignore_patterns(".venv", "__pycache__", ".pytest_cache", "*.pyc")
-    shutil.copytree(SKILL_DIR, tmp_path / ".claude" / "skills" / "skill-creator", ignore=_IGNORE)
+    shutil.copytree(SKILL_DIR, tmp_path / ".claude" / "skills" / "skill-creator.j5ik2o", ignore=_IGNORE)
 
     yield tmp_dir
     shutil.rmtree(tmp_dir, ignore_errors=True)

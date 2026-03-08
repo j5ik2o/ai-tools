@@ -183,7 +183,7 @@ class TestRunSingleQueryClaude:
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "tool_use", "name": "Skill", "input": {"skill": "skill-creator"}},
+                        {"type": "tool_use", "name": "Skill", "input": {"skill": "skill-creator.j5ik2o"}},
                     ],
                 },
             }),
@@ -197,7 +197,7 @@ class TestRunSingleQueryClaude:
                 with patch("scripts.run_eval.select.select", return_value=([mock_process.stdout], [], [])):
                     with patch("scripts.run_eval.os.read", return_value=output):
                         result = run_single_query_claude(
-                            "test query", "skill-creator", "test desc", 5, str(project_root),
+                            "test query", "skill-creator.j5ik2o", "test desc", 5, str(project_root),
                         )
 
         assert result is True
@@ -219,7 +219,7 @@ class TestRunSingleQueryClaude:
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "tool_use", "name": "Skill", "input": {"skill": "skill-creator"}},
+                        {"type": "tool_use", "name": "Skill", "input": {"skill": "skill-creator.j5ik2o"}},
                     ],
                 },
             }),
@@ -233,7 +233,7 @@ class TestRunSingleQueryClaude:
                 with patch("scripts.run_eval.select.select", return_value=([mock_process.stdout], [], [])):
                     with patch("scripts.run_eval.os.read", return_value=output):
                         result = run_single_query_claude(
-                            "test query", "skill-creator", "test desc", 5, str(project_root),
+                            "test query", "skill-creator.j5ik2o", "test desc", 5, str(project_root),
                         )
 
         assert result is True
@@ -251,7 +251,7 @@ class TestRunSingleQueryClaude:
                             "type": "tool_use",
                             "name": "Read",
                             "input": {
-                                "file_path": str(project_root / ".claude" / "skills" / "skill-creator" / "SKILL.md"),
+                                "file_path": str(project_root / ".claude" / "skills" / "skill-creator.j5ik2o" / "SKILL.md"),
                             },
                         },
                     ],
@@ -267,7 +267,7 @@ class TestRunSingleQueryClaude:
                 with patch("scripts.run_eval.select.select", return_value=([mock_process.stdout], [], [])):
                     with patch("scripts.run_eval.os.read", return_value=output):
                         result = run_single_query_claude(
-                            "test query", "skill-creator", "test desc", 5, str(project_root),
+                            "test query", "skill-creator.j5ik2o", "test desc", 5, str(project_root),
                         )
 
         assert result is True

@@ -1,5 +1,5 @@
 ---
-name: skill-creator
+name: skill-creator.j5ik2o
 description: >-
   Create or improve Claude Code and Codex skills. Use only when the user
   explicitly wants help with a skill: creating a new skill, editing a SKILL.md
