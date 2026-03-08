@@ -63,6 +63,7 @@ __pycahce__/
 /.claude/commands/
 /.claude/rules/
 /.claude/settings.json
+/.claude/settings.local.json
 /.claude/skills/*
 
 .codex*/
