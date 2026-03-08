@@ -69,3 +69,5 @@ openspec/
 .mcp.json
 scripts/generate-agents-md.sh
 scripts/run-*.sh
+
+!.agents/skills/takt-*
