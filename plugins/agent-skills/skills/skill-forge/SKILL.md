@@ -248,7 +248,7 @@ Once all runs are done:
    This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, with mean ± stddev and the delta. If generating benchmark.json manually, see `references/schemas.md` for the exact schema the viewer expects.
 Put each with_skill version before its baseline counterpart.
 
-3. **Save benchmark results to the skill folder** — After aggregation, copy the benchmark to the skill's own directory so results are tracked alongside the skill source:
+3. **Save benchmark results to the skill folder** — After aggregation, copy the benchmark to the skill's own directory so results are tracked alongside the skill source. `<skill-dir>` is the actual skill source directory (not a symlink or cache path). Note that `<workspace>` varies by CLI: `.claude/skills-workspaces/<skill-name>/` for Claude Code (or `$CLAUDE_CONFIG_DIR/skills-workspaces/<skill-name>/` if set), `.codex/skills-workspaces/<skill-name>/` for Codex CLI (or `$CODEX_HOME/skills-workspaces/<skill-name>/` if set). Use the same workspace path that was resolved in the "Running and evaluating test cases" section above.
    ```bash
    mkdir -p <skill-dir>/evals/benchmarks
    cp <workspace>/iteration-<N>/benchmark.json \
