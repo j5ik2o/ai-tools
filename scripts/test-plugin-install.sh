@@ -8,6 +8,9 @@ MARKETPLACE_JSON="$PROJECT_ROOT/.claude-plugin/marketplace.json"
 # 認証情報の読み込み
 source "$HOME/.config/claude-code/env-corporate"
 
+# ネストセッション検出を回避（CI や別セッション内からの実行用）
+unset CLAUDECODE 2>/dev/null || true
+
 # 一時ディレクトリで ~/.claude を隔離
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
