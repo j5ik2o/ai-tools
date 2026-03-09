@@ -1,4 +1,4 @@
-# j5ik2o-ai-plugins
+# ai-tools
 
 [日本語](README.ja.md)
 
