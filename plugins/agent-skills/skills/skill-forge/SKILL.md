@@ -248,9 +248,22 @@ Once all runs are done:
    This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, with mean ± stddev and the delta. If generating benchmark.json manually, see `references/schemas.md` for the exact schema the viewer expects.
 Put each with_skill version before its baseline counterpart.
 
-3. **Do an analyst pass** — read the benchmark data and surface patterns the aggregate stats might hide. See `agents/analyzer.md` (the "Analyzing Benchmark Results" section) for what to look for — things like assertions that always pass regardless of skill (non-discriminating), high-variance evals (possibly flaky), and time/token tradeoffs.
+3. **Save benchmark results to the skill folder** — After aggregation, copy the benchmark to the skill's own directory so results are tracked alongside the skill source:
+   ```bash
+   mkdir -p <skill-dir>/evals/benchmarks
+   cp <workspace>/iteration-<N>/benchmark.json \
+      <skill-dir>/evals/benchmarks/$(date +%Y-%m-%d)-iteration-<N>.json
+   ```
+   Then create or update `<skill-dir>/evals/benchmarks/README.md` with a summary table. If the file already exists, append a new row; otherwise create it with a header. The table should include:
 
-4. **Launch the viewer** with both qualitative outputs and quantitative data:
+   | Iteration | Date | Pass Rate (with skill) | Pass Rate (baseline) | Avg Tokens | Avg Duration |
+   |-----------|------|------------------------|----------------------|------------|--------------|
+
+   Extract the values from `benchmark.json`. This gives the skill a persistent quality record that travels with the source code.
+
+4. **Do an analyst pass** — read the benchmark data and surface patterns the aggregate stats might hide. See `agents/analyzer.md` (the "Analyzing Benchmark Results" section) for what to look for — things like assertions that always pass regardless of skill (non-discriminating), high-variance evals (possibly flaky), and time/token tradeoffs.
+
+5. **Launch the viewer** with both qualitative outputs and quantitative data:
    ```bash
    nohup python <skill-forge-path>/eval-viewer/generate_review.py \
      <workspace>/iteration-N \
@@ -265,7 +278,7 @@ Put each with_skill version before its baseline counterpart.
 
 Note: please use generate_review.py to create the viewer; there's no need to write custom HTML.
 
-5. **Tell the user** something like: "I've opened the results in your browser. There are two tabs — 'Outputs' lets you click through each test case and leave feedback, 'Benchmark' shows the quantitative comparison. When you're done, come back here and let me know."
+6. **Tell the user** something like: "I've opened the results in your browser. There are two tabs — 'Outputs' lets you click through each test case and leave feedback, 'Benchmark' shows the quantitative comparison. When you're done, come back here and let me know."
 
 ### What the user sees in the viewer
 
