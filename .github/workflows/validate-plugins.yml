@@ -1,0 +1,37 @@
+name: validate-plugins
+
+on:
+  push:
+    paths:
+      - '.claude-plugin/**'
+      - 'plugins/**/.claude-plugin/**'
+      - 'plugins/**/skills/**/SKILL.md'
+      - '.github/workflows/validate-plugins.yml'
+  pull_request:
+    paths:
+      - '.claude-plugin/**'
+      - 'plugins/**/.claude-plugin/**'
+      - 'plugins/**/skills/**/SKILL.md'
+      - '.github/workflows/validate-plugins.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate marketplace
+        run: claude plugin validate .
+
+      - name: Validate plugins
+        run: |
+          for plugin_dir in plugins/*/; do
+            if [ -d "${plugin_dir}.claude-plugin" ]; then
+              echo "Validating ${plugin_dir}..."
+              claude plugin validate "$plugin_dir"
+            fi
+          done
