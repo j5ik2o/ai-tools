@@ -1,0 +1,8 @@
+{
+  "name": "agent-skills",
+  "description": "Collection of agent skills demonstrating various capabilities including skill creation, MCP building, visual design, algorithmic art, internal communications, web testing, artifact building, Slack GIFs, and theme styling",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  }
+}

@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "agent-skills",
-      "description": "Collection of example skills demonstrating various capabilities including skill creation, MCP building, visual design, algorithmic art, internal communications, web testing, artifact building, Slack GIFs, and theme styling",
+      "description": "Collection of agent skills demonstrating various capabilities including skill creation, MCP building, visual design, algorithmic art, internal communications, web testing, artifact building, Slack GIFs, and theme styling",
       "version": "1.0.0",
       "source": "./plugins/agent-skills",
       "category": "development",
@@ -20,15 +20,7 @@
       "version": "1.0.0",
       "source": "./plugins/takt",
       "category": "development",
-      "strict": false,
-      "skills": [
-        "./skills/takt-analyzer",
-        "./skills/takt-facet-builder",
-        "./skills/takt-optimizer",
-        "./skills/takt-piece-builder",
-        "./skills/takt-skill-updater",
-        "./skills/takt-task-builder"
-      ]
+      "strict": false
     }
   ]
 }
