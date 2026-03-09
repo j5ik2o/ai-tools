@@ -6,12 +6,14 @@ on:
       - '.claude-plugin/**'
       - 'plugins/**/.claude-plugin/**'
       - 'plugins/**/skills/**/SKILL.md'
+      - 'scripts/test-plugin-install.sh'
       - '.github/workflows/validate-plugins.yml'
   pull_request:
     paths:
       - '.claude-plugin/**'
       - 'plugins/**/.claude-plugin/**'
       - 'plugins/**/skills/**/SKILL.md'
+      - 'scripts/test-plugin-install.sh'
       - '.github/workflows/validate-plugins.yml'
   workflow_dispatch:
 
@@ -24,14 +26,10 @@ jobs:
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Validate marketplace
-        run: claude plugin validate .
+      - name: Install PyYAML
+        run: pip install pyyaml
 
-      - name: Validate plugins
-        run: |
-          for plugin_dir in plugins/*/; do
-            if [ -d "${plugin_dir}.claude-plugin" ]; then
-              echo "Validating ${plugin_dir}..."
-              claude plugin validate "$plugin_dir"
-            fi
-          done
+      - name: Run plugin install and skill recognition test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: ./scripts/test-plugin-install.sh

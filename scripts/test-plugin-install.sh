@@ -5,8 +5,15 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 MARKETPLACE_JSON="$PROJECT_ROOT/.claude-plugin/marketplace.json"
 
-# 認証情報の読み込み
-source "$HOME/.config/claude-code/env-corporate"
+# 認証情報の読み込み（ANTHROPIC_API_KEY があればそちらを優先、なければ OAuth トークン）
+if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  if [ -f "$HOME/.config/claude-code/env-corporate" ]; then
+    source "$HOME/.config/claude-code/env-corporate"
+  else
+    echo "ERROR: ANTHROPIC_API_KEY is not set and $HOME/.config/claude-code/env-corporate not found"
+    exit 1
+  fi
+fi
 
 # ネストセッション検出を回避（CI や別セッション内からの実行用）
 unset CLAUDECODE 2>/dev/null || true
