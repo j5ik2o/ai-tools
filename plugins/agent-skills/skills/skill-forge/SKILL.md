@@ -174,6 +174,22 @@ Save test cases to `evals/evals.json` inside the skill directory (e.g., `<skill-
 
 See `references/schemas.md` for the full schema (including the `assertions` field, which you'll add later).
 
+## Python environment setup
+
+Before running any scripts, make sure the Python environment is ready. The scripts depend on packages managed by [uv](https://docs.astral.sh/uv/), and `.venv` is gitignored — so it won't exist in a fresh clone or a git worktree.
+
+Check once before the first script invocation:
+
+```bash
+# from the skill-forge directory
+cd <skill-forge-path>
+uv sync --group dev   # creates .venv if missing, then installs deps
+```
+
+After this, use `uv run` for every script call (shown in the examples below). `uv run` re-syncs automatically if the lockfile changes, so you never need to repeat this step.
+
+If `uv` is not installed, direct the user to https://docs.astral.sh/uv/ — it's a one-line install and there's no alternative setup path.
+
 ## Running and evaluating test cases
 
 This section is one continuous sequence — don't stop partway through. Do NOT use `/skill-test` or any other testing skill.
@@ -243,7 +259,8 @@ Once all runs are done:
 
 2. **Aggregate into benchmark** — run the aggregation script from the skill-forge directory:
    ```bash
-   python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
+   cd <skill-forge-path>
+   uv run python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
    ```
    This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, with mean ± stddev and the delta. If generating benchmark.json manually, see `references/schemas.md` for the exact schema the viewer expects.
 Put each with_skill version before its baseline counterpart.
@@ -265,7 +282,7 @@ Put each with_skill version before its baseline counterpart.
 
 5. **Launch the viewer** with both qualitative outputs and quantitative data:
    ```bash
-   nohup python <skill-forge-path>/eval-viewer/generate_review.py \
+   nohup uv run --project <skill-forge-path> python <skill-forge-path>/eval-viewer/generate_review.py \
      <workspace>/iteration-N \
      --skill-name "my-skill" \
      --benchmark <workspace>/iteration-N/benchmark.json \
@@ -417,7 +434,8 @@ Save the eval set to the workspace, then run in the background:
 
 **Claude Code:**
 ```bash
-python -m scripts.run_loop \
+cd <skill-forge-path>
+uv run python -m scripts.run_loop \
   --eval-set <path-to-trigger-eval.json> \
   --skill-path <path-to-skill> \
   --model <model-id-powering-this-session> \
@@ -427,7 +445,8 @@ python -m scripts.run_loop \
 
 **Codex CLI:**
 ```bash
-python -m scripts.run_loop \
+cd <skill-forge-path>
+uv run python -m scripts.run_loop \
   --eval-set <path-to-trigger-eval.json> \
   --skill-path <path-to-skill> \
   --model <model-id-powering-this-session> \
@@ -468,7 +487,8 @@ Take `best_description` from the JSON output and update the skill's SKILL.md fro
 Check whether you have access to the `present_files` tool. If you don't, skip this step. If you do, package the skill and present the .skill file to the user:
 
 ```bash
-python -m scripts.package_skill <path/to/skill-folder>
+cd <skill-forge-path>
+uv run python -m scripts.package_skill <path/to/skill-folder>
 ```
 
 After packaging, direct the user to the resulting `.skill` file path so they can install it.
