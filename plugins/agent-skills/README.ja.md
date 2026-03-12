@@ -107,3 +107,7 @@ skill-name/
 ├── agents/           # サブエージェント用の指示
 └── assets/           # テンプレート、HTMLファイルなど
 ```
+
+---
+
+[English README](./README.md)

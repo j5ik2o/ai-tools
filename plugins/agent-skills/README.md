@@ -107,3 +107,7 @@ skill-name/
 ├── agents/           # Subagent instructions
 └── assets/           # Templates, HTML files, etc.
 ```
+
+---
+
+[日本語版 README はこちら](./README.ja.md)
