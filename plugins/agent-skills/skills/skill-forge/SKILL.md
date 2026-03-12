@@ -194,7 +194,14 @@ If `uv` is not installed, direct the user to https://docs.astral.sh/uv/ — it's
 
 This section is one continuous sequence — don't stop partway through. Do NOT use `/skill-test` or any other testing skill.
 
-Put results in a workspace directory relative to the project root. For Claude Code, use `.claude/skills-workspaces/<skill-name>/`. For Codex CLI, use `.codex/skills-workspaces/<skill-name>/`. After creating the workspace directory, run `ls` to verify it exists. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
+Create an isolated workspace directory for the eval runs using `mktemp -d`:
+
+```bash
+WORKSPACE=$(mktemp -d)
+echo "Workspace: $WORKSPACE"
+```
+
+This ensures a clean, isolated environment for each evaluation run. If you need persistence across sessions (e.g., to resume an interrupted run), you can instead use a fixed path: `.claude/skills-workspaces/<skill-name>/` for Claude Code, or `.codex/skills-workspaces/<skill-name>/` for Codex CLI. After creating the workspace, run `ls $WORKSPACE` to verify it exists. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
 
 ### Step 1: Spawn all runs (with-skill AND baseline) in the same turn
 
