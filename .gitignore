@@ -56,31 +56,50 @@ Temporary Items
 .vscode/
 __pycahce__/
 
-/.agents/CC-SDD.md
-/.agents/commands/
-/.agents/rules/
-/.agents/skills/*
-/.claude/commands/
-/.claude/rules/
-/.claude/settings.json
 /.claude/settings.local.json
-/.claude/skills/*
 
-.codex*/
-.gemini/
-.cursor/
-.opencode/
-.serena/
-.kiro/
-openspec/
+/.codex/cache/
+/.codex/log/
+/.codex/auth.json
+/.codex/history.jsonl
+/.codex/models_cache.json
+/.codex/.personality_migration
+/.codex/shell_snapshots/
+/.codex/sessions/
+/.codex/state*.sqlite
+/.codex/tmp/
+/.codex/version.json
+/.codex/skills/.system
 
-.mcp.json
-scripts/generate-agents-md.sh
-scripts/run-*.sh
+/.codex-corporate/cache/
+/.codex-corporate/auth.json
+/.codex-corporate/log/
+/.codex-corporate/history.jsonl
+/.codex-corporate/models_cache.json
+/.codex-corporate/.personality_migration
+/.codex-corporate/sessions/
+/.codex-corporate/shell_snapshots/
+/.codex-corporate/state*.sqlite
+/.codex-corporate/state*.sqlite-shm
+/.codex-corporate/state*.sqlite-wal
+/.codex-corporate/tmp/
+/.codex-corporate/version.json
+/.codex-corporate/skills/.system
 
-!/scripts/run-takt.sh
-!/.agents/skills/takt-*
+/.codex-personal/cache/
+/.codex-personal/auth.json
+/.codex-personal/log/
+/.codex-personal/history.jsonl
+/.codex-personal/models_cache.json
+/.codex-personal/.personality_migration
+/.codex-personal/sessions/
+/.codex-personal/shell_snapshots/
+/.codex-personal/state*.sqlite
+/.codex-personal/state*.sqlite-shm
+/.codex-personal/state*.sqlite-wal
+/.codex-personal/tmp/
+/.codex-personal/version.json
+/.codex-personal/skills/.system
 
-.gitmodules
 /.claude/skills-workspaces/
 
