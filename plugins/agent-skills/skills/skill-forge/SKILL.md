@@ -203,6 +203,8 @@ echo "Workspace: $WORKSPACE"
 
 This ensures a clean, isolated environment for each evaluation run. If you need persistence across sessions (e.g., to resume an interrupted run), you can instead use a fixed path: `.claude/skills-workspaces/<skill-name>/` for Claude Code, or `.codex/skills-workspaces/<skill-name>/` for Codex CLI. After creating the workspace, run `ls $WORKSPACE` to verify it exists. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
 
+**Important: Always display the workspace path to the user** so they can inspect outputs directly. When eval runs complete, also display the full path to each generated output file (e.g., `<workspace>/iteration-<N>/eval-<ID>/with_skill/outputs/???.md`).
+
 ### Step 1: Spawn all runs (with-skill AND baseline) in the same turn
 
 For each test case, spawn two subagents in the same turn — one with the skill, one without. This is important: don't spawn the with-skill runs first and then come back for baselines later. Launch everything at once so it all finishes around the same time.
