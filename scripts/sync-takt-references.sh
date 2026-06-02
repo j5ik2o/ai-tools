@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TAKT_SRC="$REPO_ROOT/references/takt"
+TAKT_SRC="${TAKT_SRC:-$REPO_ROOT/references/takt}"
 SKILLS_DIR="$REPO_ROOT/plugins/takt/skills"
 
 DRY_RUN=""

@@ -13,7 +13,7 @@ Configure TAKT defaults in `~/.takt/config.yaml`. This file is created automatic
 language: en                  # UI language: 'en' or 'ja'
 logging:
   level: info                 # Log level: debug, info, warn, error
-provider: claude              # Default provider: claude, codex, opencode, cursor, or copilot
+provider: claude              # Default provider: claude, claude-sdk, claude-terminal, codex, opencode, cursor, or copilot
 model: sonnet                 # Default model (optional, passed to provider as-is)
 branch_name_strategy: romaji  # Branch name generation: 'romaji' (fast) or 'ai' (slow)
 prevent_sleep: false          # Prevent macOS idle sleep during execution (caffeinate)
@@ -26,9 +26,9 @@ notification_sound_events:    # Optional per-event toggles
   run_abort: true             # Enabled by default; set false to disable
 concurrency: 1                # Parallel task count for takt run (1-10, default: 1 = sequential)
 task_poll_interval_ms: 500    # Polling interval for new tasks during takt run (100-5000, default: 500)
-interactive_preview_steps: 3      # Step previews in interactive mode (0-10, default: 3)
-# auto_fetch: false            # Fetch remote before cloning (default: false)
-# base_branch: main            # Base branch for clone creation (default: remote default branch)
+interactive_preview_steps: 3  # Step previews in interactive mode (0-10, default: 3)
+# auto_fetch: false           # Fetch remote before cloning (default: false)
+# base_branch: main           # Base branch for clone creation (default: remote default branch)
 
 # Runtime environment defaults (applies to all workflows unless workflow_config.runtime overrides)
 # runtime:
@@ -36,14 +36,20 @@ interactive_preview_steps: 3      # Step previews in interactive mode (0-10, def
 #     - gradle    # Prepare Gradle cache/config in .runtime/
 #     - node      # Prepare npm cache in .runtime/
 
-# Per-persona provider/model overrides (optional)
+# Per-persona provider/model/provider_options overrides (optional)
 # Route specific personas to different providers and models without duplicating workflows
 # persona_providers:
 #   coder:
 #     provider: codex        # Run coder on Codex
 #     model: o3-mini         # Use o3-mini model (optional)
+#     provider_options:
+#       codex:
+#         reasoning_effort: high
 #   ai-antipattern-reviewer:
 #     provider: claude       # Keep reviewers on Claude
+#     provider_options:
+#       claude:
+#         effort: high
 
 # Provider-specific permission profiles (optional)
 # Priority: project override > global override > project default > global default > required_permission_mode (floor)
@@ -78,28 +84,30 @@ interactive_preview_steps: 3      # Step previews in interactive mode (0-10, def
 
 # Interactive assistant provider (optional)
 # Route the interactive planning conversation to a separate provider/model
-# taktProviders:
+# takt_providers:
 #   assistant:
 #     provider: claude
 #     model: opus
 
 # Workflow security policies (all default to deny)
 # These settings control what untrusted workflow YAMLs are allowed to do.
-# workflowMcpServers:                    # MCP server transport policy
+# workflow_mcp_servers:                  # MCP server transport policy
 #   stdio: true                          # Allow stdio transport (default: false)
 #   sse: false                           # Allow SSE transport (default: false)
 #   http: false                          # Allow HTTP transport (default: false)
-# workflowArpeggio:                      # Arpeggio custom code policy
-#   customDataSourceModules: false       # Allow custom data source modules (default: false)
-#   customMergeInlineJs: false           # Allow inline JS merge functions (default: false)
-#   customMergeFiles: false              # Allow external merge files (default: false)
-# workflowRuntimePrepare:                # Runtime prepare policy
-#   customScripts: false                 # Allow custom scripts (default: false; builtin presets always allowed)
-# syncConflictResolver:                  # Sync conflict resolver policy
-#   autoApproveTools: false              # Allow auto-approval of tools (default: false)
+# workflow_arpeggio:                     # Arpeggio custom code policy
+#   custom_data_source_modules: false    # Allow custom data source modules (default: false)
+#   custom_merge_inline_js: false        # Allow inline JS merge functions (default: false)
+#   custom_merge_files: false            # Allow external merge files (default: false)
+# workflow_runtime_prepare:              # Runtime prepare policy
+#   custom_scripts: false                # Allow custom scripts (default: false; builtin presets always allowed)
+# workflow_command_gates:                # Workflow YAML command quality gate policy
+#   custom_scripts: false                # Allow command gates from workflow YAML (default: false)
+# sync_conflict_resolver:                # Sync conflict resolver policy
+#   auto_approve_tools: false            # Allow auto-approval of tools (default: false)
 
 # Builtin workflow filtering (optional; config keys retain workflow_* names)
-# enable_builtin_workflows: true           # Set false to disable all builtin workflows
+# enable_builtin_workflows: true         # Set false to disable all builtin workflows
 # disabled_builtins: [magi]              # Disable specific builtin workflows by name
 
 # Pipeline execution configuration (optional)
@@ -119,7 +127,7 @@ interactive_preview_steps: 3      # Step previews in interactive mode (0-10, def
 |-------|------|---------|-------------|
 | `language` | `"en"` \| `"ja"` | `"en"` | UI language |
 | `logging.level` | `"debug"` \| `"info"` \| `"warn"` \| `"error"` | `"info"` | Log level |
-| `provider` | `"claude"` \| `"claude-sdk"` \| `"codex"` \| `"opencode"` \| `"cursor"` \| `"copilot"` | `"claude"` | Default AI provider (`claude` = headless CLI mode, `claude-sdk` = SDK/API mode) |
+| `provider` | `"claude"` \| `"claude-sdk"` \| `"claude-terminal"` \| `"codex"` \| `"opencode"` \| `"cursor"` \| `"copilot"` | `"claude"` | Default AI provider (`claude` = headless CLI mode, `claude-sdk` = SDK/API mode, `claude-terminal` = experimental interactive terminal mode) |
 | `logging.trace` | boolean | `false` | Enable trace-level logging (suppresses high-frequency debug noise) |
 | `model` | string | - | Default model name (passed to provider as-is) |
 | `branch_name_strategy` | `"romaji"` \| `"ai"` | `"romaji"` | Branch name generation strategy |
@@ -135,7 +143,7 @@ interactive_preview_steps: 3      # Step previews in interactive mode (0-10, def
 | `auto_pr` | boolean | - | Auto-create PR after worktree execution |
 | `minimal_output` | boolean | `false` | Suppress AI output (for CI) |
 | `runtime` | object | - | Runtime environment defaults (e.g., `prepare: [gradle, node]`) |
-| `persona_providers` | object | - | Per-persona provider/model overrides (e.g., `coder: { provider: codex, model: o3-mini }`) |
+| `persona_providers` | object | - | Per-persona provider/model/provider_options overrides (e.g., `coder: { provider: codex, model: o3-mini, provider_options: { codex: { reasoning_effort: high } } }`) |
 | `provider_options` | object | - | Global provider-specific options |
 | `provider_profiles` | object | - | Provider-specific permission profiles |
 | `anthropic_api_key` | string | - | Anthropic API key for Claude |
@@ -154,11 +162,13 @@ interactive_preview_steps: 3      # Step previews in interactive mode (0-10, def
 | `base_branch` | string | - | Base branch for clone creation (defaults to remote default branch) |
 | `workflow_categories_file` | string | - | Path to categories file (see [Workflow categories](#workflow-categories); default overlay path uses `workflow-categories.yaml`) |
 | `vcs_provider` | `"github"` \| `"gitlab"` | auto-detect | VCS provider (auto-detected from git remote URL) |
-| `taktProviders` | object | - | TAKT internal provider overrides (e.g., `assistant: { provider: claude, model: opus }`) |
-| `workflowMcpServers` | object | all `false` | MCP server transport policy (`stdio`, `sse`, `http` toggles) |
-| `workflowArpeggio` | object | all `false` | Arpeggio custom code policy (`customDataSourceModules`, `customMergeInlineJs`, `customMergeFiles`) |
-| `workflowRuntimePrepare` | object | `{ customScripts: false }` | Runtime prepare policy (builtin presets always allowed) |
-| `syncConflictResolver` | object | `{ autoApproveTools: false }` | Sync conflict resolver policy |
+| `takt_providers` | object | - | TAKT internal provider overrides (e.g., `assistant: { provider: claude, model: opus }`) |
+| `workflow_mcp_servers` | object | all `false` | MCP server transport policy (`stdio`, `sse`, `http` toggles) |
+| `workflow_arpeggio` | object | all `false` | Arpeggio custom code policy (`custom_data_source_modules`, `custom_merge_inline_js`, `custom_merge_files`) |
+| `workflow_runtime_prepare` | object | `{ custom_scripts: false }` | Runtime prepare policy (builtin presets always allowed) |
+| `workflow_command_gates` | object | `{ custom_scripts: false }` | Workflow YAML command quality gate policy |
+| `sync_conflict_resolver` | object | `{ auto_approve_tools: false }` | Sync conflict resolver policy |
+| `observability` | object | disabled | Opt-in OpenTelemetry foundation. Only `enabled` initializes the SDK today; `monitor`, `session_log_exporter`, and `usage_events_phase` are reserved no-op flags for later changes. |
 
 ## Project Configuration
 
@@ -174,10 +184,23 @@ logging:
 concurrency: 2                # Parallel task count for takt run in this project (1-10)
 # base_branch: main           # Base branch for clone creation (overrides global, default: remote default branch)
 
-# Provider-specific options (overrides global, overridden by workflow/step)
+# Explicit initial context files for interactive assistant mode only (project config only)
+# assistant:
+#   init_files:
+#     - docs/assistant-context.md
+#     - .takt/assistant-notes.md
+
+# Provider-specific options (project defaults; env-resolved leaf overrides win, otherwise step > workflow > persona > project > global)
 # provider_options:
 #   codex:
 #     network_access: true
+#   opencode:
+#     variant: high
+#   claude_terminal:
+#     backend: tmux
+#     timeout_ms: 900000
+#     keep_session: false
+#     transcript_poll_interval_ms: 500
 
 # Provider-specific permission profiles (project-level override)
 # provider_profiles:
@@ -191,21 +214,24 @@ concurrency: 2                # Parallel task count for takt run in this project
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `provider` | `"claude"` \| `"codex"` \| `"opencode"` \| `"cursor"` \| `"copilot"` \| `"mock"` | - | Override provider |
+| `provider` | `"claude"` \| `"claude-sdk"` \| `"claude-terminal"` \| `"codex"` \| `"opencode"` \| `"cursor"` \| `"copilot"` \| `"mock"` | - | Override provider |
 | `model` | string | - | Override model name (passed to provider as-is) |
 | `allow_git_hooks` | boolean | `false` | Allow git hooks during TAKT-managed auto-commit |
 | `allow_git_filters` | boolean | `false` | Allow git filters during TAKT-managed auto-commit |
 | `auto_pr` | boolean | - | Auto-create PR after worktree execution |
 | `concurrency` | number (1-10) | `1` (from global) | Parallel task count for `takt run` |
 | `base_branch` | string | - | Base branch for clone creation (overrides global, default: remote default branch) |
+| `assistant.init_files` | string[] | - | Project-only interactive assistant initial context files. Paths must be relative to the project root; absolute paths, paths resolving outside the project root, and sensitive file patterns such as `.env*`, `.npmrc`, `.pypirc`, `.netrc`, `*.pem`, `*.key`, and `.git/**` are rejected. Missing paths, directories, and unreadable files fail with a clear error. At most 16 files are allowed; each file is limited to 256 KiB and the combined content is limited to 1 MiB. When unset or empty, TAKT does not auto-discover `CLAUDE.md`, `AGENT.md`, `AGENTS.md`, `TAKT.md`, or other files. This is separate from `takt_providers.assistant`, which only controls the assistant provider/model. |
 | `provider_options` | object | - | Provider-specific options |
 | `provider_profiles` | object | - | Provider-specific permission profiles |
 | `vcs_provider` | `"github"` \| `"gitlab"` | auto-detect | VCS provider (overrides global) |
-| `taktProviders` | object | - | TAKT internal provider overrides (e.g., `assistant: { provider: claude, model: opus }`) |
-| `workflowMcpServers` | object | - | MCP server transport policy (overrides global) |
-| `workflowArpeggio` | object | - | Arpeggio custom code policy (overrides global) |
-| `workflowRuntimePrepare` | object | - | Runtime prepare policy (overrides global) |
-| `syncConflictResolver` | object | - | Sync conflict resolver policy (overrides global) |
+| `takt_providers` | object | - | TAKT internal provider overrides (e.g., `assistant: { provider: claude, model: opus }`) |
+| `workflow_mcp_servers` | object | - | MCP server transport policy (overrides global) |
+| `workflow_arpeggio` | object | - | Arpeggio custom code policy (overrides global) |
+| `workflow_runtime_prepare` | object | - | Runtime prepare policy (overrides global) |
+| `workflow_command_gates` | object | - | Workflow YAML command quality gate policy (overrides global) |
+| `sync_conflict_resolver` | object | - | Sync conflict resolver policy (overrides global) |
+| `observability` | object | - | Project-level OpenTelemetry opt-in override. Only `enabled` initializes the SDK today; `monitor`, `session_log_exporter`, and `usage_events_phase` are reserved no-op flags for later changes. |
 
 Project config values override global config when both are set.
 
@@ -294,11 +320,10 @@ Paths must be absolute paths to executable files. Environment variables take pre
 
 ## Model Resolution
 
-The model used for each step is resolved with the following priority order (highest first):
+TAKT resolves model selection in two stages:
 
-1. **Workflow step `model`** - Specified in the step definition in workflow YAML
-2. **Global config `model`** - Default model in `~/.takt/config.yaml`
-3. **Provider default** - Falls back to the provider's built-in default (Claude: `sonnet`, Codex: `codex`, OpenCode: provider default, Cursor: CLI default, Copilot: CLI default)
+1. **Base input model** - Before workflow execution starts, the input `model` is resolved from CLI `--model`, then config `model`, then the provider default.
+2. **Workflow step model** - For each workflow step, the effective model is resolved from step YAML `model`, then `persona_providers[persona].model`, then the already-resolved input `model`.
 
 ### Provider-specific Model Notes
 
@@ -376,7 +401,7 @@ The `required_permission_mode` on a step sets the minimum floor. If the resolved
 
 ### Persona Providers
 
-Route specific personas to different providers and models without duplicating workflows:
+Route specific personas to different providers, models, and provider-specific options without duplicating workflows. You can define this in either `~/.takt/config.yaml` or `.takt/config.yaml`:
 
 ```yaml
 # ~/.takt/config.yaml
@@ -384,13 +409,60 @@ persona_providers:
   coder:
     provider: codex        # Run coder persona on Codex
     model: o3-mini         # Use o3-mini model (optional)
+    provider_options:
+      codex:
+        reasoning_effort: high
   ai-antipattern-reviewer:
     provider: claude       # Keep reviewers on Claude
+    provider_options:
+      claude:
+        effort: high
 ```
 
-Both `provider` and `model` are optional. `model` resolution priority: step YAML `model` > `persona_providers[persona].model` > global `model`.
+`provider`, `model`, and `provider_options` are individually optional, but each persona entry must include at least one of them. Empty `provider_options` objects are rejected. In workflow step resolution, `provider` / `model` priority is step YAML > `persona_providers[persona]` > resolved input. That input is resolved before workflow execution from CLI flags, then config, then the provider default.
+
+`provider_options` priority is resolved per leaf. An env-resolved config leaf overrides all other sources. Otherwise the order is: step `provider_options` > workflow `workflow_config.provider_options` > `persona_providers[persona].provider_options` > project `.takt/config.yaml` > global `~/.takt/config.yaml`.
+
+Provider option leaves can also be overridden from env. For OpenCode model variants, use `TAKT_PROVIDER_OPTIONS_OPENCODE_VARIANT=high` to set `provider_options.opencode.variant`. For Claude terminal, use `TAKT_PROVIDER_OPTIONS_CLAUDE_TERMINAL_BACKEND=tmux`, `TAKT_PROVIDER_OPTIONS_CLAUDE_TERMINAL_TIMEOUT_MS=900000`, `TAKT_PROVIDER_OPTIONS_CLAUDE_TERMINAL_KEEP_SESSION=false`, or `TAKT_PROVIDER_OPTIONS_CLAUDE_TERMINAL_TRANSCRIPT_POLL_INTERVAL_MS=500`.
 
 This allows mixing providers and models within a single workflow. The persona name is matched against the `persona` key in the step definition.
+
+### Provider-specific options in practice
+
+#### Network access (`network_access`)
+
+When an implementation step runs network-dependent commands such as `npm install` / `pip install` / `gradle` / `mvn`, provider sandboxes block network by default and the command fails. Configure each provider as follows.
+
+Codex blocks network by default. Enable it with:
+
+```yaml
+provider_options:
+  codex:
+    network_access: true
+```
+
+OpenCode does not have a native sandbox. TAKT controls `webfetch` / `websearch` tool permissions as an abstraction layer behind the same key:
+
+```yaml
+provider_options:
+  opencode:
+    network_access: true
+```
+
+`network_access` can be set at step / `workflow_config` / `persona_providers` / project / global levels, with step having the highest priority. The environment variable `TAKT_PROVIDER_OPTIONS_CODEX_NETWORK_ACCESS=true` also works as an override.
+
+#### Claude Code sandbox control (`allow_unsandboxed_commands`)
+
+With `permission_mode: edit`, the Claude SDK runs Bash commands inside a macOS Seatbelt sandbox. This can cause `~/.gradle` writes and JVM-based build tools to fail with `Operation not permitted`. To run Bash commands outside the sandbox while keeping file-edit permissions controlled, use:
+
+```yaml
+provider_options:
+  claude:
+    sandbox:
+      allow_unsandboxed_commands: true
+```
+
+File-edit permissions continue to be governed by `permission_mode`.
 
 <a id="workflow-categories"></a>
 
