@@ -48,7 +48,7 @@ jobs:
           release-count: '0'
           version-file: 'package.json'
           version-path: 'version'
-          skip-on-empty: 'true'
+          skip-on-empty: 'false'
           skip-commit: ${{ inputs.dry_run || false }}
           skip-tag: ${{ inputs.dry_run || false }}
           skip-git-pull: 'true'
