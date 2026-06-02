@@ -1,1 +1,0 @@
-../references/okite-ai/scripts/run-cursor.sh
