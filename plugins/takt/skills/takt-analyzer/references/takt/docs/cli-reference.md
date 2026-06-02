@@ -145,7 +145,12 @@ Execute all pending tasks from `.takt/tasks.yaml`.
 ```bash
 # Execute all pending tasks in .takt/tasks.yaml
 takt run
+
+# Ignore workflow max_steps and continue until another stop condition occurs
+takt run --ignore-exceed
 ```
+
+Without `--ignore-exceed`, a task that reaches workflow `max_steps` stops with `exceeded` status and persists retry metadata in `.takt/tasks.yaml`. With `--ignore-exceed`, `takt run` ignores only that iteration limit, continues execution, and does not write exceeded retry metadata.
 
 ### takt watch
 
@@ -154,7 +159,12 @@ Monitor `.takt/tasks.yaml` and auto-execute tasks as a resident process.
 ```bash
 # Monitor .takt/tasks.yaml and auto-execute tasks (resident process)
 takt watch
+
+# Ignore workflow max_steps and continue running tasks instead of marking them exceeded
+takt watch --ignore-exceed
 ```
+
+`takt watch --ignore-exceed` has the same semantics as `takt run --ignore-exceed`: it ignores the workflow `max_steps` iteration limit and does not write `exceeded` retry metadata to `.takt/tasks.yaml`.
 
 ### takt list
 
@@ -253,6 +263,14 @@ takt workflow init review-flow --template faceted --global
 # Validate workflows by name or path
 takt workflow doctor sample-flow
 takt workflow doctor .takt/workflows/sample-flow.yaml
+```
+
+### takt resume
+
+Resume the latest failed or aborted direct (one-shot) run. Finds the most recent direct run that did not complete and continues it from where it stopped, reusing the existing run directory instead of starting over.
+
+```bash
+takt resume
 ```
 
 ### takt clear

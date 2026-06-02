@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.42.0
+> **前提 takt バージョン**: v0.43.0
 
 ## 参照資料
 
@@ -63,6 +63,7 @@ description: >
 | edit=false + ビルド操作 | `edit: false` のステップのインストラクションがビルドコマンド（`cargo check` 等）の禁止を明示しているか。読み取り専用サンドボックスでビルドは `Operation not permitted` で失敗する | Warning |
 | supervise失敗の遷移先 | `supervise` の失敗ルールが `plan` に遷移していないか。修正可能な問題は `fix` へ遷移すべきで、`supervise → plan` は根本設計変更が必要な場合のみ | Warning |
 | CI実行の責任配置 | `supervise`/`ai_review` 等の `edit: false` ステップのインストラクションがCIの直接実行を禁止し、`fix`/`implement` のレポート証跡確認のみを求めているか | Warning |
+| command quality gate | `quality_gates` の `type: command` が agent step にだけ置かれ、config 側で `workflow_command_gates.custom_scripts: true` が有効化されているか | Warning |
 | provider_options構造 | `allowed_tools` がトップレベルではなく `provider_options.claude.allowed_tools` に配置されているか（v0.30.0〜） | Warning |
 | edit権限 | `edit: true`のステップに適切な`required_permission_mode`があるか | Info |
 | session設定 | 実装系ステップに`session: refresh`があるか | Info |
