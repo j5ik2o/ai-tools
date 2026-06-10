@@ -1,24 +1,29 @@
-# Implementation Plan
+# 実装計画
 
-## Task Format Template
+## タスク形式テンプレート
 
-Use whichever pattern fits the work breakdown:
+実行可能なすべてのタスク（every executable task / すべての executable task）に、この正規の注釈文法を用いること。
 
-### Major task only
+### 実行作業を含むメインタスク
 - [ ] {{NUMBER}}. {{TASK_DESCRIPTION}}{{PARALLEL_MARK}}
-  - {{DETAIL_ITEM_1}} *(Include details only when needed. If the task stands alone, omit bullet items.)*
-  - _Requirements: {{REQUIREMENT_IDS}}_
+  - {{OBSERVABLE_COMPLETION_ITEM}} *(このタスクの、観測可能な完了シグナルを具体的に記述する)*
+  - _Requirements:_ {{REQUIREMENT_IDS}} *(IDのみ。説明や括弧を付けない)*
+  - _Boundary:_ {{COMPONENT_NAMES}}
+  - _Depends:_ {{TASK_IDS_OR_NONE}}
 
-### Major + Sub-task structure
+### メインタスクとサブタスク構造
 - [ ] {{MAJOR_NUMBER}}. {{MAJOR_TASK_SUMMARY}}
 - [ ] {{MAJOR_NUMBER}}.{{SUB_NUMBER}} {{SUB_TASK_DESCRIPTION}}{{SUB_PARALLEL_MARK}}
   - {{DETAIL_ITEM_1}}
-  - {{DETAIL_ITEM_2}}
-  - {{OBSERVABLE_COMPLETION_ITEM}} *(At least one detail item should state the observable completion condition for this task.)*
-  - _Requirements: {{REQUIREMENT_IDS}}_ *(IDs only; do not add descriptions or parentheses.)*
-  - _Boundary: {{COMPONENT_NAMES}}_ *(Only for (P) tasks. Omit when scope is obvious.)*
-  - _Depends: {{TASK_IDS}}_ *(Only for non-obvious cross-boundary dependencies. Most tasks omit this.)*
+  - {{OBSERVABLE_COMPLETION_ITEM}} *(このタスクの、観測可能な完了シグナルを具体的に記述する)*
+  - _Requirements:_ {{REQUIREMENT_IDS}} *(IDのみ。説明や括弧を付けない)*
+  - _Boundary:_ {{COMPONENT_NAMES}}
+  - _Depends:_ {{TASK_IDS_OR_NONE}}
 
-> **Parallel marker**: Append ` (P)` only to tasks that can be executed in parallel. Omit the marker when running in `--sequential` mode.
->
-> **Optional test coverage**: When a sub-task is deferrable test work tied to acceptance criteria, mark the checkbox as `- [ ]*` and explain the referenced requirements in the detail bullets.
+## 注釈ルール
+
+- `_Requirements:_ {{REQUIREMENT_IDS}}` には数値の要件IDを用いる。
+- `_Boundary:_ {{COMPONENT_NAMES}}` は、所有するコンポーネントまたはワークフローの境界を示す。
+- `_Depends:_ {{TASK_IDS_OR_NONE}}` は、依存がある場合にタスクIDを用いる。
+- 依存がない場合は `_Depends:_ none` が正規の文法。
+- ` (P)` は、境界が重複せず、かつ明示的な依存グラフ上で独立実行可能と示される場合にのみ付与する。
