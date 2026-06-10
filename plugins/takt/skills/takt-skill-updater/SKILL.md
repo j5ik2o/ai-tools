@@ -13,7 +13,7 @@ description: >
 
 references/taktサブモジュール更新後に、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.43.0
+> **前提 takt バージョン**: v0.44.0
 
 ## パス表記について
 
@@ -249,6 +249,17 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.43.0 → v0.44.0（2026-06-10）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.44.0` に更新。`v0.44.0` タグの reference snapshot を同期（タグの worktree を `TAKT_SRC` に指定して sync） |
+| takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記と reference docs の同期のみ |
+| takt-workflow-builder | `coding-review` 並列レビューを全ビルトイン review / review-fix / 開発系ワークフロー（backend, frontend, dual, terraform とその variants）へ拡大（`*-mini` と `compound-eye` は対象外）。新 provider `kiro`（kiro-cli、`kiro_api_key` / `kiro_cli_path` で設定）を反映 |
+| takt-facet-builder | ファセット・スタイルガイドの変更なし。バージョン表記の更新のみ |
+| takt-analyzer | observability opt-in 出力（`.takt/runs/<run>/monitor.json` メトリクス、OTel span 由来 shadow session log）をログの場所・形式へ追加。`span-to-ndjson-mapper.ts` を参照資料へ追加。NDJSONレコード表に `phase_judge_stage` を追記 |
+| takt-optimizer | ログフォーマット自体の変更なし。バージョン表記の更新のみ |
 
 ### v0.42.0 → v0.43.0（2026-06-02）
 
