@@ -1,32 +1,34 @@
-# Requirements Document
+# 要件定義
 
-## Introduction
+## はじめに
 {{INTRODUCTION}}
 
-<!-- Optional when scope could be misread or the feature touches adjacent systems/specs -->
-## Boundary Context (Optional)
-- **In scope**: {{IN_SCOPE_BEHAVIORS}}
-- **Out of scope**: {{OUT_OF_SCOPE_BEHAVIORS}}
-- **Adjacent expectations**: {{ADJACENT_SYSTEM_OR_SPEC_EXPECTATIONS}}
+<!-- スコープが誤読されうる場合、または隣接するシステム／スペックに影響する場合は任意で記載 -->
+## 境界コンテキスト（任意）
+- **対象範囲**: {{IN_SCOPE_BEHAVIORS}}
+- **対象外**: {{OUT_OF_SCOPE_BEHAVIORS}}
+- **隣接システム／スペックへの期待**: {{ADJACENT_SYSTEM_OR_SPEC_EXPECTATIONS}}
 
-## Requirements
+## 要件
 
-### Requirement 1: {{REQUIREMENT_AREA_1}}
-<!-- Requirement headings MUST include a leading numeric ID only (for example: "Requirement 1: ...", "1. Overview", "2 Feature: ..."). Alphabetic IDs like "Requirement A" are not allowed. -->
-**Objective:** As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}
+### 要件 1: {{REQUIREMENT_AREA_1}}
+<!-- 要件見出しは用語表の形式に従い、数値IDを `要件 N:` として記載すること（例: "要件 1: ..."）。"要件 A" や "1. 概要" のような形式は不可。 -->
+**目的:** {{ROLE}}として、{{BENEFIT}}のために、{{CAPABILITY}}が欲しい
+<!-- 上記は「[役割]として、[利益]のために、[能力]が欲しい」という形式です。 -->
 
-#### Acceptance Criteria
-1. When [event], the [system] shall [response/action]
-2. If [trigger], then the [system] shall [response/action]
-3. While [precondition], the [system] shall [response/action]
-4. Where [feature is included], the [system] shall [response/action]
-5. The [system] shall [response/action]
+#### 受け入れ基準
+<!-- EARS形式。日本語 spec では `ears-format.md` の固定句に従い、「が起きたとき」「の場合」「の間」「を含む場合」「は常に」と「しなければならない」を用います。 -->
+1. [イベント] が起きたとき、[システム] は [応答／動作] しなければならない
+2. [トリガー／異常] の場合、[システム] は [応答／動作] しなければならない
+3. [前提条件] の間、[システム] は [応答／動作] し続けなければならない
+4. [機能／オプション] を含む場合、[システム] は [応答／動作] しなければならない
+5. [システム] は常に [応答／動作] しなければならない
 
-### Requirement 2: {{REQUIREMENT_AREA_2}}
-**Objective:** As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}
+### 要件 2: {{REQUIREMENT_AREA_2}}
+**目的:** {{ROLE}}として、{{BENEFIT}}のために、{{CAPABILITY}}が欲しい
 
-#### Acceptance Criteria
-1. When [event], the [system] shall [response/action]
-2. When [event] and [condition], the [system] shall [response/action]
+#### 受け入れ基準
+1. [イベント] が起きたとき、[システム] は [応答／動作] しなければならない
+2. [イベント] が起き、かつ [条件] の場合、[システム] は [応答／動作] しなければならない
 
-<!-- Additional requirements follow the same pattern -->
+<!-- 以降の要件も同じパターンに従う -->
