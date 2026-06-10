@@ -6,6 +6,26 @@
 
 フォーマットは [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) に基づいています。
 
+## [0.44.0] - 2026-06-03
+
+### Added
+
+- `kiro` プロバイダーを追加 (#773)。Claude・Codex・OpenCode・Cursor・Copilot に加えて、Kiro CLI を AI エージェントプロバイダーとして利用できるようになった。`--provider kiro` または設定で選択する。認証は設定の `kiro_api_key`（または環境変数 `TAKT_KIRO_API_KEY`）を使い、CLI バイナリは `kiro_cli_path` / `TAKT_KIRO_CLI_PATH` で上書きできる
+- OpenTelemetry オブザーバビリティに動作するエクスポーターとスパンの拡充を追加 (#753)。0.42.0 で導入したスパン基盤の上に、実行ごとのワークフローメトリクスをローカルの `monitor.json` に出力する機能（`observability.monitor: true` で有効化）と、OTel スパンから派生するシャドウセッションログ（`observability.sessionLogExporter: true`）を追加し、スパンの対象をフェーズ実行とステータス判定（judge）フェーズにも拡張した。エクスポーターは実行 ID ごとにルーティングされ、シャドウセッションログは正規の NDJSON セッションログとレダクションの整合性を保つため、機微なエージェント出力はサニタイズされたままになる。引き続き `observability.enabled: true` の背後でデフォルト無効
+
+### Changed
+
+- コーディングレビューをすべてのビルトインのレビュー・開発ワークフローに拡張。これまで `default-peer-review` のみに含まれていた coding-review 並列サブステップ（`review-coding` インストラクションと `coding-review` 出力契約を持つ `coding-reviewer` ペルソナ）を、すべてのビルトインの review / review-fix ワークフローと、開発ワークフロー（backend・frontend・dual・terraform とその派生）の並列レビューワーウェーブに追加した。モデル自身のコーディング判断を用いて実装上のバグ・リグレッション・セキュリティリスク・テスト不足を指摘する、ほぼインストラクションを持たない汎用パスである。意図的に最小構成の `*-mini` と `compound-eye` の派生はそのままにしている
+
+### Fixed
+
+- Codex の `Reconnecting...` イベントで実行が中断されなくなった (#775)。Codex SDK の一時的な再接続が致命的なプロバイダーエラーとして表面化し、ワークフロー全体を停止させることがあったが、回復可能な再接続として扱い再試行するようになった
+- ワークツリークローンの分離を強化 (#778)。`git clone --shared` の分離パスとクローン実行に対する修正（gitdir 分離処理の正規化を含む）により、ワークツリー分離タスクがメインリポジトリから正しく分離された状態を保つ
+
+### Internal
+
+- TAKT 自身の `.takt/config.yaml` にリポジトリの品質ゲートを組み込み、ドッグフーディングしているレビュー・開発ステップがコマンドゲート経由で build・lint・ユニット・モック E2E のチェックを実行するようにした
+
 ## [0.43.0] - 2026-05-29
 
 ### Added
