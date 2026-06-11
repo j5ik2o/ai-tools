@@ -102,9 +102,9 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          # TAKT_UPDATE_PAT（PAT）を設定すると、作成された PR 上で他の CI（validate-plugins 等）が起動する。
-          # 未設定の場合は GITHUB_TOKEN を使用（GitHub の仕様により PR 上の CI は起動しない）。
-          token: ${{ secrets.TAKT_UPDATE_PAT || secrets.GITHUB_TOKEN }}
+          # PERSONAL_ACCESS_TOKEN（PAT）により、作成された PR 上で他の CI（validate-plugins 等）が起動する。
+          # 未設定の場合は GITHUB_TOKEN にフォールバック（GitHub の仕様により PR 上の CI は起動しない）。
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           branch: ${{ needs.check.outputs.branch }}
           delete-branch: true
           commit-message: 'chore: update takt-* skills for takt ${{ needs.check.outputs.new_version }}'
