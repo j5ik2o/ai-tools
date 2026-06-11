@@ -1,3 +1,22 @@
+## [0.4.0](https://github.com/j5ik2o/ai-tools/compare/v0.3.3...v0.4.0) (2026-06-11)
+
+
+### Features
+
+* **ci:** add takt-skill-auto-update workflow ([bc317da](https://github.com/j5ik2o/ai-tools/commit/bc317da66c734c39079369252713217bc999232c))
+
+
+### Bug Fixes
+
+* .gitignore ([a133937](https://github.com/j5ik2o/ai-tools/commit/a1339379cf982771369f91912071caf7a9999dd4))
+* **ci:** address review findings in takt-skill-auto-update ([0d14685](https://github.com/j5ik2o/ai-tools/commit/0d14685aa5c5a5e58382dc50629bb9183f006df2))
+* **ci:** avoid pipe in branch-version check to be pipefail-safe ([b7229f9](https://github.com/j5ik2o/ai-tools/commit/b7229f9f57b5e4c7342814c8861685d3c985c4a4))
+* **ci:** disable credential persistence in update job checkout ([d838f31](https://github.com/j5ik2o/ai-tools/commit/d838f31c4701c469161b24964201ee34082e7319))
+* **ci:** re-run update when branch exists but PR was never created ([097e5c8](https://github.com/j5ik2o/ai-tools/commit/097e5c8a7b259814f450d689580836aedbb86233))
+* **scripts:** clean up shebang and update CODEX_HOME path ([1f51802](https://github.com/j5ik2o/ai-tools/commit/1f518025dff34a29c3a64663f56c28b717c3390f))
+* **takt-skill-updater:** Step 0 honors pinned NEW_VERSION ([ea6850f](https://github.com/j5ik2o/ai-tools/commit/ea6850f58ab670814a77550aeb5f1aa9b1d844a3))
+* **takt-skills:** correct misleading observability example in synced e2e.md ([ed18c26](https://github.com/j5ik2o/ai-tools/commit/ed18c26ae169b501fc45c8d612ed3d5ed4e9c656))
+
 ## [0.3.3](https://github.com/j5ik2o/ai-tools/compare/v0.3.2...v0.3.3) (2026-06-02)
 
 
