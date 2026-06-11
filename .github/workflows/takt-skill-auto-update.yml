@@ -29,8 +29,10 @@ jobs:
       - name: Detect new takt tag
         id: compare
         run: |
+          # pre-release タグ（v0.45.0-rc.1 等)を除外し、安定版タグのみを対象にする
           NEW_VERSION=$(git ls-remote --tags https://github.com/nrslib/takt.git 'v*' \
             | awk '{print $2}' | grep -v '\^{}$' | sed 's|^refs/tags/||' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
             | sort -V | tail -n 1)
           OLD_VERSION=$(grep -m1 '前提 takt バージョン' plugins/takt/skills/takt-skill-updater/SKILL.md \
             | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
@@ -45,8 +47,13 @@ jobs:
           if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "$OLD_VERSION" ]; then
             echo "新しいタグはありません。スキップします"
             echo "should_update=false" >> "$GITHUB_OUTPUT"
-          elif git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
-            echo "更新ブランチ $BRANCH が既に存在するためスキップします"
+          # 既存の更新ブランチが NEW_VERSION を反映済みの場合のみスキップする
+          # （クローズ済みPRの再作成防止）。古いパッチ版のままのブランチは
+          # スキップせず、後続の create-pull-request が同一ブランチ・PRを更新する。
+          elif git fetch --depth 1 origin "$BRANCH" 2>/dev/null \
+            && git show FETCH_HEAD:plugins/takt/skills/takt-skill-updater/SKILL.md \
+              | grep -qF "前提 takt バージョン**: ${NEW_VERSION}"; then
+            echo "更新ブランチ $BRANCH は既に ${NEW_VERSION} を反映済みのためスキップします"
             echo "should_update=false" >> "$GITHUB_OUTPUT"
           else
             echo "should_update=true" >> "$GITHUB_OUTPUT"
@@ -96,7 +103,13 @@ jobs:
 
       - name: Verify version bump
         run: |
-          grep -F "前提 takt バージョン**: ${NEW_VERSION}" plugins/takt/skills/takt-skill-updater/SKILL.md
+          # 全 takt-* スキルの前提バージョンが NEW_VERSION に更新されていることを確認する
+          MISSING=$(grep -LF "前提 takt バージョン**: ${NEW_VERSION}" plugins/takt/skills/takt-*/SKILL.md || true)
+          if [ -n "$MISSING" ]; then
+            echo "::error::以下のスキルのバージョン表記が ${NEW_VERSION} に更新されていません:"
+            echo "$MISSING"
+            exit 1
+          fi
           git status --short
 
       - name: Create pull request
