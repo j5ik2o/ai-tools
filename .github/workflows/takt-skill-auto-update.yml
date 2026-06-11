@@ -69,6 +69,11 @@ jobs:
       NEW_VERSION: ${{ needs.check.outputs.new_version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Bash を許可した Claude エージェントが .git/config 経由で GITHUB_TOKEN を
+          # 読めないようにする。push と PR 作成は create-pull-request が token 入力で
+          # 自前認証するため、認証情報の永続化は不要。
+          persist-credentials: false
 
       - name: Checkout nrslib/takt at new tag
         run: |
