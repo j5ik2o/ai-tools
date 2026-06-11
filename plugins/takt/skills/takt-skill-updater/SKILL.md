@@ -42,15 +42,17 @@ takt の source of truth は環境変数 `TAKT_SRC` が指す nrslib/takt のチ
 ### Step 0: takt ソースの取得
 
 nrslib/takt のチェックアウトを用意し、`TAKT_SRC` に設定する。手元に既存のチェックアウトがあればそれを `TAKT_SRC` に指定してもよい。
+更新先バージョンが指定されている場合（CI から呼ばれる場合等）は `NEW_VERSION` にそのタグを設定する。目的のタグを checkout 済みの `TAKT_SRC` が与えられている場合、この Step は省略してよい。
 
 ```bash
 TAKT_SRC="${TAKT_SRC:-/tmp/takt}"
 if [[ ! -d "$TAKT_SRC" ]]; then
   git clone https://github.com/nrslib/takt.git "$TAKT_SRC"
 fi
-# 最新タグ（または更新先に指定されたバージョン）を checkout する
 git -C "$TAKT_SRC" fetch --tags
-git -C "$TAKT_SRC" checkout "$(git -C "$TAKT_SRC" tag --list 'v*' --sort=-v:refname | head -1)"
+# NEW_VERSION 指定時はそのタグを、未指定時は最新の安定版タグを checkout する
+git -C "$TAKT_SRC" checkout \
+  "${NEW_VERSION:-$(git -C "$TAKT_SRC" tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)}"
 ```
 
 ### Step 1: takt バージョン確認
