@@ -50,9 +50,9 @@ jobs:
           # 既存の更新ブランチが NEW_VERSION を反映済みの場合のみスキップする
           # （クローズ済みPRの再作成防止）。古いパッチ版のままのブランチは
           # スキップせず、後続の create-pull-request が同一ブランチ・PRを更新する。
+          # pipefail 環境でも誤判定しないよう、パイプを使わず文字列照合する。
           elif git fetch --depth 1 origin "$BRANCH" 2>/dev/null \
-            && git show FETCH_HEAD:plugins/takt/skills/takt-skill-updater/SKILL.md \
-              | grep -qF "前提 takt バージョン**: ${NEW_VERSION}"; then
+            && [[ "$(git show FETCH_HEAD:plugins/takt/skills/takt-skill-updater/SKILL.md 2>/dev/null || true)" == *"前提 takt バージョン**: ${NEW_VERSION}"* ]]; then
             echo "更新ブランチ $BRANCH は既に ${NEW_VERSION} を反映済みのためスキップします"
             echo "should_update=false" >> "$GITHUB_OUTPUT"
           else
