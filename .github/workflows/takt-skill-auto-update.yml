@@ -1,0 +1,119 @@
+name: takt-skill-auto-update
+
+on:
+  schedule:
+    # 毎日 06:23 JST（21:23 UTC）に nrslib/takt の新タグを確認する
+    - cron: '23 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: takt-skill-auto-update
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      should_update: ${{ steps.compare.outputs.should_update }}
+      old_version: ${{ steps.compare.outputs.old_version }}
+      new_version: ${{ steps.compare.outputs.new_version }}
+      branch: ${{ steps.compare.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Detect new takt tag
+        id: compare
+        run: |
+          NEW_VERSION=$(git ls-remote --tags https://github.com/nrslib/takt.git 'v*' \
+            | awk '{print $2}' | grep -v '\^{}$' | sed 's|^refs/tags/||' \
+            | sort -V | tail -n 1)
+          OLD_VERSION=$(grep -m1 '前提 takt バージョン' plugins/takt/skills/takt-skill-updater/SKILL.md \
+            | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          # ブランチ命名規約: v0.44.0 -> chore/update-takt-skills-for-v044
+          BRANCH="chore/update-takt-skills-for-v$(echo "$NEW_VERSION" | sed -E 's/^v//; s/\.[0-9]+$//; s/\.//')"
+          {
+            echo "old_version=$OLD_VERSION"
+            echo "new_version=$NEW_VERSION"
+            echo "branch=$BRANCH"
+          } >> "$GITHUB_OUTPUT"
+          echo "takt: $OLD_VERSION -> $NEW_VERSION"
+          if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "$OLD_VERSION" ]; then
+            echo "新しいタグはありません。スキップします"
+            echo "should_update=false" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
+            echo "更新ブランチ $BRANCH が既に存在するためスキップします"
+            echo "should_update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  update:
+    needs: check
+    if: needs.check.outputs.should_update == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OLD_VERSION: ${{ needs.check.outputs.old_version }}
+      NEW_VERSION: ${{ needs.check.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout nrslib/takt at new tag
+        run: |
+          git clone https://github.com/nrslib/takt.git /tmp/takt
+          git -C /tmp/takt checkout "$NEW_VERSION"
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run takt-skill-updater
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          PROMPT=$(cat <<EOF
+          .claude/skills/takt-skill-updater/SKILL.md を読み込み、その手順に従って takt-* スキル群を takt ${NEW_VERSION} に追従させてください。
+
+          前提:
+          - 旧バージョン: ${OLD_VERSION}
+          - 新バージョン: ${NEW_VERSION}
+          - nrslib/takt はタグ ${NEW_VERSION} を checkout 済みの状態で /tmp/takt に存在する。TAKT_SRC=/tmp/takt として使用すること（clone は不要）。
+          - リファレンス同期は TAKT_SRC=/tmp/takt scripts/sync-takt-references.sh で実行すること。
+          - このリポジトリのスキル実体は plugins/takt/skills/ 配下にある（.claude/skills/ はシンボリックリンク）。
+
+          制約:
+          - SKILL.md の Step 6（コミットとPR）は実行しないこと。git commit / git push / PR 作成は行わず、ワーキングツリーへのファイル変更のみ行うこと。コミットと PR 作成は後続のワークフローステップが担当する。
+          EOF
+          )
+          claude -p "$PROMPT" \
+            --allowedTools "Bash,Read,Edit,Write,Glob,Grep" \
+            --max-turns 150
+
+      - name: Verify version bump
+        run: |
+          grep -F "前提 takt バージョン**: ${NEW_VERSION}" plugins/takt/skills/takt-skill-updater/SKILL.md
+          git status --short
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # TAKT_UPDATE_PAT（PAT）を設定すると、作成された PR 上で他の CI（validate-plugins 等）が起動する。
+          # 未設定の場合は GITHUB_TOKEN を使用（GitHub の仕様により PR 上の CI は起動しない）。
+          token: ${{ secrets.TAKT_UPDATE_PAT || secrets.GITHUB_TOKEN }}
+          branch: ${{ needs.check.outputs.branch }}
+          delete-branch: true
+          commit-message: 'chore: update takt-* skills for takt ${{ needs.check.outputs.new_version }}'
+          title: 'chore: update takt-* skills for takt ${{ needs.check.outputs.new_version }}'
+          body: |
+            nrslib/takt の新しいタグ **${{ needs.check.outputs.new_version }}** を検知したため、takt-skill-updater スキルで takt-* スキル群を自動更新しました。
+
+            - 旧バージョン: ${{ needs.check.outputs.old_version }}
+            - 新バージョン: ${{ needs.check.outputs.new_version }}
+            - 差分: https://github.com/nrslib/takt/compare/${{ needs.check.outputs.old_version }}...${{ needs.check.outputs.new_version }}
+            - リリースノート: https://github.com/nrslib/takt/releases/tag/${{ needs.check.outputs.new_version }}
+
+            このPRは `.github/workflows/takt-skill-auto-update.yml` により自動生成されました。内容をレビューの上マージしてください。
