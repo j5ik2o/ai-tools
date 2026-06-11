@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローの最適化を実行する。診断・分析は takt-analyze が担う。
 
-> **前提 takt バージョン**: v0.44.0
+> **前提 takt バージョン**: v0.45.0
 
 ## 参照資料
 
@@ -201,6 +201,14 @@ steps:
 takt-analyze のログ診断結果を入力として、実データに基づく最適化を実行する。
 
 > **前提**: ログの読み込み・解析・診断は takt-analyze が担当する。本カテゴリでは診断結果を受けて「何を変更するか」のみを扱う。
+
+**利用可能なログソース:**
+
+| ログファイル | 粒度 | 用途 |
+|------------|------|------|
+| `logs/<session>.jsonl` | step 単位 | ループ検出、ルール評価効率、ABORT率 |
+| `logs/<session>-provider-events.jsonl` | provider 呼び出し単位 | 各呼び出しの token 消費 |
+| `logs/<session>-usage-events.phase.jsonl` | phase 単位（v0.45.0〜） | step × phase × provider のトークン消費。`observability.usage_events_phase: true` で出力。`npm run analyze:usage` で集計可能 |
 
 **診断結果 → 最適化アクション:**
 

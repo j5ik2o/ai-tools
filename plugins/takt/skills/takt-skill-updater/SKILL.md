@@ -13,7 +13,7 @@ description: >
 
 nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.44.0
+> **前提 takt バージョン**: v0.45.0
 
 ## パス表記について
 
@@ -261,6 +261,17 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.44.0 → v0.45.0（2026-06-11）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.45.0` に更新。`v0.45.0` タグの reference snapshot を同期 |
+| takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| takt-workflow-builder | builtins の変更なし。バージョン表記の更新のみ |
+| takt-facet-builder | ファセット・スタイルガイドの変更なし。バージョン表記の更新のみ |
+| takt-analyzer | `observability.usage_events_phase: true` が機能化（v0.44.0 では no-op）。新ログファイル `.takt/runs/<run>/logs/<session>-usage-events.phase.jsonl`（`PhaseUsageEventLogRecord` 型 NDJSON）をログの場所・形式へ追記。`phaseUsageEvent.ts` を参照資料テーブルへ追加。`UsageEventLogRecord.usage` に `cache_creation_input_tokens` / `cache_read_input_tokens` 追加 |
+| takt-optimizer | 新ログソース `-usage-events.phase.jsonl`（phase 粒度トークン集計）を「ログ診断結果に基づく最適化」セクションのログソーステーブルへ追記 |
 
 ### v0.43.0 → v0.44.0（2026-06-10）
 

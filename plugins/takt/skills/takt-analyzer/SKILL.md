@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.44.0
+> **前提 takt バージョン**: v0.45.0
 
 ## 参照資料
 
@@ -32,6 +32,7 @@ description: >
 | プロバイダイベント | `references/takt/src/core/logging/providerEventLogger.ts` | `*-provider-events.jsonl` の構造 |
 | 利用イベント | `references/takt/src/core/logging/usageEventLogger.ts` | 利用量イベントの構造 |
 | span→NDJSONマッパー | `references/takt/src/core/logging/span-to-ndjson-mapper.ts` | OTel span 由来 shadow session log の構造（v0.44.0〜） |
+| フェーズ利用イベント | `references/takt/src/core/logging/phaseUsageEvent.ts` | `*-usage-events.phase.jsonl` の `PhaseUsageEventLogRecord` 型（v0.45.0〜） |
 | ルール評価 | `references/takt/src/core/workflow/evaluation/RuleEvaluator.ts` | matchedRuleMethod の仕組み（`when:` 決定論的条件含む） |
 
 ## takt-optimize との違い
@@ -149,7 +150,8 @@ description: >
 
 - `.takt/runs/<run>/monitor.json`: run 単位のワークフローメトリクス（`observability.monitor: true` で出力）
 - OTel span 由来の shadow session log（`observability.session_log_exporter: true` で出力）。正規の NDJSON セッションログと同等の redaction が適用される
-- span はフェーズ実行と status-judgment（judge）フェーズもカバーする。`observability.usage_events_phase` は予約フラグ（no-op）
+- span はフェーズ実行と status-judgment（judge）フェーズもカバーする
+- `.takt/runs/<run>/logs/<session>-usage-events.phase.jsonl`: フェーズ粒度の provider 利用量イベント（`observability.usage_events_phase: true` で出力、v0.45.0〜）。`PhaseUsageEventLogRecord` 型の NDJSON。各フェーズ（`phase1_execute` / `phase2_report` / `phase3_structured` / `phase3_tag` / `phase3_fallback`）ごとに `provider`, `provider_model`, `step`, `step_type`, `phase`, `usage` を記録する。`npm run analyze:usage` コマンドで集計可能
 
 **NDJSONレコード型一覧:**
 
