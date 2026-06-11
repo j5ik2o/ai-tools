@@ -6,6 +6,27 @@
 
 フォーマットは [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) に基づいています。
 
+## [0.45.0] - 2026-06-10
+
+### Added
+
+- フェーズ単位の usage イベントと usage 分析スクリプトを追加 (#785)。`observability.enabled: true` と `observability.usage_events_phase: true` を設定すると、実行ごとにフェーズ単位のトークン usage イベントを `.takt/runs/<run>/logs/<session>-usage-events.phase.jsonl` に出力する（既存の `logging.usage_events` 出力とは別ストリーム）。イベントはワークフローフェーズ（`phase1_execute`・`phase2_report`・ステータス判定の `phase3_structured` / `phase3_tag` / `phase3_fallback`）ごとに記録され、usage が取得できなかった呼び出しは 0 トークン扱いではなく `usage_missing: true` として記録される。新しい `npm run analyze:usage` スクリプトは、イベントファイルや実行ディレクトリを step × phase × provider × model 単位の Markdown / CSV テーブルに集計し、トークン合計と呼び出しごとの統計を出力する。新設の [Observability ガイド](./observability.ja.md) に記載
+- インタラクティブモードでクリップボード画像ペーストに対応 (#791)。インタラクティブ入力中に Ctrl+V（または新しい `/paste-image` コマンド）で OS のクリップボードから画像を直接添付できるようになった。これまではターミナルがインライン画像（OSC 1337）エスケープシーケンスを送出する場合にのみペーストが機能していた。添付画像はプロバイダー抽象も通るようになり、`claude-sdk` と `codex` はネイティブの画像入力として受け取り、その他のプロバイダーにはプロンプト内に添付ファイルパスの参照が展開されるため、エージェントが自身のツールで画像を開ける
+
+### Changed
+
+- **BREAKING:** 中断された `running` タスクは自動再キューされなくなった (#791)。`takt run` や `takt watch` が中断（プロセスクラッシュ・強制終了）された場合、`running` 状態のまま残ったタスクは次回起動時に `pending` へ復旧されて再実行されていたが、今後は説明付きのエラーとともに `failed` にマークされる。再実行するには明示的に再キューする
+
+### Fixed
+
+- ワークツリー分離クローンが、fetch 済みの base branch コミットから分岐する際に missing object エラーで失敗しなくなった (#791)。`git reset --hard` の前に base branch のコミットをメインリポジトリから分離クローンへ fetch するようにし、reset 対象が常にクローン内に存在するようにした
+- OpenCode の readonly パーミッションモードで読み取りツールが許可されるようになった (#797)。`readonly` モードは `read`・`glob`・`grep` を含むすべてのツールを拒否していたため、レビューなどの読み取り専用ステップがコードベースをまったく参照できなかった。これら 3 つの読み取りツールを許可し、編集・bash・ネットワーク系ツールは引き続き拒否する
+
+### Internal
+
+- Claude Agent SDK と Codex SDK の依存関係を更新 (#789, #795)
+- リポジトリ自身の `.takt/config.yaml` から implement 系ステップの `takt-quality-check` コマンドゲートを削除
+
 ## [0.44.0] - 2026-06-03
 
 ### Added
