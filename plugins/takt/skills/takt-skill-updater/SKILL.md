@@ -88,6 +88,18 @@ sync スクリプトが存在しない repo では、各スキルが参照する
 各スキルには自身が参照する takt リソースのサブセットのみが同期される。
 同期対象の定義は `scripts/sync-takt-references.sh` 内の各スキルセクションを参照。
 
+#### 同期内容の品質チェック（誤読防止）
+
+「本家がそう書いてあったから」での盲目的コピーはしない。同期で追加・変更されたドキュメントを読み、
+誤読を招く記述（設定例の誤り、正式リファレンスと矛盾する説明、ネスト構造が曖昧な設定キー表記等）がないか、
+正とする情報源（`docs/configuration.md`、スキーマ定義、実装コード）と突き合わせて確認する。
+
+検出した場合の対応:
+
+1. スナップショット側を修正し、「ローカル修正の記録」（本ファイル末尾）に追記する
+2. 既存の記録エントリは毎回の同期後に必ず確認する。上流で修正済みなら記録から削除し、未修正なら同じ修正を再適用する（`rsync --delete` で上書きされて消えているため）
+3. 上流（nrslib/takt）への issue / PR での報告を検討する（報告が修正の恒久化につながる）
+
 ### Step 2: タグ間差分の取得
 
 旧バージョンと現バージョン間の差分を取得し、どのスキルに影響があるかを判定する。
@@ -234,6 +246,7 @@ bash skills/takt-workflow-builder/scripts/validate-takt-files.sh --workflows
 - [ ] `takt-facet-builder/SKILL.md` の参照パスが全て実在する
 - [ ] `takt-analyzer/SKILL.md` の参照パスが全て実在する
 - [ ] takt-skill-updater 自身の `前提 takt バージョン` と「過去の更新履歴」が更新されている
+- [ ] 「ローカル修正の記録」の全エントリが、同期後のスナップショットに再適用されている（または上流修正を確認して記録から削除されている）
 
 ### Step 6: コミットとPR
 
@@ -257,6 +270,16 @@ chore: update takt-* skills for takt v{バージョン}
 - takt-workflow-builder: {変更サマリ}
 - Sync takt reference snapshots to v{バージョン}
 ```
+
+## ローカル修正の記録
+
+上流ドキュメントの誤読を招く記述に対する、スナップショットへのローカル修正。
+同期（`rsync --delete`）のたびに失われるため、Step 1.5 の品質チェックで毎回再適用する。
+上流で修正がリリースされたら該当行を削除する。
+
+| 対象ファイル | 修正内容 | 追加日 | 解除条件 |
+|------------|---------|--------|---------|
+| `docs/testing/e2e.md`（同期先の各スキル `references/takt/` 配下） | Observability E2E 手順の設定例で `usage_events_phase` / `monitor` / `session_log_exporter` に `observability.` プレフィックスを付与（トップレベル設定と誤読されるため。正は `docs/configuration.md` の `observability` サブフィールド） | 2026-06-11 | 上流の同箇所が修正されたら削除 |
 
 ## 過去の更新履歴
 
