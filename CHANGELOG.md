@@ -1,3 +1,15 @@
+## [0.4.1](https://github.com/j5ik2o/ai-tools/compare/v0.4.0...v0.4.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* Terraformレビュー集約条件を修正 ([b3883fb](https://github.com/j5ik2o/ai-tools/commit/b3883fb7c7790135d2e31d442d72a13b0a89ad45))
+
+
+### Reverts
+
+* Terraformレビュー集約条件修正を取り消し ([9864d14](https://github.com/j5ik2o/ai-tools/commit/9864d148a12ee8994639e381e95e286009dce00f))
+
 ## [0.4.0](https://github.com/j5ik2o/ai-tools/compare/v0.3.3...v0.4.0) (2026-06-11)
 
 
