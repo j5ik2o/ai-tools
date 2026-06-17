@@ -219,7 +219,8 @@ The agent acts as a leader: it decomposes the task into independent sub-parts at
 ```yaml
   - name: implement
     team_leader:
-      max_parts: 3
+      max_concurrency: 2
+      max_total_parts: 8
       timeout_ms: 600000
       part_persona: coder
       part_edit: true
@@ -233,6 +234,8 @@ The agent acts as a leader: it decomposes the task into independent sub-parts at
 ```
 
 Useful for breaking one large task into independent units that can run in parallel without you having to know the unit boundaries up-front.
+
+`max_concurrency` controls how many parts run at the same time. `max_total_parts` controls the total number of parts the leader may plan across the workflow step, up to 20. The older `max_parts` key is still accepted as the compatibility name for `max_concurrency`.
 
 ### Workflow Call Step (subworkflow)
 
@@ -316,9 +319,11 @@ Promotion is not supported on parallel sub-steps.
 | `pass_previous_response` | `true` | Pass previous step's output to `{previous_response}` |
 | `provider_options.claude.allowed_tools` | - | Claude tool allowlist for the step or workflow |
 | `provider_options.claude.effort` | - | Claude reasoning effort: `low`, `medium`, `high`, `xhigh`, `max` (`xhigh` requires Opus 4.7) |
+| `provider_options.opencode.allowed_tools` | - | OpenCode tool allowlist. Tool names are lowercase, for example `read`, `glob`, `grep`, `bash`, `websearch`, `webfetch` |
 | `provider_options.opencode.variant` | - | OpenCode model variant, passed through as a provider/model-specific string |
 | `provider_options.codex.network_access` | - | Allow Codex sandbox to access the network (see [configuration guide](./configuration.md#network-access-network_access)) |
 | `provider_options.claude.sandbox.allow_unsandboxed_commands` | - | Run Claude Bash outside the macOS Seatbelt sandbox (see [configuration guide](./configuration.md#claude-code-sandbox-control-allow_unsandboxed_commands)) |
+| `provider_options.kiro.agent` | - | Kiro CLI custom agent name passed as `kiro-cli chat --agent`. Steps without it use the Kiro CLI default agent |
 | `provider` | - | Override provider for this step (`claude`, `claude-sdk`, `claude-terminal`, `codex`, `opencode`, `cursor`, `copilot`, `kiro`, or `mock`) |
 | `model` | - | Override model for this step |
 | `promotion` | - | Per-execution provider/model/options escalation (see [Step-level Provider Promotion](#step-level-provider-promotion)) |
@@ -352,6 +357,30 @@ workflow_config:
     claude:
       sandbox:
         allow_unsandboxed_commands: true
+```
+
+`provider_options` can reference a shared YAML file relative to the workflow file. The referenced file is the base, and inline values override matching leaves.
+
+```yaml
+workflow_config:
+  provider_options:
+    $ref: provider-options/review-readonly.yaml
+
+steps:
+  - name: implement
+    provider_options:
+      $ref: provider-options/edit.yaml
+      opencode:
+        allowed_tools: [read, grep, bash]
+```
+
+Example shared file:
+
+```yaml
+claude:
+  allowed_tools: [Read, Glob, Grep, Bash, WebSearch, WebFetch]
+opencode:
+  allowed_tools: [read, glob, grep, bash, websearch, webfetch]
 ```
 
 ### `workflow_config.runtime`

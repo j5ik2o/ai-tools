@@ -1,5 +1,5 @@
 name: review-fix-takt-default
-description: TAKT開発向け多角レビュー＋修正ループ（初回7並列レビュー（コーディングレビュー含む）、修正後はAIアンチパターン事前レビュー＋5並列レビュー、監督者指摘の再修正）
+description: TAKT開発向け多角レビュー＋修正ループ（初回7並列レビュー（コーディングレビュー含む）、修正後はAIアンチパターン事前レビュー＋並列レビュー、監督者指摘の再修正）
 workflow_config:
   provider_options:
     codex:
@@ -187,9 +187,9 @@ steps:
           - condition: approved
           - condition: needs_fix
 
-      - name: requirements-review
+      - name: pure-review
         edit: false
-        persona: requirements-reviewer
+        persona: pure-reviewer
         policy: review
         provider_options:
           claude:
@@ -200,11 +200,11 @@ steps:
               - Bash
               - WebSearch
               - WebFetch
-        instruction: review-requirements
+        instruction: review-pure
         output_contracts:
           report:
-            - name: requirements-review.md
-              format: requirements-review
+            - name: pure-review.md
+              format: pure-review
         rules:
           - condition: approved
           - condition: needs_fix

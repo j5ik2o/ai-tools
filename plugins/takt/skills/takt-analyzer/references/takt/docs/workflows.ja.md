@@ -218,7 +218,8 @@ CSV / JSON などのデータソースを反復し、同じ step テンプレー
 ```yaml
   - name: implement
     team_leader:
-      max_parts: 3
+      max_concurrency: 2
+      max_total_parts: 8
       timeout_ms: 600000
       part_persona: coder
       part_edit: true
@@ -232,6 +233,8 @@ CSV / JSON などのデータソースを反復し、同じ step テンプレー
 ```
 
 大きなタスクを「事前にユニット境界を決めなくても並列で進められる単位」に分解したいときに便利です。
+
+`max_concurrency` は同時に実行する part 数、`max_total_parts` はその step 全体で計画できる総 part 数（最大 20）を制御します。旧名の `max_parts` は互換性のため `max_concurrency` として扱われます。
 
 ### Workflow Call Step（サブワークフロー）
 
@@ -315,9 +318,11 @@ promotion は並列サブ step ではサポートされません。
 | `pass_previous_response` | `true` | 前の step の出力を `{previous_response}` に渡す |
 | `provider_options.claude.allowed_tools` | - | step または workflow に対する Claude ツール許可リスト |
 | `provider_options.claude.effort` | - | Claude reasoning effort: `low`, `medium`, `high`, `xhigh`, `max`（`xhigh` は Opus 4.7 が必要） |
+| `provider_options.opencode.allowed_tools` | - | OpenCode のツール許可リスト。ツール名は `read`, `glob`, `grep`, `bash`, `websearch`, `webfetch` のように lowercase |
 | `provider_options.opencode.variant` | - | OpenCode の model variant。プロバイダー / model 固有の文字列としてパススルー |
 | `provider_options.codex.network_access` | - | Codex サンドボックスからのネットワークアクセスを許可（[configuration ガイド](./configuration.ja.md#ネットワークアクセス-network_access) 参照） |
 | `provider_options.claude.sandbox.allow_unsandboxed_commands` | - | Claude の Bash を macOS Seatbelt サンドボックス外で実行（[configuration ガイド](./configuration.ja.md#claude-code-の-sandbox-制御-allow_unsandboxed_commands) 参照） |
+| `provider_options.kiro.agent` | - | Kiro CLI の custom agent 名。`kiro-cli chat --agent` として渡される。未指定の step は Kiro CLI 側の default agent を使用 |
 | `provider` | - | この step の provider を上書き (`claude`, `claude-sdk`, `claude-terminal`, `codex`, `opencode`, `cursor`, `copilot`, `kiro`, `mock`) |
 | `model` | - | この step の model を上書き |
 | `promotion` | - | 実行回数ごとの provider / model / options 昇格（[Step レベルのプロバイダープロモーション](#step-レベルのプロバイダープロモーション) 参照） |
@@ -351,6 +356,30 @@ workflow_config:
     claude:
       sandbox:
         allow_unsandboxed_commands: true
+```
+
+`provider_options` は workflow ファイルからの相対パスで共通 YAML を参照できます。参照先が base になり、inline の値が同じ leaf を上書きします。
+
+```yaml
+workflow_config:
+  provider_options:
+    $ref: provider-options/review-readonly.yaml
+
+steps:
+  - name: implement
+    provider_options:
+      $ref: provider-options/edit.yaml
+      opencode:
+        allowed_tools: [read, grep, bash]
+```
+
+共通ファイルの例:
+
+```yaml
+claude:
+  allowed_tools: [Read, Glob, Grep, Bash, WebSearch, WebFetch]
+opencode:
+  allowed_tools: [read, glob, grep, bash, websearch, webfetch]
 ```
 
 ### `workflow_config.runtime`
