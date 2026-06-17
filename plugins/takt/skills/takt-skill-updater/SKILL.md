@@ -13,7 +13,7 @@ description: >
 
 nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.45.0
+> **前提 takt バージョン**: v0.46.0
 
 ## パス表記について
 
@@ -284,6 +284,17 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.45.0 → v0.46.0（2026-06-17）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.46.0` に更新。`v0.46.0` タグの reference snapshot を同期 |
+| takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| takt-workflow-builder | `requirements-reviewer` 削除・`pure-reviewer` 追加（`review-pure` instruction + `pure-review` output contract）をビルトインテーブルへ反映。`provider_options.$ref` 共通 YAML 参照・ビルトインプリセット（`provider-options/{edit,review-files,review-readonly,review-web}.yaml`）を設計判断ガイドへ追記。`provider_options.opencode.allowed_tools`・`provider_options.kiro.agent` を設計判断ガイドテーブルへ追加。`team_leader.max_parts` → `max_concurrency` + `max_total_parts` 分割を v0.46.0 追加例に記載 |
+| takt-facet-builder | Persona から `requirements-reviewer` を削除し `pure-reviewer` を追加。Instruction から `review-requirements` を削除し `review-pure` を追加。Output Contract から `requirements-review` を削除し `pure-review` を追加。v0.46.0 変更点の注記を追加 |
+| takt-analyzer | OTLP エクスポート（`OTEL_EXPORTER_OTLP_ENDPOINT` 設定時の span / metric 送信）、W3C trace context 伝播によるプロバイダー span のネスト、`workflow_start.<name>` span による実行中ワークフロー発見支援を observability セクションへ追記 |
+| takt-optimizer | OTLP span / metric を「ログ診断結果に基づく最適化」セクションのログソーステーブルへ追記 |
 
 ### v0.44.0 → v0.45.0（2026-06-11）
 

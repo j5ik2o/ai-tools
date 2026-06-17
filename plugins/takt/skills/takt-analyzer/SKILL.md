@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.45.0
+> **前提 takt バージョン**: v0.46.0
 
 ## 参照資料
 
@@ -152,6 +152,14 @@ description: >
 - OTel span 由来の shadow session log（`observability.session_log_exporter: true` で出力）。正規の NDJSON セッションログと同等の redaction が適用される
 - span はフェーズ実行と status-judgment（judge）フェーズもカバーする
 - `.takt/runs/<run>/logs/<session>-usage-events.phase.jsonl`: フェーズ粒度の provider 利用量イベント（`observability.usage_events_phase: true` で出力、v0.45.0〜）。`PhaseUsageEventLogRecord` 型の NDJSON。各フェーズ（`phase1_execute` / `phase2_report` / `phase3_structured` / `phase3_tag` / `phase3_fallback`）ごとに `provider`, `provider_model`, `step`, `step_type`, `phase`, `usage` を記録する。`npm run analyze:usage` コマンドで集計可能
+
+**OTLP エクスポート（v0.46.0〜、`observability.enabled: true` + `OTEL_EXPORTER_OTLP_ENDPOINT` が前提）:**
+
+- `observability.enabled: true` かつ `OTEL_EXPORTER_OTLP_ENDPOINT` 環境変数が設定されている場合、TAKT はローカル exporter を維持したまま span と metric を OTLP HTTP で送信する
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` で個別 endpoint を上書き可能（base endpoint が設定されている場合のみ有効）
+- 各プロバイダー subprocess に W3C trace context を伝播するため、provider CLI の span が親 workflow trace の下にネストされる（v0.46.0 以前は detached trace）
+- 実行中 workflow を Grafana Tempo 等で発見しやすくする短命の `workflow_start.<workflowName>` span を送信（`takt.workflow.status = running` 属性を持つ。root / step / phase / judge span の置き換えではなく discovery 専用）
+- エクスポート実装の詳細は `references/takt/docs/observability.ja.md` を参照
 
 **NDJSONレコード型一覧:**
 

@@ -162,9 +162,9 @@ steps:
           - condition: approved
           - condition: needs_fix
 
-      - name: requirements-review
+      - name: pure-review
         edit: false
-        persona: requirements-reviewer
+        persona: pure-reviewer
         policy: review
         provider_options:
           claude:
@@ -175,11 +175,11 @@ steps:
               - Bash
               - WebSearch
               - WebFetch
-        instruction: review-requirements
+        instruction: review-pure
         output_contracts:
           report:
-            - name: requirements-review.md
-              format: requirements-review
+            - name: pure-review.md
+              format: pure-review
         rules:
           - condition: approved
           - condition: needs_fix
@@ -243,7 +243,7 @@ steps:
          - `03-qa-review.md`（QAレビュー）
          - `04-testing-review.md`（テストレビュー）
          - `05-ai-antipattern-review.md`（AIアンチパターンレビュー）
-         - `06-requirements-review.md`（要件充足レビュー）
+         - `06-pure-review.md`（Pure Review）
          - `07-coding-review.md`（コーディングレビュー）
       2. 7つのレビュー結果を統合
       3. 統合レビューサマリーと総合判定を作成
@@ -267,7 +267,7 @@ steps:
             | QA | APPROVE/REJECT | {概要} |
             | テスト | APPROVE/REJECT | {概要} |
             | AIアンチパターン | APPROVE/REJECT | {概要} |
-            | 要件充足 | APPROVE/REJECT | {概要} |
+            | Pure Review | APPROVE/REJECT | {概要} |
             | コーディング | APPROVE/REJECT | {概要} |
 
             ## 今回の指摘（new）

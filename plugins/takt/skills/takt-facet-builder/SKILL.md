@@ -14,7 +14,7 @@ description: >
 
 TAKTの5種類のファセットファイルを個別に作成・編集する。
 
-> **前提 takt バージョン**: v0.45.0
+> **前提 takt バージョン**: v0.46.0
 
 ## 参照資料
 
@@ -63,11 +63,13 @@ TAKTの5種類のファセットファイルを個別に作成・編集する。
 
 | ファセット | ビルトイン例 |
 |-----------|-------------|
-| Persona | coder, planner, architect-planner, architecture-reviewer, qa-reviewer, supervisor, security-reviewer, frontend-reviewer, cqrs-es-reviewer, requirements-reviewer, testing-reviewer, terraform-reviewer, terraform-coder, dual-supervisor, research-analyzer, research-digger, research-planner, research-supervisor, conductor, pr-commenter, test-planner, ai-antipattern-reviewer, coding-reviewer, melchior, balthasar, casper |
+| Persona | coder, planner, architect-planner, architecture-reviewer, qa-reviewer, supervisor, security-reviewer, frontend-reviewer, cqrs-es-reviewer, pure-reviewer, testing-reviewer, terraform-reviewer, terraform-coder, dual-supervisor, research-analyzer, research-digger, research-planner, research-supervisor, conductor, pr-commenter, test-planner, ai-antipattern-reviewer, coding-reviewer, melchior, balthasar, casper |
 | Policy | coding, review, testing, qa, ai-antipattern, design-fidelity, design-planning, task-decomposition, screen-api, existing-system-respect, research, terraform |
-| Instruction | plan, plan-investigate, plan-test, implement, implement-after-tests, implement-test, implement-terraform, write-tests-first, team-leader-implement, dual-team-leader-implement, plan-maintenance, write-tests-maintenance, implement-maintenance, fix-maintenance, supervise-maintenance, review-coding, review-arch, review-qa, review-security, review-frontend, review-cqrs-es, review-requirements, review-test, review-terraform, supervise, fix, fix-supervisor, arbitrate, architect, ai-antipattern-review, ai-antipattern-fix, loop-monitor-ai-antipattern-fix, loop-monitor-reviewers-fix, research-plan, research-dig, research-analyze, research-supervise, gather-review, architecture-audit-plan, architecture-audit-review, architecture-audit-supervise, architecture-audit-team-leader, audit-security-plan, audit-security-review, audit-security-supervise, audit-security-team-leader, e2e-audit-plan, e2e-audit-review, e2e-audit-supervise, e2e-audit-team-leader, e2e-coverage-implement, e2e-coverage-plan, e2e-coverage-supervise, unit-audit-plan, unit-audit-review, unit-audit-supervise, unit-audit-team-leader |
+| Instruction | plan, plan-investigate, plan-test, implement, implement-after-tests, implement-test, implement-terraform, write-tests-first, team-leader-implement, dual-team-leader-implement, plan-maintenance, write-tests-maintenance, implement-maintenance, fix-maintenance, supervise-maintenance, review-coding, review-arch, review-qa, review-security, review-frontend, review-cqrs-es, review-pure, review-test, review-terraform, supervise, fix, fix-supervisor, arbitrate, architect, ai-antipattern-review, ai-antipattern-fix, loop-monitor-ai-antipattern-fix, loop-monitor-reviewers-fix, research-plan, research-dig, research-analyze, research-supervise, gather-review, architecture-audit-plan, architecture-audit-review, architecture-audit-supervise, architecture-audit-team-leader, audit-security-plan, audit-security-review, audit-security-supervise, audit-security-team-leader, e2e-audit-plan, e2e-audit-review, e2e-audit-supervise, e2e-audit-team-leader, e2e-coverage-implement, e2e-coverage-plan, e2e-coverage-supervise, unit-audit-plan, unit-audit-review, unit-audit-supervise, unit-audit-team-leader |
 | Knowledge | architecture, backend, cqrs-es, frontend, security, task-decomposition, takt, terraform-aws, e2e-testing, react, unit-testing, existing-system, research, research-comparative |
-| Output Contract | plan, architecture-design, architecture-review, ai-antipattern-review, qa-review, security-review, frontend-review, cqrs-es-review, requirements-review, testing-review, terraform-review, summary, validation, coder-scope, coder-decisions, maintenance-scope, coding-review, review-gather, research-report, test-plan, test-report, plan-frontend, architecture-audit-plan, architecture-audit, audit-security, e2e-audit-plan, e2e-audit, e2e-coverage-plan, unit-audit-plan, unit-audit, supervisor-validation |
+| Output Contract | plan, architecture-design, architecture-review, ai-antipattern-review, qa-review, security-review, frontend-review, cqrs-es-review, pure-review, testing-review, terraform-review, summary, validation, coder-scope, coder-decisions, maintenance-scope, coding-review, review-gather, research-report, test-plan, test-report, plan-frontend, architecture-audit-plan, architecture-audit, audit-security, e2e-audit-plan, e2e-audit, e2e-coverage-plan, unit-audit-plan, unit-audit, supervisor-validation |
+
+**v0.46.0 の変更点**: `requirements-reviewer` ペルソナ、`review-requirements` instruction、`requirements-review` output contract を削除。代わりに `pure-reviewer`（`review-pure` instruction + `pure-review` output contract）を使用する。`pure-reviewer` は専門領域に閉じず「今マージしてよいか」のみを判断する汎用レビュアー。
 
 **再利用判断**: ビルトインで足りる場合はカスタムファセットを作らない。
 
