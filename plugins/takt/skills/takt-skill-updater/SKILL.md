@@ -13,7 +13,7 @@ description: >
 
 nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.46.0
+> **前提 takt バージョン**: v0.47.0
 
 ## パス表記について
 
@@ -284,6 +284,17 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.46.0 → v0.47.0（2026-06-18）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.47.0` に更新。`v0.47.0` タグの reference snapshot を同期 |
+| takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| takt-workflow-builder | BREAKING: `provider_options.$ref` → `extends`（bare name）への移行を YAML例・設計判断ガイド・v0.47.0 変更点の3箇所に反映。`persona_providers` 非推奨→`provider_routing`（`personas`/`tags`/`steps` 3軸）を変更点に記載。ビルトインテーブルに `takt-default-with-fc`・`peer-review-with-fc` を追加。Finding Contract（`finding_contract:` セクション）の YAML例・設計判断ガイド追加。Step tags（`tags:` フィールド）の Parallel Step 例・設計判断ガイド追加。`provider-options/` ディレクトリ移動（`builtins/{lang}/workflows/provider-options/` → `builtins/{lang}/provider-options/`）を変更点に記載。Trace discovery 強化（`WorkflowTraceTaskMetadata`）を変更点に記載 |
+| takt-facet-builder | Persona に `findings-manager` を追加。Instruction に `findings-manager` を追加。Output Contract に `findings-manager`・`*-finding-contract` 系（11件）を追加。v0.47.0 変更点の注記を追加 |
+| takt-analyzer | 参照資料テーブルに `traceDiscovery.ts` を追加。ワークフロー構造分析チェック項目に `provider_options.$ref` 廃止チェックと `provider_routing` 移行チェックを追加 |
+| takt-optimizer | ループ制御改善セクションに `provider_options.$ref → extends` 移行と `persona_providers → provider_routing` 移行の最適化項目を追加 |
 
 ### v0.45.0 → v0.46.0（2026-06-17）
 
