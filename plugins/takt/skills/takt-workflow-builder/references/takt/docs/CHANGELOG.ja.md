@@ -6,6 +6,43 @@
 
 フォーマットは [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) に基づいています。
 
+## [0.47.0] - 2026-06-18
+
+### Added
+
+- Finding Contract — レビューワークフロー向けの構造化された指摘ライフサイクル管理 (#816, #826, #839, #840, #842, #845)。レビュー指摘が正式な台帳（`findings-ledger.json`）でライフサイクル状態（`new`・`persists`・`resolved`・`reopened`）、重要度、重複排除とともに追跡されるようになった。専用の `findings-manager` ペルソナが複数レビュアーの生の指摘を台帳と照合し、安定した ID（`F-0001`、`F-0002`、…）を割り当てて競合を検出する。`src/core/workflow/findings/` に reconciler・store・manager-runner・validation を新設し、全レビュータイプ（coding・architecture・security・QA・frontend・testing・terraform・CQRS/ES・pure・AI antipattern）に finding-contract 出力契約を追加した。Finding Contract 対応の新ワークフロー `takt-default-with-fc` と `peer-review-with-fc` を同梱。ワークフロー YAML に `finding_contract` セクションを追加することで有効化できる
+- ペルソナ・タグ・ステップ名による `provider_routing` 設定を追加 (#844, #846)。新しい `provider_routing` 設定セクションで、3 つの次元でプロバイダー/モデル/provider_options を選択できる。`personas`（生のペルソナキー別）、`tags`（ステップタグ別）、`steps`（ステップ名別）。解決優先順位はステップ直接指定 > `provider_routing.steps` > `provider_routing.tags` > `provider_routing.personas` > 非推奨の `persona_providers` > ワークフロー > CLI。プロジェクト（`.takt/config.yaml`）またはグローバル（`~/.takt/config.yaml`）で設定可能
+- ビルトインワークフローの全ステップにタグを追加 (#851)。すべてのビルトインワークフローステップに `tags` 配列（例: `plan`・`coding`・`review`・`implementation`・`edit`）を付与した。タグは `provider_routing.tags` の主キーで、個別のステップ名ではなくカテゴリ単位でプロバイダー/モデルをオーバーライドできる。並列サブステップのタグもサポート
+- OTel スパン向けのトレース発見性を追加 (#843, #847)。新しい `traceDiscovery` モジュールが、構造化された `WorkflowTraceDiscovery` オブジェクト（サービス名・runId・ワークフロー名・タスクメタデータ・Git ブランチ/ベース情報）と検索可能なクエリ文字列を構築し、Grafana Tempo などの外部オブザーバビリティツールとのワークフロー実行の相関を可能にする
+- トレースタスクメタデータのエンリッチメントを追加 (#827, #829)。タスクメタデータ（ソース・Issue/PR 番号・ブランチ・スラッグ・要約）が構造化された `WorkflowTraceTaskMetadata` として抽出され、OTel スパンとトレース発見出力に伝播されるようになった
+- provider options とファセット向けの名前付きリソースリゾルバーを追加 (#820, #824)。セキュアな 3 層リゾルバー（`namedResourceResolver.ts`）が `.takt/provider-options/` → `~/.takt/provider-options/` → ビルトイン `provider-options/` ディレクトリをベア名で拡張子フォールバック（`.yaml`/`.yml`）付きで検索し、パストラバーサルを検証しシンボリックリンクが許可ディレクトリ内に留まることを確認する。新しい `extends` キーワードで使用される
+
+### Changed
+
+- **BREAKING:** `provider_options.$ref` を `provider_options.extends` にリネーム (#820, #824)。ステップ/ワークフローの `provider_options` で共有 YAML ファイルを参照していた `$ref` キーが `extends` にリネームされた。値は相対ファイルパス（例: `$ref: provider-options/edit.yaml`）ではなく、3 層の名前付きリソースリゾルバーで解決されるベア名（例: `extends: edit`）になった。`$ref` を使用しているカスタムワークフローは更新が必要。ビルトインの provider options ファイルは `builtins/{lang}/workflows/provider-options/` から `builtins/{lang}/provider-options/` に移動した。ユーザーオーバーライドは `.takt/provider-options/` または `~/.takt/provider-options/` に配置する
+- **BREAKING:** `persona_providers` を非推奨化し `provider_routing` を推奨 (#844, #846)。`persona_providers` 設定キーは引き続き動作するが非推奨となった。表示名でマッチするため脆弱であり、`provider_routing.personas` は代わりに生のペルソナキーでマッチする。移行方法: `persona_providers` のエントリを `provider_routing.personas` に移動する
+- レポートフェーズのツール呼び出し検出を強化。レポートフェーズがプロバイダーのツール呼び出し（このフェーズでは禁止）を積極的に検出・拒否し、壊れた出力を黙って生成する代わりにリトライ可能なエラーを返すようになった。レポートファイル書き込みロジックを共有 `report-writer.ts` モジュールに抽出
+- レビューとコーディングのポリシーを強化。レビューポリシーにコントラクトカバレッジ・コントラクト整合性・仕様完全性・要件アンカリング・解決判断に関する新しい REJECT 条件を追加。これまで欠落していたレビューワークフローにコーディングポリシーを接続した (#848)
+- スーパーバイザーインストラクションを通常モード・メンテナンスモードの両方で全面改訂し、スコーピングと検証基準を明確化
+- 知識ファセットを拡充: アーキテクチャパターン、バックエンドの例外変換スコープ、CQRS/ES ドメインパターン
+
+### Fixed
+
+- Cursor CLI の並列実行時に cli-config.json リネームの ENOENT が発生する問題を修正 (#802, #819)。Cursor CLI が並列レビュアーステップ実行時に内部の `cli-config.json.tmp` → `cli-config.json` リネームが競合し ENOENT で断続的に失敗することがあった。致命的なプロバイダーエラーとして扱う代わりに、指数バックオフ付きリトライ（最大 8 回、1〜30 秒遅延）を行うようにした
+- OpenCode の利用不可ツールループを修正 (#822)。OpenCode プロバイダーがエージェントの利用不可ツール繰り返し呼び出しで無限ループに陥ることがあった。新しい `UnavailableToolLoopDetector` が連続 2 回の利用不可ツールエラーでセッションを中断し、明確な失敗メッセージを表示する
+- レビュー指摘を元の要件にアンカリングするよう修正 (#830)。レビュアーが指摘を評価する際に元のタスク要件から逸脱することがあった。インストラクションと出力契約で、レビュー判断をプランおよび元のタスク記述にアンカリングすることを強制するようにした
+
+### Internal
+
+- AI antipattern レビューポリシーを finding-contract 出力契約を持つ独立ファセットとして再構成
+- テストポリシーファセットを追加し、不在のみテストに対するガイダンスを含む
+- README にステータスバッジを追加 (#835)
+- finding contract・provider routing・trace discovery・trace task metadata・report phase retry・named resource resolver・workflow spans 等をカバーする 20 以上の新テストファイル
+- 設定とワークフローのドキュメントを `provider_routing` と `extends` に対応して更新
+- `WorkflowEngineSetup` を抽出してエンジン初期化をクリーン化
+- `WorkflowRunLoop` に失敗メタデータとコマンドゲートの改善を追加
+- レパートリー pack-summary を名前付きリソース解決と `extends` 参照に対応して書き直し
+
 ## [0.46.0] - 2026-06-13
 
 ### Added

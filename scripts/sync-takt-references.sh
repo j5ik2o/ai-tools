@@ -140,6 +140,9 @@ sync_dir "$TAKT_SRC/src/core/logging/" "$DST/src/core/logging/"
 # src/core/workflow/evaluation
 sync_files "$DST" "$TAKT_SRC/src/core/workflow/evaluation/RuleEvaluator.ts"
 clean_orphans "$TAKT_SRC/src/core/workflow/evaluation" "$DST/src/core/workflow/evaluation"
+# src/core/workflow/observability (traceDiscovery.ts)
+sync_files "$DST" "$TAKT_SRC/src/core/workflow/observability/traceDiscovery.ts"
+clean_orphans "$TAKT_SRC/src/core/workflow/observability" "$DST/src/core/workflow/observability"
 # src/shared/utils (types.ts)
 sync_files "$DST" "$TAKT_SRC/src/shared/utils/types.ts"
 clean_orphans "$TAKT_SRC/src/shared/utils" "$DST/src/shared/utils"

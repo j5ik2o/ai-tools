@@ -42,6 +42,8 @@ loop_monitors:
           next: COMPLETE
 steps:
   - name: implement
+    tags:
+      - coding
     edit: true
     persona: coder
     policy:
@@ -51,7 +53,7 @@ steps:
     knowledge:
       $param: impl_knowledge
     provider_options:
-      $ref: provider-options/edit.yaml
+      extends: edit
     required_permission_mode: edit
     team_leader:
       max_parts: 2
@@ -86,13 +88,15 @@ steps:
         - name: coder-decisions.md
           format: coder-decisions
   - name: ai-antipattern-review-1st
+    tags:
+      - review
     edit: false
     persona: ai-antipattern-reviewer
     policy:
       - review
       - ai-antipattern
     provider_options:
-      $ref: provider-options/review-web.yaml
+      extends: review-web
     rules:
       - condition: AI特有の問題なし
         next: COMPLETE
@@ -104,6 +108,8 @@ steps:
         - name: ai-antipattern-review.md
           format: ai-antipattern-review
   - name: ai-antipattern-fix
+    tags:
+      - coding
     edit: true
     persona: coder
     policy:
@@ -113,7 +119,7 @@ steps:
     knowledge:
       $param: fix_knowledge
     provider_options:
-      $ref: provider-options/edit.yaml
+      extends: edit
     required_permission_mode: edit
     pass_previous_response: false
     rules:
@@ -125,11 +131,13 @@ steps:
         next: ai-antipattern-no-fix
     instruction: ai-antipattern-fix
   - name: ai-antipattern-no-fix
+    tags:
+      - review
     edit: false
     persona: architecture-reviewer
     policy: review
     provider_options:
-      $ref: provider-options/review-files.yaml
+      extends: review-files
     rules:
       - condition: ai-antipattern-review-1stの指摘が妥当（修正すべき）
         next: ai-antipattern-fix
