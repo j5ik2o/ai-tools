@@ -24,7 +24,7 @@ jobs:
       new_version: ${{ steps.compare.outputs.new_version }}
       branch: ${{ steps.compare.outputs.branch }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Detect new takt tag
         id: compare
@@ -73,7 +73,7 @@ jobs:
       OLD_VERSION: ${{ needs.check.outputs.old_version }}
       NEW_VERSION: ${{ needs.check.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Bash を許可した Claude エージェントが .git/config 経由で GITHUB_TOKEN を
           # 読めないようにする。push と PR 作成は create-pull-request が token 入力で
