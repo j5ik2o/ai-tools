@@ -11,7 +11,7 @@ packages:
     description: Git workflow skills, including staging and committing working-tree changes following Conventional Commits.
     source: j5ik2o/ai-tools
     subdir: plugins/git
-    ref: 9125e455767663b15bf66f18f32e6f2e56cb97ad
+    ref: d5b8e5db93fdf0446fcfb937ecbc0e12030740cb
     tags:
       - development
       - git
@@ -20,7 +20,7 @@ packages:
     description: GitHub workflow skills, including systematic issue triage, grouping, prioritization, and cleanup.
     source: j5ik2o/ai-tools
     subdir: plugins/github
-    ref: 9125e455767663b15bf66f18f32e6f2e56cb97ad
+    ref: d5b8e5db93fdf0446fcfb937ecbc0e12030740cb
     tags:
       - development
       - github
@@ -29,7 +29,7 @@ packages:
     description: Collection of agent skills demonstrating various capabilities including skill creation, MCP building, visual design, algorithmic art, internal communications, web testing, artifact building, Slack GIFs, and theme styling.
     source: j5ik2o/ai-tools
     subdir: plugins/agent-skills
-    ref: 9125e455767663b15bf66f18f32e6f2e56cb97ad
+    ref: d5b8e5db93fdf0446fcfb937ecbc0e12030740cb
     tags:
       - development
       - skills
@@ -37,7 +37,7 @@ packages:
     description: TAKT workflow engine skills for multi-agent orchestration. Includes analyzers, builders, and optimizers for TAKT workflow YAML.
     source: j5ik2o/ai-tools
     subdir: plugins/takt
-    ref: 9125e455767663b15bf66f18f32e6f2e56cb97ad
+    ref: d5b8e5db93fdf0446fcfb937ecbc0e12030740cb
     tags:
       - development
       - workflow
@@ -46,7 +46,7 @@ packages:
     description: Software design skills for DDD, clean architecture, error handling, package design, refactoring, and maintainable domain modeling.
     source: j5ik2o/ai-tools
     subdir: plugins/software-design
-    ref: 9125e455767663b15bf66f18f32e6f2e56cb97ad
+    ref: d5b8e5db93fdf0446fcfb937ecbc0e12030740cb
     tags:
       - development
       - software-design
