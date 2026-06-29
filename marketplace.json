@@ -11,6 +11,36 @@
   },
   "plugins": [
     {
+      "name": "git",
+      "tags": [
+        "development",
+        "git",
+        "workflow"
+      ],
+      "source": {
+        "type": "github",
+        "repository": "j5ik2o/ai-tools",
+        "path": "plugins/git",
+        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
+        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+      }
+    },
+    {
+      "name": "github",
+      "tags": [
+        "development",
+        "github",
+        "workflow"
+      ],
+      "source": {
+        "type": "github",
+        "repository": "j5ik2o/ai-tools",
+        "path": "plugins/github",
+        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
+        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+      }
+    },
+    {
       "name": "agent-skills",
       "tags": [
         "development",

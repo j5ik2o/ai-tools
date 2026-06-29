@@ -6,6 +6,28 @@
   },
   "plugins": [
     {
+      "name": "git",
+      "description": "Git workflow skills, including staging and committing working-tree changes following Conventional Commits.",
+      "version": "1.0.0",
+      "source": "./plugins/git",
+      "category": "development",
+      "strict": true,
+      "skills": [
+        "./skills/git-commit"
+      ]
+    },
+    {
+      "name": "github",
+      "description": "GitHub workflow skills, including systematic issue triage, grouping, prioritization, and cleanup.",
+      "version": "1.0.0",
+      "source": "./plugins/github",
+      "category": "development",
+      "strict": true,
+      "skills": [
+        "./skills/gh-issue-organizer"
+      ]
+    },
+    {
       "name": "agent-skills",
       "description": "Collection of agent skills demonstrating various capabilities including skill creation, MCP building, visual design, algorithmic art, internal communications, web testing, artifact building, Slack GIFs, and theme styling",
       "version": "1.0.0",
