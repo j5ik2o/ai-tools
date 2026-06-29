@@ -22,7 +22,9 @@ description: >
 
 `gh` CLI でオープンイシューを全件取得し、現状を把握する。
 
-> **全件取得の保証**: `--limit` は取得件数の上限であり、これを超えるオープンIssueは黙って欠落する（棚卸し結果が過少になる）。まずオープンIssue数を確認し（`gh issue list --state open --json number --jq 'length'`）、`--limit` をその件数以上に設定すること。1000件を超える規模では `gh api --paginate "repos/{owner}/{repo}/issues?state=open"`（PRが混入する点に注意。`.pull_request` を持つ要素を除外する）でページング取得して全件を対象にする。
+> **全件取得の保証**: `gh issue list` の `--limit` は取得件数の上限（省略時の既定は30件）であり、これを超えるオープンIssueは黙って欠落する。件数確認・全件取得のいずれも上限で頭打ちにしないこと。
+> - 件数確認: `gh issue list --state open --limit 100000 --json number --jq 'length'`（`--limit` を十分大きく取り実件数を得る。省略すると既定30件で頭打ちになり、上限超えの判定を誤る）
+> - 全件取得: `--limit` を実件数以上に設定する。大規模リポジトリでは `gh api --paginate "repos/{owner}/{repo}/issues?state=open&per_page=100" --jq '[.[] | select(.pull_request | not)]'` でページング取得する（Issues エンドポイントは PR も返すため、`.pull_request` を持つ要素を除外する）。
 
 ```bash
 # 全オープンイシューを取得（ラベル・作成者・作成日付き。--limit はオープンIssue数以上に設定する）
@@ -207,7 +209,7 @@ PR履歴やコミットログだけで判断してはならない。必ず現在
 gh issue list --state open --limit 1000 --json number,title,labels,author,createdAt,updatedAt,body,comments
 
 # 特定ラベルのイシュー
-gh issue list --state open --label "bug" --json number,title
+gh issue list --state open --limit 1000 --label "bug" --json number,title
 
 # イシュー詳細の確認
 gh issue view <number> --json number,title,body,labels,author,comments
