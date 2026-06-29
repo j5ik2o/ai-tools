@@ -42,7 +42,7 @@ gh issue list --state open --limit 1000 --json labels --jq '[.[].labels[].name] 
 | CodeRabbit 自動生成 | N件 |
 | 手動報告（＝合計 − CodeRabbit 自動生成） | N件 |
 
-> ここでは「自動生成 / 手動報告」の2区分のみで概況を把握する（合計 ＝ CodeRabbit 自動生成 ＋ 手動報告）。CodeRabbit 自動生成と手動報告の判定基準（author・`github-actions[bot]`・`coderabbit` ラベル等）と抽出コマンドはステップ2で定義する。ステップ1の件数はその基準に基づく概算とし、確定値・カテゴリ内訳（バグ・機能要求・Epic / リファクタリング・その他）はステップ2で分類してステップ5で集計する。
+> ここでは「自動生成 / 手動報告」の2区分のみで概況を把握する（合計 ＝ CodeRabbit 自動生成 ＋ 手動報告）。CodeRabbit 自動生成と手動報告の判定基準（author `coderabbitai` または `coderabbit` ラベル。`github-actions[bot]` 等の他ボットは CodeRabbit に含めない）と抽出コマンドはステップ2で定義する。ステップ1の件数はその基準に基づく概算とし、確定値・カテゴリ内訳（バグ・機能要求・Epic / リファクタリング・その他）はステップ2で分類してステップ5で集計する。
 
 ### ステップ 2: 分類
 
@@ -52,7 +52,7 @@ gh issue list --state open --limit 1000 --json labels --jq '[.[].labels[].name] 
 
 | カテゴリ | 判定条件 |
 |----------|----------|
-| **CodeRabbit 自動生成** | author が `coderabbitai` または `github-actions[bot]`、またはラベルに `coderabbit` を含む |
+| **CodeRabbit 自動生成** | author が `coderabbitai`、またはラベルに `coderabbit` を含む（`github-actions[bot]` 等の他の自動化ボットは含めない。該当しないボット生成イシューは「その他」へ） |
 | **手動報告（バグ）** | `bug` ラベルが付いている、またはタイトルに「バグ」「不具合」を含む |
 | **手動報告（機能要求）** | ラベルに `enhancement` / `feature` を含む |
 | **Epic / リファクタリング** | ラベルに `refactoring` / `epic` を含む、またはタイトルに「Phase」「リファクタリング」を含む |
@@ -64,10 +64,10 @@ gh issue list --state open --limit 1000 --json labels --jq '[.[].labels[].name] 
 
 ```bash
 # CodeRabbit 生成イシューを抽出（author または `coderabbit` ラベル。分類表と一致させる）
-gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
+gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
 
 # 手動報告イシューを抽出（上記 CodeRabbit 条件の否定）
-gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
+gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
 ```
 
 ### ステップ 3: グルーピング
