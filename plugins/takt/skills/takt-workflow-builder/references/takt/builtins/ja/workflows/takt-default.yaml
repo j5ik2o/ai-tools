@@ -10,11 +10,13 @@ max_steps: 50
 initial_step: plan
 steps:
   - name: plan
+    tags:
+      - plan
     edit: false
     persona: planner
     knowledge: architecture
     provider_options:
-      $ref: provider-options/review-readonly.yaml
+      extends: review-readonly
     rules:
       - condition: 要件が明確で実装可能
         next: write_tests
@@ -32,6 +34,8 @@ steps:
         - name: plan.md
           format: plan
   - name: write_tests
+    tags:
+      - coding
     edit: true
     persona: coder
     policy:
@@ -43,7 +47,7 @@ steps:
       - unit-testing
       - e2e-testing
     provider_options:
-      $ref: provider-options/edit.yaml
+      extends: edit
     required_permission_mode: edit
     instruction: write-tests-first
     rules:
@@ -82,12 +86,14 @@ steps:
       - condition: ABORT
         next: ABORT
   - name: supervise
+    tags:
+      - review
     edit: false
     persona: supervisor
     policy: review
     knowledge: architecture
     provider_options:
-      $ref: provider-options/review-readonly.yaml
+      extends: review-readonly
     pass_previous_response: false
     rules:
       - condition: すべて問題なし

@@ -1,5 +1,5 @@
 name: peer-review
-description: takt-default の Phase 2。6 並列ピアレビュー（+ ai-antipattern-review-2nd）⇄ 修正 ループ。
+description: 6 並列ピアレビュー（+ ai-antipattern-review-2nd）⇄ 修正 ループ。
 subworkflow:
   callable: true
   visibility: internal
@@ -35,15 +35,19 @@ loop_monitors:
           next: COMPLETE
 steps:
   - name: reviewers
+    tags:
+      - review
     parallel:
       - name: arch-review
+        tags:
+          - review
         edit: false
         persona: architecture-reviewer
         policy: review
         knowledge:
           $param: arch_knowledge
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         rules:
           - condition: approved
           - condition: needs_fix
@@ -53,12 +57,14 @@ steps:
             - name: architect-review.md
               format: architecture-review
       - name: security-review
+        tags:
+          - review
         edit: false
         persona: security-reviewer
         policy: review
         knowledge: security
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         rules:
           - condition: approved
           - condition: needs_fix
@@ -68,13 +74,15 @@ steps:
             - name: security-review.md
               format: security-review
       - name: qa-review
+        tags:
+          - review
         edit: false
         persona: qa-reviewer
         policy:
           - review
           - qa
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         rules:
           - condition: approved
           - condition: needs_fix
@@ -84,6 +92,8 @@ steps:
             - name: qa-review.md
               format: qa-review
       - name: testing-review
+        tags:
+          - review
         edit: false
         persona: testing-reviewer
         policy:
@@ -93,7 +103,7 @@ steps:
           - unit-testing
           - e2e-testing
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         rules:
           - condition: approved
           - condition: needs_fix
@@ -103,11 +113,13 @@ steps:
             - name: testing-review.md
               format: testing-review
       - name: pure-review
+        tags:
+          - review
         edit: false
         persona: pure-reviewer
         policy: review
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         rules:
           - condition: approved
           - condition: needs_fix
@@ -117,12 +129,16 @@ steps:
             - name: pure-review.md
               format: pure-review
       - name: coding-review
+        tags:
+          - review
         edit: false
         persona: coding-reviewer
-        policy: review
+        policy:
+          - review
+          - coding
         pass_previous_response: false
         provider_options:
-          $ref: provider-options/review-readonly.yaml
+          extends: review-readonly
         instruction: review-coding
         rules:
           - condition: approved
@@ -132,13 +148,15 @@ steps:
             - name: coding-review.md
               format: coding-review
       - name: ai-antipattern-review-2nd
+        tags:
+          - review
         edit: false
         persona: ai-antipattern-reviewer
         policy:
           - review
           - ai-antipattern
         provider_options:
-          $ref: provider-options/review-web.yaml
+          extends: review-web
         instruction: ai-antipattern-review
         rules:
           - condition: approved
@@ -153,6 +171,8 @@ steps:
       - condition: any("needs_fix")
         next: fix
   - name: fix
+    tags:
+      - coding
     edit: true
     persona: coder
     policy:
@@ -162,7 +182,7 @@ steps:
       - takt
       - architecture
     provider_options:
-      $ref: provider-options/edit.yaml
+      extends: edit
     required_permission_mode: edit
     pass_previous_response: false
     rules:

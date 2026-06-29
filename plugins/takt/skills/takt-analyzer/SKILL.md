@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.46.0
+> **前提 takt バージョン**: v0.47.0
 
 ## 参照資料
 
@@ -34,6 +34,7 @@ description: >
 | span→NDJSONマッパー | `references/takt/src/core/logging/span-to-ndjson-mapper.ts` | OTel span 由来 shadow session log の構造（v0.44.0〜） |
 | フェーズ利用イベント | `references/takt/src/core/logging/phaseUsageEvent.ts` | `*-usage-events.phase.jsonl` の `PhaseUsageEventLogRecord` 型（v0.45.0〜） |
 | ルール評価 | `references/takt/src/core/workflow/evaluation/RuleEvaluator.ts` | matchedRuleMethod の仕組み（`when:` 決定論的条件含む） |
+| トレース発見 | `references/takt/src/core/workflow/observability/traceDiscovery.ts` | OTel span から `WorkflowTraceDiscovery`（タスクメタデータ含む）を構築するモジュール（v0.47.0〜） |
 
 ## takt-optimize との違い
 
@@ -67,6 +68,8 @@ description: >
 | CI実行の責任配置 | `supervise`/`ai_review` 等の `edit: false` ステップのインストラクションがCIの直接実行を禁止し、`fix`/`implement` のレポート証跡確認のみを求めているか | Warning |
 | command quality gate | `quality_gates` の `type: command` が agent step にだけ置かれ、config 側で `workflow_command_gates.custom_scripts: true` が有効化されているか | Warning |
 | provider_options構造 | `allowed_tools` がトップレベルではなく `provider_options.claude.allowed_tools` に配置されているか（v0.30.0〜） | Warning |
+| provider_options.$ref 廃止 | `provider_options.$ref` を使用していないか（v0.47.0〜）。`extends` に移行が必要 | Warning |
+| provider_routing 移行 | `persona_providers` を使用していないか（v0.47.0〜非推奨）。`provider_routing`（`personas`/`tags`/`steps` 軸）を使用すべき | Warning |
 | edit権限 | `edit: true`のステップに適切な`required_permission_mode`があるか | Info |
 | session設定 | 実装系ステップに`session: refresh`があるか | Info |
 

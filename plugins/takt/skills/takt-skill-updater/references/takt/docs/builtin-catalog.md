@@ -63,7 +63,9 @@ Organized by category.
 | | `takt-default-refresh-all` | All-step `session: refresh` comparison variant of the TAKT development workflow, intended to isolate conversation carry-over effects in Codex/Claude runs. |
 | | `takt-default-refresh-fast` | Refresh-optimized variant of the TAKT development workflow. Keeps reasoning effort and loop rules unchanged, and adds `session: refresh` only to context-heavy steps such as `write_tests`, `ai-antipattern-review-1st`, reviewer steps, and `fix`. |
 | | `takt-default-team-leader` | TAKT development workflow with team leader: plan → write tests → team-leader implement → AI antipattern review → parallel review → fix → supervise → complete. |
+| | `takt-default-with-fc` | Finding Contract-enabled TAKT development workflow: plan → write tests → draft (implement + AI self-review) → peer-review (parallel reviewers + fix) → supervise → complete. Findings are tracked in a structured ledger with lifecycle states. |
 | | `review-fix-takt-default` | TAKT development code review + fix loop (architecture, security, QA, testing, AI antipattern, pure review, and coding — with iterative fixes). |
+| | `peer-review-with-fc` | Finding Contract-enabled peer review. Six parallel peer reviewers (+ ai-antipattern-review-2nd) with fix loop. Findings reconciled through a findings-manager. |
 | Others | `research` | Research workflow: planner -> digger -> supervisor. Autonomously executes research without asking questions. |
 | | `deep-research` | Deep research workflow: plan -> dig -> analyze -> supervise. Discovery-driven investigation that follows emerging questions with multi-perspective analysis. |
 | | `magi` | Deliberation system inspired by Evangelion. Three AI personas (MELCHIOR, BALTHASAR, CASPER) analyze and vote. |
@@ -98,6 +100,7 @@ Run `takt` to choose a workflow interactively.
 | **melchior** | MAGI deliberation system: MELCHIOR-1 (scientist perspective) |
 | **balthasar** | MAGI deliberation system: BALTHASAR-2 (mother perspective) |
 | **casper** | MAGI deliberation system: CASPER-3 (woman perspective) |
+| **findings-manager** | Reconciles raw findings from multiple reviewers into a consolidated ledger with lifecycle tracking |
 | **pr-commenter** | Posts review findings as GitHub PR comments |
 
 ## Custom Personas
