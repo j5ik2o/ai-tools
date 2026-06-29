@@ -24,7 +24,7 @@ description: >
 
 > **全件取得の保証**: `gh issue list` の `--limit` は取得件数の上限（省略時の既定は30件）であり、これを超えるオープンIssueは黙って欠落する。件数確認・全件取得のいずれも上限で頭打ちにしないこと。
 > - 件数確認: `gh issue list --state open --limit 100000 --json number --jq 'length'`（`--limit` を十分大きく取り実件数を得る。省略すると既定30件で頭打ちになり、上限超えの判定を誤る）
-> - 全件取得: `--limit` を実件数以上に設定する。大規模リポジトリでは `gh api --paginate "repos/{owner}/{repo}/issues?state=open&per_page=100" --jq '[.[] | select(.pull_request | not)]'` でページング取得する（Issues エンドポイントは PR も返すため、`.pull_request` を持つ要素を除外する）。
+> - 全件取得: `--limit` を実件数以上に設定する。大規模リポジトリでは `gh api --paginate "repos/{owner}/{repo}/issues?state=open&per_page=100" | jq -s 'add | [.[] | select(.pull_request | not)]'` でページング取得する。`--paginate` はページごとに JSON 配列を出力するため、`--jq` をページ単位で適用すると配列が分断される。`jq -s 'add'` で全ページを1つの配列に集約してから、Issues エンドポイントが返す PR（`.pull_request` を持つ要素）を除外すること。
 
 ```bash
 # 全オープンイシューを取得（ラベル・作成者・作成日付き。--limit はオープンIssue数以上に設定する）
