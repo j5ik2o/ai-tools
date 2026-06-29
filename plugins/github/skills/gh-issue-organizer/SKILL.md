@@ -58,11 +58,11 @@ gh issue list --state open --limit 500 --json labels --jq '[.[].labels[].name] |
 #### 判定用コマンド
 
 ```bash
-# CodeRabbit 生成イシューを抽出
-gh issue list --state open --limit 500 --json number,title,author --jq '[.[] | select(.author.login == "coderabbitai" or .author.login == "github-actions[bot]")]'
+# CodeRabbit 生成イシューを抽出（author または `coderabbit` ラベル。分類表と一致させる）
+gh issue list --state open --limit 500 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
 
-# 手動報告イシューを抽出
-gh issue list --state open --limit 500 --json number,title,author --jq '[.[] | select(.author.login != "coderabbitai" and .author.login != "github-actions[bot]")]'
+# 手動報告イシューを抽出（上記 CodeRabbit 条件の否定）
+gh issue list --state open --limit 500 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
 ```
 
 ### ステップ 3: グルーピング
