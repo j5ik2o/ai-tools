@@ -1,0 +1,8 @@
+{
+  "name": "git",
+  "description": "Git workflow skills, including staging and committing working-tree changes following Conventional Commits.",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  }
+}
