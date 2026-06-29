@@ -21,8 +21,8 @@
         "type": "github",
         "repository": "j5ik2o/ai-tools",
         "path": "plugins/git",
-        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
-        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+        "ref": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb",
+        "commit": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb"
       }
     },
     {
@@ -36,8 +36,8 @@
         "type": "github",
         "repository": "j5ik2o/ai-tools",
         "path": "plugins/github",
-        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
-        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+        "ref": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb",
+        "commit": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb"
       }
     },
     {
@@ -50,8 +50,8 @@
         "type": "github",
         "repository": "j5ik2o/ai-tools",
         "path": "plugins/agent-skills",
-        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
-        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+        "ref": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb",
+        "commit": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb"
       }
     },
     {
@@ -65,8 +65,8 @@
         "type": "github",
         "repository": "j5ik2o/ai-tools",
         "path": "plugins/takt",
-        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
-        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+        "ref": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb",
+        "commit": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb"
       }
     },
     {
@@ -80,8 +80,8 @@
         "type": "github",
         "repository": "j5ik2o/ai-tools",
         "path": "plugins/software-design",
-        "ref": "9125e455767663b15bf66f18f32e6f2e56cb97ad",
-        "commit": "9125e455767663b15bf66f18f32e6f2e56cb97ad"
+        "ref": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb",
+        "commit": "d5b8e5db93fdf0446fcfb937ecbc0e12030740cb"
       }
     }
   ]
