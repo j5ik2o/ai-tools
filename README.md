@@ -42,7 +42,7 @@ npx skills add j5ik2o/ai-tools
 | Plugin | Description | Key skills | Details |
 |--------|-------------|------------|---------|
 | [`agent-skills`](plugins/agent-skills) | Agent skills demonstrating skill creation, evaluation, and iterative improvement workflows | [`skill-forge`](plugins/agent-skills/skills/skill-forge) | [README](plugins/agent-skills/README.md) |
-| [`takt`](plugins/takt) | TAKT piece engine skills for multi-agent orchestration, analysis, building, and optimization | `takt-task-builder`, `takt-piece-builder`, `takt-facet-builder`, `takt-analyzer`, `takt-optimizer`, `takt-skill-updater` | [README](plugins/takt/README.md) |
+| [`takt`](plugins/takt) | TAKT workflow engine skills for multi-agent orchestration, analysis, building, and optimization | `takt-task-builder`, `takt-workflow-builder`, `takt-facet-builder`, `takt-analyzer`, `takt-optimizer`, `takt-skill-updater` | [README](plugins/takt/README.md) |
 | [`software-design`](plugins/software-design) | Software design skills for DDD, clean architecture, error handling, package design, refactoring, and maintainable domain modeling | `ddd-aggregate-design`, `clean-architecture`, `error-handling`, `package-design`, `refactoring-packages` | [plugin.json](plugins/software-design/.claude-plugin/plugin.json) |
 
 ## Repository Structure
