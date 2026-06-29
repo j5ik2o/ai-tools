@@ -22,12 +22,14 @@ description: >
 
 `gh` CLI でオープンイシューを全件取得し、現状を把握する。
 
+> **全件取得の保証**: `--limit` は取得件数の上限であり、これを超えるオープンIssueは黙って欠落する（棚卸し結果が過少になる）。まずオープンIssue数を確認し（`gh issue list --state open --json number --jq 'length'`）、`--limit` をその件数以上に設定すること。1000件を超える規模では `gh api --paginate "repos/{owner}/{repo}/issues?state=open"`（PRが混入する点に注意。`.pull_request` を持つ要素を除外する）でページング取得して全件を対象にする。
+
 ```bash
-# 全オープンイシューを取得（ラベル・作成者・作成日付き）
-gh issue list --state open --limit 500 --json number,title,labels,author,createdAt,updatedAt,body
+# 全オープンイシューを取得（ラベル・作成者・作成日付き。--limit はオープンIssue数以上に設定する）
+gh issue list --state open --limit 1000 --json number,title,labels,author,createdAt,updatedAt,body
 
 # ラベル別の件数を確認
-gh issue list --state open --limit 500 --json labels --jq '[.[].labels[].name] | group_by(.) | map({label: .[0], count: length}) | sort_by(-.count)'
+gh issue list --state open --limit 1000 --json labels --jq '[.[].labels[].name] | group_by(.) | map({label: .[0], count: length}) | sort_by(-.count)'
 ```
 
 結果をサマリーテーブルとして整理する:
@@ -60,10 +62,10 @@ gh issue list --state open --limit 500 --json labels --jq '[.[].labels[].name] |
 
 ```bash
 # CodeRabbit 生成イシューを抽出（author または `coderabbit` ラベル。分類表と一致させる）
-gh issue list --state open --limit 500 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
+gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
 
 # 手動報告イシューを抽出（上記 CodeRabbit 条件の否定）
-gh issue list --state open --limit 500 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
+gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or .author.login == "github-actions[bot]" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
 ```
 
 ### ステップ 3: グルーピング
@@ -202,7 +204,7 @@ PR履歴やコミットログだけで判断してはならない。必ず現在
 
 ```bash
 # イシュー一覧（詳細）
-gh issue list --state open --limit 500 --json number,title,labels,author,createdAt,updatedAt,body,comments
+gh issue list --state open --limit 1000 --json number,title,labels,author,createdAt,updatedAt,body,comments
 
 # 特定ラベルのイシュー
 gh issue list --state open --label "bug" --json number,title
