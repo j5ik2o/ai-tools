@@ -1,6 +1,6 @@
 {
   "name": "github",
-  "description": "GitHub workflow skills, including systematic issue triage, grouping, prioritization, and cleanup.",
+  "description": "GitHub workflow skills, including systematic issue triage and GitHub OSS README creation, improvement, and review.",
   "author": {
     "name": "Junichi Kato",
     "email": "j5ik2o@gmail.com"
