@@ -51,6 +51,76 @@ cloud-deploy/
 
 The agent should read only the relevant reference file.
 
+## Large refactors of existing skills
+
+Run a preservation pass when changing the information structure of an existing
+skill. This includes shortening a long `SKILL.md`, translating a skill,
+reorganizing sections, splitting content into `references/`, or updating many
+skills in one batch.
+
+The top invariant is: do not discard behavior-shaping knowledge. Shortening a
+`SKILL.md` should usually reduce the loaded entrypoint, not reduce what the skill
+knows how to do.
+
+Do not treat requests like "shorten", "organize", "Englishize", or "move to
+references" as permission to discard preserved knowledge. Discarding preserved
+knowledge requires explicit user approval.
+
+### Preserved knowledge categories
+
+Track these categories before editing and again before final validation:
+
+1. Trigger boundary: when to use the skill, when not to use it, and boundaries
+   with nearby skills or ordinary workflow.
+2. Decision criteria: judgment rules, priorities, tradeoffs, and branch
+   conditions.
+3. Failure modes: anti-patterns, misuse cases, false positives, and things the
+   skill must avoid.
+4. Procedure: ordered steps, completion criteria, required tools, and handoff
+   points.
+5. Examples: input/output examples, code examples, classification examples, and
+   representative edge cases.
+6. Verification: eval intent, validation commands, review checks, and expected
+   artifacts.
+
+If one of these categories is removed from `SKILL.md`, preserve equivalent
+content in `references/*.md` or record the user's explicit approval to reduce
+the information.
+
+### Reference link contract
+
+Every new or expanded reference file created during a refactor must be linked
+from `SKILL.md`. The link must say when to read the file; a bare "see details"
+is not enough.
+
+Good:
+
+```markdown
+Read `references/details.md` before non-trivial implementation, review,
+refactoring, or migration work. It contains decision criteria, failure modes,
+examples, and verification notes preserved from the original skill.
+```
+
+Before finishing, check that every referenced file exists and every new
+`references/*.md` file has a discoverable pointer from `SKILL.md`.
+
+### Preservation checklist
+
+Maintain this checklist while editing large refactors, then summarize it in the
+final report:
+
+- Trigger boundary preserved or intentionally changed.
+- Decision criteria preserved or moved.
+- Failure modes preserved or moved.
+- Procedure and completion criteria preserved or moved.
+- Examples preserved, moved, or intentionally reduced with user approval.
+- Verification and eval intent preserved.
+- Every new reference file is linked from `SKILL.md` with a read condition.
+
+`quick_validate.py` is not enough for this branch. It checks syntax and platform
+metadata, not whether a refactor changed the skill's behavior. Run quick
+validation after the preservation review, not instead of it.
+
 ## Principle of lack of surprise
 
 Skills must not contain malware, exploit code, hidden data exfiltration, or any
