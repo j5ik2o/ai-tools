@@ -39,8 +39,10 @@ If the user already has a draft, start at validation, evals, or iteration.
 
 Read only the reference files needed for the current branch:
 
-- `references/skill_authoring.md` - read before drafting or reviewing a
-  `SKILL.md`, especially when the body may approach 500 lines.
+- `references/skill_authoring.md` - read before drafting, reviewing, or large
+  refactoring a `SKILL.md`, especially when the body may approach 500 lines or
+  existing skill knowledge is being shortened, reorganized, translated, or moved
+  into references.
 - `references/eval_workflow.md` - read before running test cases, benchmarks,
   grading, viewer generation, blind comparison, or iteration from feedback.
 - `references/description_optimization.md` - read before optimizing or debugging
@@ -167,6 +169,10 @@ For schema details, read `references/schemas.md`. Writers must emit
 
 Improve from evidence, not from vibes alone:
 
+- For large refactors of existing skills, run the preservation pass in
+  `references/skill_authoring.md` before editing and before final validation.
+  Do not treat "shorten", "organize", "Englishize", or "move to references" as
+  permission to discard behavior-shaping skill knowledge.
 - Generalize from user feedback instead of overfitting to one eval prompt.
 - Read transcripts when outputs are surprising.
 - Remove instructions that cause repeated wasted work.
