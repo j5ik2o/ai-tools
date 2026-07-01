@@ -1,3 +1,43 @@
+## [0.5.0](https://github.com/j5ik2o/ai-tools/compare/v0.4.1...v0.5.0) (2026-07-01)
+
+
+### Features
+
+* add git and github plugins to marketplace ([cce04a0](https://github.com/j5ik2o/ai-tools/commit/cce04a07bc25fb40b61223ab19b11a80bdb8aa48))
+* **github:** add deep research README skill ([363eb0d](https://github.com/j5ik2o/ai-tools/commit/363eb0d63192d373078e899089021b0f9d33a40c))
+* **plugins:** add codex plugin manifests ([280db66](https://github.com/j5ik2o/ai-tools/commit/280db66faf8322e224a6fbae1bb6d2d176301ea4))
+* **plugins:** add codex skill metadata ([54e06e7](https://github.com/j5ik2o/ai-tools/commit/54e06e7949d19d971fe566cb605c901a32740dc2))
+* **skill-forge:** generate codex openai metadata ([8f66e4d](https://github.com/j5ik2o/ai-tools/commit/8f66e4dda53d1fb687d8b716aa140471f0787ddc))
+* track renames before marking an issue's target as gone ([f46bef7](https://github.com/j5ik2o/ai-tools/commit/f46bef7146d92db35693b60d8c2e56670478ca27))
+
+
+### Bug Fixes
+
+* aggregate paginated issue pages into a single array ([c12c7f7](https://github.com/j5ik2o/ai-tools/commit/c12c7f7e1c7116bf9831cb331006263e5346d3cc))
+* align takt plugin description with workflow-builder rename ([7bcb8cc](https://github.com/j5ik2o/ai-tools/commit/7bcb8cc94838f640833caf0a0d3b67d41cf6da53))
+* correct issue classification priority in gh-issue-organizer ([ef3238d](https://github.com/j5ik2o/ai-tools/commit/ef3238d040ff512cd5803dff11c23e6a76535726))
+* forward-reference Step 2 criteria from Step 1 summary ([e011bc5](https://github.com/j5ik2o/ai-tools/commit/e011bc57f421623e143382e61c7dcf14cf994d0c))
+* guarantee full issue fetch beyond the gh list limit ([ec126a8](https://github.com/j5ik2o/ai-tools/commit/ec126a8b8b6bdd05b63141545f5f83ca941912b0))
+* include coderabbit label in CodeRabbit extraction commands ([3fd9c2f](https://github.com/j5ik2o/ai-tools/commit/3fd9c2f2900efa23cbcb4cc23df6154dcb22778e))
+* make issue-count and pagination commands actually unbounded ([278e335](https://github.com/j5ik2o/ai-tools/commit/278e3356af69655849e6f3af0ec78e34bb9b925b))
+* make その他 a true catch-all and clarify bug detection ([0627e1a](https://github.com/j5ik2o/ai-tools/commit/0627e1a69cb3dc90989e5174e4d227aee7f5f6c5))
+* **plugins:** preserve credential commit guard ([e62ba28](https://github.com/j5ik2o/ai-tools/commit/e62ba28b19d13d9f1828be432d9572cc1af84a22))
+* **plugins:** reject empty codex capabilities ([a6101b5](https://github.com/j5ik2o/ai-tools/commit/a6101b5fffaa0468fee94231fc5bc89d6ef27349))
+* **plugins:** require defaultPrompt array ([10348dd](https://github.com/j5ik2o/ai-tools/commit/10348dd19baae77aaeab7eaa5db3d20e792496b1))
+* resolve internal inconsistencies in gh-issue-organizer ([ef33510](https://github.com/j5ik2o/ai-tools/commit/ef335103d02e15d6a854d4ee9a883a6fc55f3f90))
+* review staged changes before committing in git-commit ([80f6217](https://github.com/j5ik2o/ai-tools/commit/80f6217d778895ab8ac32f419d092da5aa2310d8))
+* scope CodeRabbit category to coderabbitai and coderabbit label ([8073258](https://github.com/j5ik2o/ai-tools/commit/8073258097e1800d5df196d7c1b18d406c69f7c1))
+* scope git-commit trigger to explicit commit requests ([c45e5fa](https://github.com/j5ik2o/ai-tools/commit/c45e5fabb66e730f453ecacf34ae89a24b37333d))
+* **scripts:** set CLAUDE_IDENTITY for corporate environment ([308ce1e](https://github.com/j5ik2o/ai-tools/commit/308ce1edcda03816027f2034988446b69c9565bd))
+* **skill-forge:** add platform-aware skill validation ([701052f](https://github.com/j5ik2o/ai-tools/commit/701052f4a7dd173aec563da9be7211cc116da89f))
+* **skill-forge:** document trigger eval boundaries ([76e2d7b](https://github.com/j5ik2o/ai-tools/commit/76e2d7bd5f820019baafd2e9192eca9fb07de53f))
+* **skill-forge:** evaluate claude skills via skill layout ([6b48d79](https://github.com/j5ik2o/ai-tools/commit/6b48d79a87ab805b4c4739d635a3e03bc21fcf13))
+* **skill-forge:** normalize eval expectations schema ([9c1a693](https://github.com/j5ik2o/ai-tools/commit/9c1a6936d5f90185defaf4b35ef4b07170e3821c))
+* **skill-forge:** use agents skills for codex evals ([4d90c8b](https://github.com/j5ik2o/ai-tools/commit/4d90c8b51d38e6f31142677e8dabd6566139b8b5))
+* **takt:** align review workflow aggregation ([55ec6da](https://github.com/j5ik2o/ai-tools/commit/55ec6dab8c00ad32f16c0687f55b6353ba69fbd1))
+* tighten bug title match and add その他 to summary table ([bfb490d](https://github.com/j5ik2o/ai-tools/commit/bfb490d89b2862950e2b7c6d1b7b57dfd2580043))
+* verify committed content after pre-commit hooks run ([1d358cf](https://github.com/j5ik2o/ai-tools/commit/1d358cfefdbb0ceac2251e4099ebd28555eed5a2))
+
 ## [0.4.1](https://github.com/j5ik2o/ai-tools/compare/v0.4.0...v0.4.1) (2026-06-17)
 
 
