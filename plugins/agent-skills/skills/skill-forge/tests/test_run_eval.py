@@ -759,6 +759,32 @@ class TestRunEval:
         assert result["results"][0]["pass"] is False
         assert result["results"][0]["error_count"] == 1
 
+    def test_duplicate_queries_stay_independent_and_ordered(self):
+        eval_set = [
+            {"query": "same query", "should_trigger": True},
+            {"query": "same query", "should_trigger": False},
+        ]
+        outcomes = iter(["triggered", "completed"])
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
+            with patch("scripts.run_eval.run_single_query", side_effect=lambda *a, **k: next(outcomes)):
+                result = run_eval(
+                    eval_set=eval_set,
+                    skill_name="test",
+                    description="desc",
+                    num_workers=1,
+                    timeout=10,
+                    project_root=Path("/tmp"),
+                    runs_per_query=1,
+                    trigger_threshold=0.5,
+                    cli_type=CLI_CLAUDE,
+                )
+
+        assert [r["should_trigger"] for r in result["results"]] == [True, False]
+        assert result["results"][0]["triggers"] == 1
+        assert result["results"][1]["triggers"] == 0
+        assert all(r["pass"] for r in result["results"])
+
     def test_query_with_zero_attempted_runs_is_marked_not_run(self):
         eval_set = [{"query": "do not trigger", "should_trigger": False}]
 

@@ -60,22 +60,20 @@ def run_eval(
     cli_type: str = CLI_CLAUDE,
     cli_command: str | None = None,
 ) -> dict:
-    """Run the full eval set and return results."""
-    results = []
-    query_outcomes: dict[str, list[str]] = {}
-    query_errors: dict[str, list[str]] = {}
-    query_items: dict[str, dict] = {}
+    """Run the full eval set and return results.
+
+    Results are keyed by eval-set position and returned in input order, so
+    duplicate query texts stay independent.
+    """
+    run_outcomes: list[list[str]] = [[] for _ in eval_set]
+    run_errors: list[list[str]] = [[] for _ in eval_set]
 
     with mask_installed_skill(cli_type, skill_name, project_root) as masked_skill_dir:
         source_skill_dir = str(masked_skill_dir) if masked_skill_dir else None
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            future_to_info = {}
-            for item in eval_set:
-                query = item["query"]
-                query_outcomes.setdefault(query, [])
-                query_errors.setdefault(query, [])
-                query_items[query] = item
-                for run_idx in range(runs_per_query):
+            future_to_index = {}
+            for index, item in enumerate(eval_set):
+                for _ in range(runs_per_query):
                     future = executor.submit(
                         run_single_query,
                         item["query"],
@@ -88,18 +86,17 @@ def run_eval(
                         cli_command,
                         source_skill_dir,
                     )
-                    future_to_info[future] = (item, run_idx)
+                    future_to_index[future] = index
 
-            for future in as_completed(future_to_info):
-                item, _ = future_to_info[future]
-                query = item["query"]
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
                 try:
-                    query_outcomes[query].append(future.result())
+                    run_outcomes[index].append(future.result())
                 except Exception as e:
                     print(f"Error: query failed: {e}", file=sys.stderr)
-                    query_errors[query].append(str(e))
+                    run_errors[index].append(str(e))
 
-    total_errors = sum(len(errs) for errs in query_errors.values())
+    total_errors = sum(len(errs) for errs in run_errors)
     if total_errors > 0:
         print(
             f"Warning: {total_errors} query run(s) failed with errors. "
@@ -107,9 +104,7 @@ def run_eval(
             file=sys.stderr,
         )
 
-    total_timeouts = sum(
-        outcomes.count(TIMEOUT) for outcomes in query_outcomes.values()
-    )
+    total_timeouts = sum(outcomes.count(TIMEOUT) for outcomes in run_outcomes)
     if total_timeouts > 0:
         print(
             f"Warning: {total_timeouts} run(s) hit the {timeout}s timeout before "
@@ -118,9 +113,9 @@ def run_eval(
             file=sys.stderr,
         )
 
-    for query, outcomes in query_outcomes.items():
-        item = query_items[query]
-        errors = query_errors.get(query, [])
+    results = []
+    for item, outcomes, errors in zip(eval_set, run_outcomes, run_errors):
+        query = item["query"]
         effective_runs = len(outcomes)
         triggers = outcomes.count(TRIGGERED)
         timeouts = outcomes.count(TIMEOUT)

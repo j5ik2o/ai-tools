@@ -23,7 +23,7 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
     train_queries: list[dict] = []
     test_queries: list[dict] = []
     if history:
-        for r in history[0].get("train_results", history[0].get("results", [])):
+        for r in history[0].get("train_results", []):
             train_queries.append({"query": r["query"], "should_trigger": r.get("should_trigger", True)})
         if history[0].get("test_results"):
             for r in history[0].get("test_results", []):
@@ -206,17 +206,17 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
     if test_queries:
         best_iter = max(history, key=lambda h: h.get("test_passed") or 0).get("iteration")
     else:
-        best_iter = max(history, key=lambda h: h.get("train_passed", h.get("passed", 0))).get("iteration")
+        best_iter = max(history, key=lambda h: h.get("train_passed", 0)).get("iteration")
 
     # Add rows for each iteration
     for h in history:
         iteration = h.get("iteration", "?")
-        train_passed = h.get("train_passed", h.get("passed", 0))
-        train_total = h.get("train_total", h.get("total", 0))
+        train_passed = h.get("train_passed", 0)
+        train_total = h.get("train_total", 0)
         test_passed = h.get("test_passed")
         test_total = h.get("test_total")
         description = h.get("description", "")
-        train_results = h.get("train_results", h.get("results", []))
+        train_results = h.get("train_results", [])
         test_results = h.get("test_results", [])
 
         # Create lookups for results by query
