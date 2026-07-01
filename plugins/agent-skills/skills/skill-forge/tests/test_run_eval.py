@@ -63,7 +63,7 @@ class TestCodexCommandArgs:
     def test_no_invalid_approval_flag(self, tmp_path):
         """Ensure -a flag is not used (removed in current codex CLI)."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         captured_cmd = []
 
@@ -88,7 +88,7 @@ class TestCodexCommandArgs:
     def test_codex_command_includes_required_flags(self, tmp_path):
         """Verify codex exec includes --json, -s, -C flags."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         captured_cmd = []
 
@@ -119,7 +119,7 @@ class TestCliExitCodeHandling:
 
     def test_codex_nonzero_exit_raises(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         mock_process = MagicMock()
         mock_process.poll.side_effect = [0, 0]
@@ -385,7 +385,7 @@ class TestRunSingleQueryCodex:
     def test_creates_and_cleans_temp_skill(self, tmp_path):
         """Verify temp skill dir is created and cleaned up."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         events = [
             json.dumps({"type": "turn.completed", "usage": {}}),
@@ -400,10 +400,10 @@ class TestRunSingleQueryCodex:
 
         assert result is False
         # Temp skill dir should be cleaned up
-        skill_dirs = list((project_root / ".codex" / "skills").iterdir())
+        skill_dirs = list((project_root / ".agents" / "skills").iterdir())
         assert len(skill_dirs) == 0
 
-    def test_creates_and_cleans_temp_skill_in_codex_home_override(self, tmp_path):
+    def test_creates_temp_skill_in_repo_agents_even_with_codex_home_override(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir(parents=True)
         codex_home = tmp_path / "custom-codex-home"
@@ -421,14 +421,15 @@ class TestRunSingleQueryCodex:
                     )
 
         assert result is False
-        assert (codex_home / "skills").is_dir()
+        assert not (codex_home / "skills").exists()
         assert not (project_root / ".codex").exists()
-        assert not any((codex_home / "skills").iterdir())
+        assert (project_root / ".agents" / "skills").is_dir()
+        assert not any((project_root / ".agents" / "skills").iterdir())
 
     def test_detects_marker_in_agent_message(self, tmp_path):
         """Verify marker detection in codex JSONL output."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         with patch("scripts.run_eval_codex.uuid.uuid4") as mock_uuid:
             mock_uuid.return_value.hex = "abcd1234xxxxxxxxxxxxxxxx"
@@ -460,7 +461,7 @@ class TestRunSingleQueryCodex:
     def test_no_trigger_returns_false(self, tmp_path):
         """No marker in output means not triggered."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         events = [
             json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "No skill here."}}),
@@ -621,12 +622,12 @@ class TestRunEval:
 class TestTemporarySkillNames:
     def test_codex_temp_skill_keeps_original_visible_name(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         observed = {}
 
         def capture_popen(cmd, **kwargs):
-            skill_root = project_root / ".codex" / "skills"
+            skill_root = project_root / ".agents" / "skills"
             skill_file = next(skill_root.glob("*/SKILL.md"))
             observed["path"] = skill_file
             observed["content"] = skill_file.read_text()
@@ -679,14 +680,14 @@ class TestTemporarySkillNames:
 
     def test_codex_temp_skill_paths_are_isolated_per_run(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         observed_snapshots = []
         observed_lock = threading.Lock()
         barrier = threading.Barrier(2)
 
         def capture_popen(cmd, **kwargs):
-            skill_root = project_root / ".codex" / "skills"
+            skill_root = project_root / ".agents" / "skills"
             barrier.wait(timeout=2)
             snapshot = sorted(path.name for path in skill_root.iterdir())
             with observed_lock:

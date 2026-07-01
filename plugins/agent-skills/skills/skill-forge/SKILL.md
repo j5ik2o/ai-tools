@@ -4,7 +4,7 @@ description: >-
   Create or improve Claude Code and Codex skills. Use only when the request is
   explicitly about the skill itself: creating a new skill, editing a SKILL.md
   file, testing a skill draft in .claude/skills/.../SKILL.md or
-  .codex/skills/.../SKILL.md, improving an existing skill, debugging why a
+  .agents/skills/.../SKILL.md, improving an existing skill, debugging why a
   skill is not triggering, running evals or benchmarks for a skill, or turning
   an already-described workflow into a reusable skill. Trigger on phrases like
   existing skill, skill draft, SKILL.md, skill trigger, skill eval, make this
@@ -201,7 +201,7 @@ WORKSPACE=$(mktemp -d)
 echo "Workspace: $WORKSPACE"
 ```
 
-This ensures a clean, isolated environment for each evaluation run. If you need persistence across sessions (e.g., to resume an interrupted run), you can instead use a fixed path: `.claude/skills-workspaces/<skill-name>/` for Claude Code, or `.codex/skills-workspaces/<skill-name>/` for Codex CLI. After creating the workspace, run `ls $WORKSPACE` to verify it exists. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
+This ensures a clean, isolated environment for each evaluation run. If you need persistence across sessions (e.g., to resume an interrupted run), you can instead use a fixed path: `.claude/skills-workspaces/<skill-name>/` for Claude Code, or `.codex/skills-workspaces/<skill-name>/` for Codex CLI. These workspace paths are only for eval outputs; Codex skill discovery uses `.agents/skills`, not `.codex/skills`. After creating the workspace, run `ls $WORKSPACE` to verify it exists. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
 
 **Important: Always display the workspace path to the user** so they can inspect outputs directly. When eval runs complete, also display the full path to each generated output file.
 
@@ -274,7 +274,7 @@ Once all runs are done:
    This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, with mean ± stddev and the delta. If generating benchmark.json manually, see `references/schemas.md` for the exact schema the viewer expects.
 Put each with_skill version before its baseline counterpart.
 
-3. **Save benchmark results to the skill folder** — After aggregation, copy the benchmark to the skill's own directory so results are tracked alongside the skill source. `<skill-dir>` is the actual skill source directory (not a symlink or cache path). Note that `<workspace>` varies by CLI: `.claude/skills-workspaces/<skill-name>/` for Claude Code (or `$CLAUDE_CONFIG_DIR/skills-workspaces/<skill-name>/` if set), `.codex/skills-workspaces/<skill-name>/` for Codex CLI (or `$CODEX_HOME/skills-workspaces/<skill-name>/` if set). Use the same workspace path that was resolved in the "Running and evaluating test cases" section above.
+3. **Save benchmark results to the skill folder** — After aggregation, copy the benchmark to the skill's own directory so results are tracked alongside the skill source. `<skill-dir>` is the actual skill source directory (not a symlink or cache path). Note that `<workspace>` varies by CLI: `.claude/skills-workspaces/<skill-name>/` for Claude Code (or `$CLAUDE_CONFIG_DIR/skills-workspaces/<skill-name>/` if set), `.codex/skills-workspaces/<skill-name>/` for Codex CLI (or `$CODEX_HOME/skills-workspaces/<skill-name>/` if set). These are eval result workspaces, not skill discovery directories. Use the same workspace path that was resolved in the "Running and evaluating test cases" section above.
    ```bash
    mkdir -p <skill-dir>/evals/benchmarks
    cp <workspace>/iteration-<N>/benchmark.json \
@@ -479,7 +479,7 @@ Understanding the triggering mechanism helps design better eval queries.
 
 **Claude Code:** Skills appear in Claude's `available_skills` list with their name + description, and Claude decides whether to consult a skill based on that description.
 
-**Codex CLI:** Skills are discovered from `.codex/skills/` (and `.agents/skills/`). Codex reads the SKILL.md frontmatter (`name` and `description`) to decide when to use a skill. The triggering mechanism is semantically similar to Claude Code's.
+**Codex CLI:** Repository skills are discovered from `.agents/skills/` directories from the current working directory up to the repository root. User skills live under `$HOME/.agents/skills`, admin skills under `/etc/codex/skills`, and system skills are bundled with Codex. Codex reads the SKILL.md frontmatter (`name` and `description`) to decide when to use a skill. The triggering mechanism is semantically similar to Claude Code's.
 
 In both cases, the agent only consults skills for tasks it can't easily handle on its own — simple, one-step queries like "read this PDF" may not trigger a skill even if the description matches perfectly, because the agent can handle them directly with basic tools. Complex, multi-step, or specialized queries reliably trigger skills when the description matches.
 
