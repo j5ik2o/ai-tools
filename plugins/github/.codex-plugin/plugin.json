@@ -1,0 +1,32 @@
+{
+  "name": "github",
+  "version": "0.1.0",
+  "description": "GitHub workflow skills, including systematic issue triage and GitHub OSS README creation, improvement, and review.",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  },
+  "repository": "https://github.com/j5ik2o/ai-tools",
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "github",
+    "issues",
+    "readme"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GitHub",
+    "shortDescription": "Triage issues and improve OSS READMEs",
+    "longDescription": "GitHub workflow skills for systematic issue triage plus GitHub OSS README creation, improvement, and review.",
+    "developerName": "Junichi Kato",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $gh-issue-organizer to triage open GitHub issues.",
+      "Use $deep-research-read-me to improve this README."
+    ]
+  }
+}

@@ -7,6 +7,8 @@
     "takt": "^0.46.0"
   },
   "scripts": {
+    "generate:codex-skill-metadata": "bash scripts/generate-codex-skill-metadata.sh",
+    "validate:codex-plugins": "python3 scripts/validate-codex-plugin-manifests.py",
     "takt": "scripts/run-takt.sh",
     "opsx:full": "scripts/run-takt.sh --pipeline --skip-git -w opsx-full -t",
     "opsx:propose": "scripts/run-takt.sh --pipeline --skip-git -w opsx-propose -t",
