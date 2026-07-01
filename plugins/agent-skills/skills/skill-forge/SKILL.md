@@ -462,6 +462,8 @@ This step matters — bad eval queries lead to bad descriptions.
 
 Tell the user: "This will take some time — I'll run the optimization loop in the background and check on it periodically."
 
+Before changing trigger eval parsing or interpreting surprising trigger results, read `references/trigger_eval_boundaries.md`. It documents the Claude Code and Codex CLI detector signals, false positive/false negative boundaries, and the difference between a successful non-trigger and zero successful runs.
+
 Save the eval set to the workspace, then run in the background:
 
 **Claude Code:**
@@ -495,6 +497,8 @@ The same CLI selection is used for both evaluation and description improvement. 
 While it runs, periodically tail the output to give the user updates on which iteration it's on and what the scores look like.
 
 This handles the full optimization loop automatically. It splits the eval set into 60% train and 40% held-out test, evaluates the current description (running each query 3 times to get a reliable trigger rate), then calls Claude with extended thinking to propose improvements based on what failed. It re-evaluates each new description on both train and test, iterating up to 5 times. When it's done, it opens an HTML report in the browser showing the results per iteration and returns JSON with `best_description` — selected by test score rather than train score to avoid overfitting.
+
+If a query result has `status: "error"` or `status: "not_run"`, treat it as eval infrastructure failure, not as evidence that the skill failed to trigger. A successful non-trigger has `status: "ok"`, `runs > 0`, and `triggers == 0`.
 
 ### How skill triggering works
 

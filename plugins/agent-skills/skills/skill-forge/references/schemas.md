@@ -36,6 +36,39 @@ Defines the evals for a skill. Located at `evals/evals.json` within the skill di
 
 ---
 
+## trigger eval result
+
+Output from `scripts/run_eval.py`.
+
+```json
+{
+  "query": "the user prompt",
+  "should_trigger": true,
+  "trigger_rate": 0.67,
+  "triggers": 2,
+  "runs": 3,
+  "attempted_runs": 3,
+  "status": "ok",
+  "pass": true
+}
+```
+
+**Fields:**
+- `query`: User prompt under test
+- `should_trigger`: Expected trigger decision
+- `trigger_rate`: `triggers / runs`, or `0.0` when `runs` is `0`
+- `triggers`: Successful runs where the platform detector saw a trigger signal
+- `runs`: Successful runs that returned a trigger/non-trigger result
+- `attempted_runs`: Runs requested for the query
+- `status`: `ok`, `partial_error`, `error`, or `not_run`
+- `pass`: Whether the observed trigger rate matches `should_trigger`
+- `errors`: Optional list of run error messages
+- `error_count`: Optional number of failed runs
+
+See `references/trigger_eval_boundaries.md` for platform detector limits and how to interpret `status`.
+
+---
+
 ## history.json
 
 Tracks version progression in Improve mode. Located at workspace root.

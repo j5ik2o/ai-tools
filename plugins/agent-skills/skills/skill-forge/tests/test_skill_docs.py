@@ -43,6 +43,19 @@ class TestSkillDocs:
         assert "default_prompt" in reference
         assert "Difference from OpenAI skill-creator" in reference
 
+    def test_trigger_eval_boundaries_are_documented(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+        reference = (SKILL_DIR / "references" / "trigger_eval_boundaries.md").read_text()
+        schemas = (SKILL_DIR / "references" / "schemas.md").read_text()
+
+        assert "references/trigger_eval_boundaries.md" in skill_md
+        assert "Claude Code detector" in reference
+        assert "Codex CLI detector" in reference
+        assert "false positives" in reference
+        assert "false negatives" in reference
+        assert "status" in schemas
+        assert "attempted_runs" in schemas
+
 
 class TestProjectMetadata:
     def test_pyproject_does_not_depend_on_anthropic(self):
