@@ -217,11 +217,7 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
         test_total = h.get("test_total")
         description = h.get("description", "")
         train_results = h.get("train_results", [])
-        test_results = h.get("test_results", [])
-
-        # Create lookups for results by query
-        train_by_query = {r["query"]: r for r in train_results}
-        test_by_query = {r["query"]: r for r in test_results} if test_results else {}
+        test_results = h.get("test_results", []) or []
 
         # Compute aggregate correct/total runs across all retries
         def aggregate_runs(results: list[dict]) -> tuple[int, int]:
@@ -262,9 +258,10 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
                 <td class="description">{html.escape(description)}</td>
 """)
 
-        # Add result for each train query
-        for qinfo in train_queries:
-            r = train_by_query.get(qinfo["query"], {})
+        # Results keep the eval-set order across iterations, so resolve each
+        # column by position — a query-text lookup would collapse duplicates.
+        for idx in range(len(train_queries)):
+            r = train_results[idx] if idx < len(train_results) else {}
             did_pass = r.get("pass", False)
             triggers = r.get("triggers", 0)
             runs = r.get("runs", 0)
@@ -275,8 +272,8 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
             html_parts.append(f'                <td class="result {css_class}">{icon}<span class="rate">{triggers}/{runs}</span></td>\n')
 
         # Add result for each test query (with different background)
-        for qinfo in test_queries:
-            r = test_by_query.get(qinfo["query"], {})
+        for idx in range(len(test_queries)):
+            r = test_results[idx] if idx < len(test_results) else {}
             did_pass = r.get("pass", False)
             triggers = r.get("triggers", 0)
             runs = r.get("runs", 0)

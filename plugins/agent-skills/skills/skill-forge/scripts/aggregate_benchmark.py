@@ -50,14 +50,19 @@ BASELINE_CONFIG_NAMES = {"without_skill", "old_skill", "baseline"}
 
 
 def order_configs(configs: list[str]) -> list[str]:
-    """Order configs so the primary comes first and the baseline last.
+    """Order configs so the primary comes first and the baseline second.
 
     Delta is computed as first minus second, so a recognized baseline name
-    is moved to the end to keep the sign meaningful.
+    is moved into the second slot to keep the sign meaningful even when
+    more than two configurations exist.
     """
     baselines = [c for c in configs if c in BASELINE_CONFIG_NAMES]
     if len(baselines) == 1:
-        return [c for c in configs if c not in BASELINE_CONFIG_NAMES] + baselines
+        baseline = baselines[0]
+        rest = [c for c in configs if c != baseline]
+        if not rest:
+            return [baseline]
+        return [rest[0], baseline, *rest[1:]]
     return list(configs)
 
 

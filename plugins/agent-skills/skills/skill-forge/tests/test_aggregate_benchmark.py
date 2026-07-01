@@ -82,3 +82,16 @@ class TestDeltaOrientation:
 
         assert delta["comparison"] == "with_skill - without_skill"
         assert delta["pass_rate"] == "+0.50"
+
+    def test_baseline_takes_second_slot_with_more_than_two_configs(self, tmp_path):
+        # Alphabetical scan order is alt, baseline, skill; the delta must
+        # still compare a primary against the recognized baseline.
+        self._write_grading(tmp_path, "alt", 0.8)
+        self._write_grading(tmp_path, "baseline", 0.5)
+        self._write_grading(tmp_path, "skill", 1.0)
+
+        benchmark = generate_benchmark(tmp_path, skill_name="test-skill")
+        delta = benchmark["run_summary"]["delta"]
+
+        assert delta["comparison"] == "alt - baseline"
+        assert delta["pass_rate"] == "+0.30"
