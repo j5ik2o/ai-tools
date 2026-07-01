@@ -48,10 +48,9 @@ After staging, **always inspect the exact content that will be committed**. `git
 git diff --staged
 ```
 
-Never include these files unless the user explicitly instructs otherwise:
+Never include `.env` files or files containing credentials. If the user explicitly asks to commit such files, stop and ask them to remove or redact the secret material first.
 
-- `.env` files or files containing credentials
-- Files the user explicitly asked to exclude
+Also do not include files the user explicitly asked to exclude.
 
 If one staged set contains multiple logically independent changes, split it into multiple commits.
 
