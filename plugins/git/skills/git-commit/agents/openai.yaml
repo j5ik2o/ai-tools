@@ -1,4 +1,4 @@
-# skill-forge-source-sha256: 9635650b6b0402d46505a24093e085a8e0fa83e21d809907e0bac46d7db4cc4c
+# skill-forge-source-sha256: 0a02ae78e25efc66ac0a1f92651efecfbd7088ca435ccc00030d5527364ef68f
 interface:
   display_name: "Git Commit"
   short_description: "Create safe Conventional Commits"

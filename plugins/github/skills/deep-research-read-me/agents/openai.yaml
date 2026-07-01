@@ -1,4 +1,4 @@
-# skill-forge-source-sha256: 36cc32fab23ba31d5880a9c6f59442c282e3f977db0b711e59bd49319ffa03d2
+# skill-forge-source-sha256: f969ac896ea43d0874128f1ff18ba1a272f39b5ffd9ffb5d098a99d5e1efccac
 interface:
   display_name: "README Research"
   short_description: "Create and review GitHub OSS READMEs"

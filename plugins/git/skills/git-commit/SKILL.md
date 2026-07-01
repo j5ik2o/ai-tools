@@ -1,34 +1,32 @@
 ---
 name: git-commit
 description: >
-  ワーキングディレクトリの変更をConventional Commitsに従ってコミットするスキル。
-  意味のある変更単位ごとにステージングし、英語でコミットメッセージを作成する。
-  co-authorやエージェント名をコミットメッセージに含めない。
-  ユーザーが「コミットして」「変更をコミット」「git commit」「commitして」
-  「この変更をコミット」「コミットお願い」
-  など明示的なコミット実行のリクエストをした場合に必ず使用すること。
-  本スキルは実際にステージングしてコミットまで行うため、コミットメッセージの
-  文面だけを求められた場合（実コミットを伴わない）は起動しない。
-  pushは含まない（コミットのみ）。
+  Commit working-tree changes using Conventional Commits. Stage changes in
+  meaningful units, write commit messages in English, and avoid co-author or
+  agent attribution in commit messages. Use this skill only when the user
+  explicitly asks to create a real git commit, such as "commit these changes",
+  "create a git commit", "git commit", or "commit this work". Do not use it
+  when the user only wants commit message wording without making an actual
+  commit. This skill commits locally only; it does not push.
 ---
 
 # Git Commit
 
-意味のある変更単位ごとにコミットを行うことで、コードの履歴を明確にし、将来の変更追跡を容易にする。
+Create clear project history by committing changes in meaningful, reviewable units.
 
-## 手順
+## Workflow
 
-### 1. 直近のコミット履歴を確認する
+### 1. Inspect Recent Commit History
 
-プロジェクトのコミットスタイルを把握するため、直近の履歴を確認する。
+Review the latest commits to match the repository's commit style.
 
 ```bash
 git log --oneline -10
 ```
 
-### 2. 変更内容を確認する
+### 2. Inspect Current Changes
 
-ワーキングディレクトリの状態を確認する。`-uall`フラグは大規模リポジトリでメモリ問題を起こす可能性があるため使わないこと。
+Check the working tree state. Do not use the `-uall` flag because it can cause memory problems in large repositories.
 
 ```bash
 git status
@@ -36,66 +34,67 @@ git diff
 git diff --staged
 ```
 
-### 3. 意味のある単位でステージングする
+### 3. Stage Meaningful Units
 
-変更を意味のある単位ごとにステージングする。`git add -A` や `git add .` で無条件に全ファイルを追加してはならない。対象ファイルを個別に指定すること。
+Stage only the files that belong in the current logical change. Do not blindly run `git add -A` or `git add .`; specify the intended files or directories.
 
 ```bash
-git add <対象ファイルやディレクトリ>
+git add <target-files-or-directories>
 ```
 
-ステージング後、**実際にコミットされる内容を必ず確認する**。`git diff`（未ステージ）では新規・未追跡ファイルの内容やステージ済みの変更は表示されないため、`git diff --staged` でステージ済みの全内容（新規ファイルの中身、フックやフォーマッタによる変更を含む）を確認すること。
+After staging, **always inspect the exact content that will be committed**. `git diff` does not show new untracked file contents or all staged changes, so use `git diff --staged` to review staged content, including new files and any changes produced by hooks or formatters.
 
 ```bash
 git diff --staged
 ```
 
-以下のファイルはコミットに含めないこと：
-- `.env` やクレデンシャル情報を含むファイル
-- ユーザーが明示的に除外を指示したファイル
+Never include these files unless the user explicitly instructs otherwise:
 
-一つのコミットに含める変更が論理的に独立した複数の変更を含む場合は、複数のコミットに分割することを検討する。
+- `.env` files or files containing credentials
+- Files the user explicitly asked to exclude
 
-### 4. コミットメッセージを作成してコミットする
+If one staged set contains multiple logically independent changes, split it into multiple commits.
 
-Conventional Commitsの形式に従い、英語でコミットメッセージを作成する。
+### 4. Write the Commit Message and Commit
+
+Use Conventional Commits and write the message in English.
 
 ```bash
 git commit -m "$(cat <<'EOF'
 <type>(<scope>): <description>
 
-<body（必要な場合）>
+<body-if-needed>
 EOF
 )"
 ```
 
-**コミットメッセージのルール:**
+**Commit message rules:**
 
-- **Conventional Commits形式**: `type(scope): description`
-    - type: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `perf`, `build` など
-    - scope: 変更の影響範囲（省略可）
-    - description: 変更内容の簡潔な説明
-- **英語で記述する**
-- **co-authorやエージェント名（"Claude Code"など）をコミットメッセージに含めない**
-- 変更の「何を」ではなく「なぜ」を重視する
-- descriptionは命令形（imperative mood）で書く（例: "add" not "added"）
+- **Conventional Commits format**: `type(scope): description`
+  - type: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `perf`, `build`, and similar types
+  - scope: affected area, optional
+  - description: concise summary of the change
+- **Write in English**
+- **Do not include co-author lines or agent names such as "Claude Code" or "Codex"**
+- Emphasize why the change exists, not just what changed
+- Write the description in imperative mood, for example "add" rather than "added"
 
-### 5. コミットを確認する
+### 5. Verify the Commit
 
-コミットが正しく行われたか、**実際にコミットされた内容**を確認する。pre-commit フック（フォーマッタ等）がコミット時にファイルを改変・再ステージすると、その変更はステップ3のステージ確認には含まれないため、コミット後の内容をここで必ず検証する。
+Verify the commit that was actually created. Pre-commit hooks or formatters may modify and re-stage files during commit creation, so the post-commit check is required even after reviewing staged changes.
 
 ```bash
 git log --oneline -5
-git show --stat HEAD   # コミットされたファイル一覧
-git show HEAD          # コミットされた実際の差分（フックによる変更も含む）
-git status             # フックが改変した分が未コミットで残っていないか確認
+git show --stat HEAD   # Files included in the commit
+git show HEAD          # Exact committed diff, including hook-produced changes
+git status             # Confirm hook-produced changes were not left uncommitted
 ```
 
-- フックの改変により意図しない内容がコミットされた、または改変分が未コミットで残った場合は、内容を確認して追加コミットで適切に対応する。
+- If hooks introduced unintended committed content, or if hook-produced changes remain uncommitted, inspect the result and address it with a follow-up commit when appropriate.
 
-## 注意事項
+## Notes
 
-- pre-commitフックが失敗した場合、コミットは作成されていない。問題を修正して新しいコミットを作成すること（`--amend`は使わない）
-- pre-commitフックがファイルを改変する場合（フォーマッタ等）、改変後の内容がコミットに含まれているか、または未ステージで残っていないかをステップ5で必ず確認する
-- `--no-verify`でフックをスキップしない。フックが失敗したら原因を調査して修正する
-- pushはこのスキルの範囲外。ユーザーから明示的に指示がない限りpushしない
+- If a pre-commit hook fails, no commit was created. Fix the problem and create a new commit; do not use `--amend`.
+- If a pre-commit hook modifies files, step 5 must verify whether those changes were included in the commit or left unstaged.
+- Do not bypass hooks with `--no-verify`. Investigate and fix failing hooks.
+- Pushing is outside this skill's scope. Do not push unless the user explicitly asks for it.

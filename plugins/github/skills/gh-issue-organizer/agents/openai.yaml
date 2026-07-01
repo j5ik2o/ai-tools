@@ -1,4 +1,4 @@
-# skill-forge-source-sha256: 3cdea93e796a98819838268acdacada8f0f732d7be33a8e5def42c3fa8d58318
+# skill-forge-source-sha256: dba5377d0de1c2d2821113a389ca7f31d5a4cd6e9ce3d270fde586f108661c1b
 interface:
   display_name: "GitHub Issue Organizer"
   short_description: "Triage and organize GitHub issues"
