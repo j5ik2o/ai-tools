@@ -49,6 +49,8 @@ Read only the reference files needed for the current branch:
   evals with the user.
 - `references/openai_yaml.md` - read before generating or reviewing Codex
   `agents/openai.yaml` metadata.
+- `references/skill_creator_comparison.md` - read before updating platform
+  assumptions or comparing skill-forge against Anthropic/OpenAI creator flows.
 - `references/trigger_eval_boundaries.md` - read before changing trigger eval
   parsing or interpreting surprising Claude Code / Codex CLI trigger results.
 - `references/schemas.md` - read before writing or manually inspecting

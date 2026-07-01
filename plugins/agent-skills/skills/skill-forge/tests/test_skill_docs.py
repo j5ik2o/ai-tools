@@ -21,7 +21,24 @@ class TestSkillDocs:
         assert "references/eval_workflow.md" in skill_md
         assert "references/description_optimization.md" in skill_md
         assert "references/platform_notes.md" in skill_md
+        assert "references/skill_creator_comparison.md" in skill_md
         assert "Read only the reference files needed for the current branch" in skill_md
+
+    def test_skill_creator_comparison_reference_covers_platform_differences(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+        reference = (SKILL_DIR / "references" / "skill_creator_comparison.md").read_text()
+
+        assert "references/skill_creator_comparison.md" in skill_md
+        assert "Creation flow comparison" in reference
+        assert "Evaluation flow comparison" in reference
+        assert "Distribution flow comparison" in reference
+        assert "OpenAI skill-creator differences" in reference
+        assert "Anthropic-derived functionality" in reference
+        assert "skill-forge-specific extensions" in reference
+        assert "https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md" in reference
+        assert "https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md" in reference
+        assert "https://developers.openai.com/codex/skills" in reference
+        assert "https://docs.anthropic.com/en/docs/claude-code/skills" in reference
 
     def test_frontmatter_description_mentions_existing_skill_and_boundary(self):
         _, description, _ = parse_skill_md(SKILL_DIR)
