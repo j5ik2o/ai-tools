@@ -23,7 +23,7 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
     train_queries: list[dict] = []
     test_queries: list[dict] = []
     if history:
-        for r in history[0].get("train_results", history[0].get("results", [])):
+        for r in history[0].get("train_results", []):
             train_queries.append({"query": r["query"], "should_trigger": r.get("should_trigger", True)})
         if history[0].get("test_results"):
             for r in history[0].get("test_results", []):
@@ -206,22 +206,18 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
     if test_queries:
         best_iter = max(history, key=lambda h: h.get("test_passed") or 0).get("iteration")
     else:
-        best_iter = max(history, key=lambda h: h.get("train_passed", h.get("passed", 0))).get("iteration")
+        best_iter = max(history, key=lambda h: h.get("train_passed", 0)).get("iteration")
 
     # Add rows for each iteration
     for h in history:
         iteration = h.get("iteration", "?")
-        train_passed = h.get("train_passed", h.get("passed", 0))
-        train_total = h.get("train_total", h.get("total", 0))
+        train_passed = h.get("train_passed", 0)
+        train_total = h.get("train_total", 0)
         test_passed = h.get("test_passed")
         test_total = h.get("test_total")
         description = h.get("description", "")
-        train_results = h.get("train_results", h.get("results", []))
-        test_results = h.get("test_results", [])
-
-        # Create lookups for results by query
-        train_by_query = {r["query"]: r for r in train_results}
-        test_by_query = {r["query"]: r for r in test_results} if test_results else {}
+        train_results = h.get("train_results", [])
+        test_results = h.get("test_results", []) or []
 
         # Compute aggregate correct/total runs across all retries
         def aggregate_runs(results: list[dict]) -> tuple[int, int]:
@@ -262,9 +258,10 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
                 <td class="description">{html.escape(description)}</td>
 """)
 
-        # Add result for each train query
-        for qinfo in train_queries:
-            r = train_by_query.get(qinfo["query"], {})
+        # Results keep the eval-set order across iterations, so resolve each
+        # column by position — a query-text lookup would collapse duplicates.
+        for idx in range(len(train_queries)):
+            r = train_results[idx] if idx < len(train_results) else {}
             did_pass = r.get("pass", False)
             triggers = r.get("triggers", 0)
             runs = r.get("runs", 0)
@@ -275,8 +272,8 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
             html_parts.append(f'                <td class="result {css_class}">{icon}<span class="rate">{triggers}/{runs}</span></td>\n')
 
         # Add result for each test query (with different background)
-        for qinfo in test_queries:
-            r = test_by_query.get(qinfo["query"], {})
+        for idx in range(len(test_queries)):
+            r = test_results[idx] if idx < len(test_results) else {}
             did_pass = r.get("pass", False)
             triggers = r.get("triggers", 0)
             runs = r.get("runs", 0)

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Generate Codex agents/openai.yaml metadata for a skill."""
+"""Generate Codex agents/openai.yaml metadata for a skill.
+
+Run as a module so shared helpers resolve: `uv run python -m scripts.generate_openai_yaml`.
+"""
 
 import argparse
 import hashlib
-import re
 import sys
 from pathlib import Path
 
-import yaml
+from scripts.utils import parse_frontmatter
 
 ACRONYMS = {
     "AI",
@@ -53,20 +55,7 @@ def read_frontmatter(skill_dir: Path) -> dict:
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.exists():
         raise ValueError(f"SKILL.md not found in {skill_dir}")
-
-    content = skill_md.read_text()
-    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
-    if not match:
-        raise ValueError("Invalid SKILL.md frontmatter format")
-
-    try:
-        frontmatter = yaml.safe_load(match.group(1))
-    except yaml.YAMLError as exc:
-        raise ValueError(f"Invalid YAML frontmatter: {exc}") from exc
-
-    if not isinstance(frontmatter, dict):
-        raise ValueError("Frontmatter must be a YAML dictionary")
-    return frontmatter
+    return parse_frontmatter(skill_md.read_text())
 
 
 def format_display_name(skill_name: str) -> str:

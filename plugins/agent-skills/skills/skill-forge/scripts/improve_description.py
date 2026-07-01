@@ -73,7 +73,7 @@ Current scores ({scores_summary}):
     if history:
         prompt += "PREVIOUS ATTEMPTS (do NOT repeat these — try something structurally different):\n\n"
         for item in history:
-            train_history = f"{item.get('train_passed', item.get('passed', 0))}/{item.get('train_total', item.get('total', 0))}"
+            train_history = f"{item.get('train_passed', 0)}/{item.get('train_total', 0)}"
             test_history = None
             if item.get("test_passed") is not None:
                 test_history = f"{item.get('test_passed')}/{item.get('test_total', '?')}"
@@ -82,9 +82,9 @@ Current scores ({scores_summary}):
                 score_line += f", test={test_history}"
             prompt += f"<attempt {score_line}>\n"
             prompt += f'Description: "{item["description"]}"\n'
-            if "results" in item:
+            if item.get("train_results"):
                 prompt += "Train results:\n"
-                for result in item["results"]:
+                for result in item["train_results"]:
                     status = "PASS" if result["pass"] else "FAIL"
                     prompt += f'  [{status}] "{result["query"][:80]}" (triggered {result["triggers"]}/{result["runs"]})\n'
             if item.get("note"):
@@ -264,10 +264,10 @@ def main():
         "description": new_description,
         "history": history + [{
             "description": current_description,
-            "passed": eval_results["summary"]["passed"],
-            "failed": eval_results["summary"]["failed"],
-            "total": eval_results["summary"]["total"],
-            "results": eval_results["results"],
+            "train_passed": eval_results["summary"]["passed"],
+            "train_failed": eval_results["summary"]["failed"],
+            "train_total": eval_results["summary"]["total"],
+            "train_results": eval_results["results"],
         }],
     }
     print(json.dumps(output, indent=2))

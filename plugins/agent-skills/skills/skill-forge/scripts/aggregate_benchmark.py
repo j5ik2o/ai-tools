@@ -44,6 +44,27 @@ from pathlib import Path
 WORKSPACE_LAYOUT_GLOB = "eval-*"
 LEGACY_LAYOUT_DIRNAME = "runs"
 
+# Config names that always act as the delta baseline, regardless of the
+# alphabetical order in which config directories are discovered.
+BASELINE_CONFIG_NAMES = {"without_skill", "old_skill", "baseline"}
+
+
+def order_configs(configs: list[str]) -> list[str]:
+    """Order configs so the primary comes first and the baseline second.
+
+    Delta is computed as first minus second, so a recognized baseline name
+    is moved into the second slot to keep the sign meaningful even when
+    more than two configurations exist.
+    """
+    baselines = [c for c in configs if c in BASELINE_CONFIG_NAMES]
+    if len(baselines) == 1:
+        baseline = baselines[0]
+        rest = [c for c in configs if c != baseline]
+        if not rest:
+            return [baseline]
+        return [rest[0], baseline, *rest[1:]]
+    return list(configs)
+
 
 def normalize_expectations(grading: dict) -> list:
     """Return canonical graded expectations, accepting legacy assertions."""
@@ -197,7 +218,7 @@ def aggregate_results(results: dict) -> dict:
     Returns run_summary with stats for each configuration and delta.
     """
     run_summary = {}
-    configs = list(results.keys())
+    configs = order_configs(list(results.keys()))
 
     for config in configs:
         runs = results.get(config, [])
@@ -220,12 +241,15 @@ def aggregate_results(results: dict) -> dict:
             "tokens": calculate_stats(tokens)
         }
 
-    # Calculate delta between the first two configs (if two exist)
+    # Calculate delta between the primary and baseline configs (if two exist)
     if len(configs) >= 2:
-        primary = run_summary.get(configs[0], {})
-        baseline = run_summary.get(configs[1], {})
+        primary_name, baseline_name = configs[0], configs[1]
+        primary = run_summary.get(primary_name, {})
+        baseline = run_summary.get(baseline_name, {})
     else:
-        primary = run_summary.get(configs[0], {}) if configs else {}
+        primary_name = configs[0] if configs else None
+        baseline_name = None
+        primary = run_summary.get(primary_name, {}) if primary_name else {}
         baseline = {}
 
     delta_pass_rate = primary.get("pass_rate", {}).get("mean", 0) - baseline.get("pass_rate", {}).get("mean", 0)
@@ -235,7 +259,9 @@ def aggregate_results(results: dict) -> dict:
     run_summary["delta"] = {
         "pass_rate": f"{delta_pass_rate:+.2f}",
         "time_seconds": f"{delta_time:+.1f}",
-        "tokens": f"{delta_tokens:+.0f}"
+        "tokens": f"{delta_tokens:+.0f}",
+        # Self-describing orientation so the sign never depends on key order
+        "comparison": f"{primary_name} - {baseline_name}" if baseline_name else (primary_name or ""),
     }
 
     return run_summary
@@ -313,6 +339,7 @@ def generate_markdown(benchmark: dict) -> str:
         f"**Model**: {metadata['executor_model']}",
         f"**Date**: {metadata['timestamp']}",
         f"**Evals**: {', '.join(map(str, metadata['evals_run']))} ({metadata['runs_per_configuration']} runs each per configuration)",
+        f"**Delta**: {run_summary.get('delta', {}).get('comparison', '—')}",
         "",
         "## Summary",
         "",

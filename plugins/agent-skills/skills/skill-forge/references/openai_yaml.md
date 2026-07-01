@@ -13,13 +13,13 @@ Add `agents/openai.yaml` when a skill is intended for Codex users, plugins, or m
 Run this from the `skill-forge` skill directory:
 
 ```bash
-uv run python scripts/generate_openai_yaml.py <skill-dir>
+uv run python -m scripts.generate_openai_yaml <skill-dir>
 ```
 
 Override interface fields when the generated defaults are too generic:
 
 ```bash
-uv run python scripts/generate_openai_yaml.py <skill-dir> \
+uv run python -m scripts.generate_openai_yaml <skill-dir> \
   --interface display_name="PDF Toolkit" \
   --interface short_description="Create and verify PDF files" \
   --interface default_prompt="Use $pdf-toolkit to inspect this PDF."
@@ -32,7 +32,7 @@ After changing `SKILL.md`, regenerate `agents/openai.yaml`.
 Use strict validation before publishing a Codex skill:
 
 ```bash
-uv run python scripts/quick_validate.py <skill-dir> --platform codex --strict-openai-yaml
+uv run python -m scripts.quick_validate <skill-dir> --platform codex --strict-openai-yaml
 ```
 
 Strict validation checks that:
