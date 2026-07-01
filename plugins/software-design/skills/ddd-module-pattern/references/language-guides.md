@@ -1,159 +1,21 @@
-# 言語別ガイダンス
-
-DDDモジュールパターンを各言語で適用する際の具体的な構造例。
-
-## Java/Kotlin
-
-```
-com.example.domain/
-  order/
-    Order.java
-    OrderId.java
-    OrderItem.java
-    OrderStatus.java
-  customer/
-    Customer.java
-    CustomerId.java
-    CustomerName.java
-  pricing/
-    PricingPolicy.java
-    Discount.java
-    Money.java
-```
-
-**ポイント**:
-- パッケージ名は小文字のドメイン用語
-- 実装クラスはインフラ層に配置
-
-## Rust
-
-```
-domain/
-  order/
-    mod.rs
-    order.rs
-    order_id.rs
-    order_item.rs
-  customer/
-    mod.rs
-    customer.rs
-    customer_id.rs
-  pricing/
-    mod.rs
-    pricing_policy.rs
-    money.rs
-```
-
-**ポイント**:
-- `mod.rs` または `{module_name}.rs` + `{module_name}/` 方式
-- traitはドメインモジュール内で定義
-- 実装はインフラクレートに配置
+# DDD Module Language Guides
 
 ## TypeScript
 
-```
-domain/
-  order/
-    index.ts
-    Order.ts
-    OrderId.ts
-    OrderItem.ts
-  customer/
-    index.ts
-    Customer.ts
-    CustomerId.ts
-  pricing/
-    index.ts
-    PricingPolicy.ts
-    Money.ts
-```
+Use package exports or index files to expose a narrow API. Keep internals outside exported paths. Avoid barrel files that expose everything.
 
-**ポイント**:
-- `index.ts` で公開APIをエクスポート
-- インターフェースはドメインディレクトリ内
-- バレルエクスポートでインポートを簡潔に
+## Java And Kotlin
 
-## Python
-
-```
-domain/
-  order/
-    __init__.py
-    order.py
-    order_id.py
-    order_item.py
-  customer/
-    __init__.py
-    customer.py
-    customer_id.py
-  pricing/
-    __init__.py
-    pricing_policy.py
-    money.py
-```
-
-**ポイント**:
-- `__init__.py` で公開クラスをエクスポート
-- 型ヒントを活用
-
-## Go
-
-```
-domain/
-  order/
-    order.go
-    order_id.go
-    order_item.go
-  customer/
-    customer.go
-    customer_id.go
-  pricing/
-    pricing_policy.go
-    money.go
-```
-
-**ポイント**:
-- パッケージ = ディレクトリ
-- インターフェースは使用側で定義する慣習もあるが、ドメインパッケージ内でも可
-- 小さなインターフェースを推奨
+Use packages by bounded context or domain concept. Keep constructors, entities, and mappers package-private where possible. Use application services as module entry points.
 
 ## Scala
 
-```
-domain/
-  order/
-    Order.scala
-    OrderId.scala
-    OrderItem.scala
-  customer/
-    Customer.scala
-    CustomerId.scala
-  pricing/
-    PricingPolicy.scala
-    Money.scala
-```
+Use packages, `private[context]`, opaque types, and companion objects to control construction and visibility.
 
-**ポイント**:
-- パッケージオブジェクトで共通型をエクスポート
-- case classで値オブジェクトを表現
+## Rust
 
-## C#
+Use `mod`, `pub(crate)`, and re-exports from `mod.rs` or `lib.rs` to expose stable APIs while hiding internal modules.
 
-```
-Domain/
-  Order/
-    Order.cs
-    OrderId.cs
-    OrderItem.cs
-  Customer/
-    Customer.cs
-    CustomerId.cs
-  Pricing/
-    PricingPolicy.cs
-    Money.cs
-```
+## Python
 
-**ポイント**:
-- 名前空間 = フォルダ構造
-- インターフェースは`I`プレフィックス
-- recordで値オブジェクトを表現（C# 9+）
+Use package boundaries and leading underscores for internals, but document that privacy is conventional. Keep domain APIs small and tested.

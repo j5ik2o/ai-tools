@@ -1,136 +1,24 @@
-# Skill Best Practices Checklist
+# Skill Review Best Practices
 
-## 1. Frontmatter (YAML)
+## Frontmatter
 
-### name
+- `name` is stable, lowercase, and path-safe.
+- `description` states the trigger boundary and near-miss exclusions.
+- The description is under platform limits and does not duplicate the whole body.
 
-- [ ] 64文字以内である
-- [ ] 小文字、数字、ハイフンのみ使用している
-- [ ] 動名詞形（-ing）を使用している（例: `processing-pdfs`）
-- [ ] 曖昧な名前を避けている（`helper`, `utils`, `tools`はNG）
-- [ ] 予約語を含まない（`anthropic`, `claude`はNG）
+## Body
 
-### description
+- Steps are ordered and have checkable completion criteria.
+- Reference material is disclosed behind pointers.
+- The skill avoids no-op advice, duplication, sediment, and sprawl.
+- Tool requirements and validation commands are explicit.
 
-- [ ] 1024文字以内である
-- [ ] 空でない
-- [ ] 三人称で記述している（「I can help」ではなく「processes files」）
-- [ ] スキルが**何をするか**を説明している
-- [ ] スキルを**いつ使うべきか**を説明している
-- [ ] 具体的なトリガーワードやシナリオを含んでいる
-- [ ] ファイル形式やタスクタイプを明示している
+## Bundled Resources
 
-## 2. SKILL.md Body
+- References are loaded only when needed.
+- Scripts handle deterministic or repetitive work.
+- Evals use realistic prompts and canonical `expectations`.
 
-### 簡潔さ (Conciseness)
+## Findings
 
-- [ ] 500行以下である
-- [ ] Claudeが既に知っている情報を含まない
-- [ ] 冗長な説明より簡潔な例を優先している
-- [ ] 各情報がトークンコストに見合う価値がある
-
-### 構造
-
-- [ ] 明確なセクション分けがある
-- [ ] 目次またはナビゲーションがある（長い場合）
-- [ ] 「When to Use This Skill」セクションがbodyにない（descriptionに含めるべき）
-
-### Progressive Disclosure
-
-- [ ] 詳細な情報は別ファイルに分離している
-- [ ] 参照ファイルへのリンクが1階層深さまで
-- [ ] 参照ファイルの用途が明確に説明されている
-- [ ] 100行以上の参照ファイルには目次がある
-
-## 3. Workflows
-
-### ワークフロー設計
-
-- [ ] 複雑な操作は明確な順序のステップに分解している
-- [ ] チェックリスト形式で進捗を追跡できる
-- [ ] 条件分岐が明確に記述されている
-- [ ] 決定ポイントで明示的なガイダンスがある
-
-### バリデーション
-
-- [ ] 重要な操作後に検証ステップがある
-- [ ] 「実行→検証→修正→繰り返し」のフィードバックループがある
-- [ ] エラーメッセージが具体的で問題箇所を特定できる
-
-## 4. Scripts
-
-### スクリプト品質
-
-- [ ] エラー条件を明示的に処理している
-- [ ] 定数に説明コメントがある（マジックナンバー禁止）
-- [ ] 依存パッケージがSKILL.mdに記載されている
-- [ ] プラットフォーム制限が明記されている
-
-### ファイルパス
-
-- [ ] フォワードスラッシュを使用している（`scripts/helper.py`）
-- [ ] Windowsスタイルのパスを使用していない（`scripts\helper.py`はNG）
-- [ ] ファイル名が内容を示す説明的な名前である
-
-## 5. References
-
-### 参照ファイル構成
-
-- [ ] ドメインまたは機能ごとに整理されている
-- [ ] 必要な時だけ読み込まれるよう設計されている
-- [ ] SKILL.mdと情報が重複していない
-
-## 6. Content Quality
-
-### 用語と言語
-
-- [ ] 一貫した用語を使用している（同義語の混在を避ける）
-- [ ] 時間に敏感な情報を含まない
-- [ ] 命令形/不定詞形で記述している
-
-### 例とテンプレート
-
-- [ ] 具体的な入出力例がある
-- [ ] 基本と応用の両方の例がある
-- [ ] 例のスタイルが一貫している
-- [ ] データ形式にはstrictテンプレート、創造的タスクにはflexibleテンプレートを使用
-
-## 7. Anti-Patterns (避けるべきこと)
-
-- [ ] デフォルトなしで多くの選択肢を提示していない
-- [ ] Windowsスタイルのパスを使用していない
-- [ ] 時間に敏感な情報を含まない
-- [ ] 曖昧な説明やスキル名を使用していない
-- [ ] 深くネストしたファイル参照がない
-- [ ] パッケージがプリインストール済みと仮定していない
-- [ ] マジック定数を説明なしで使用していない
-- [ ] 1つのデフォルトで十分な時に複数のアプローチを提示していない
-- [ ] スクリプトでエラー条件を処理し忘れていない
-- [ ] 一貫性のない用語を使用していない
-
-## 8. MCP Tools
-
-- [ ] 完全修飾ツール名を使用している（`ServerName:tool_name`）
-- [ ] サーバープレフィックスを省略していない
-
-## Severity Levels
-
-### Critical (必須修正)
-
-- descriptionが空または不十分
-- 500行を大幅に超えている
-- セキュリティ上の問題がある
-- スクリプトにエラー処理がない
-
-### Warning (推奨修正)
-
-- Progressive Disclosureが適用されていない
-- 例が不十分
-- 用語の一貫性がない
-- ワークフローが不明確
-
-### Info (改善提案)
-
-- より簡潔にできる箇所がある
-- 構造を改善できる
-- 追加の例があると良い
+Prioritize behavior-affecting issues over style. Suggest rewrites only when they are directly actionable.

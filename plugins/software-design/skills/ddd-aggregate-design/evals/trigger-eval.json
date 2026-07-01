@@ -1,22 +1,82 @@
 [
-  {"query": "ECサイトで注文(Order)集約をTypeScriptで設計したいんだけど、商品明細とか配送先とか支払い方法を含めて、Customerは別集約にしたい。Evans RulesとVernon Rulesに沿った設計をお願い。", "should_trigger": true},
-  {"query": "この Order クラスなんだけど、publicフィールドだらけで items.push() で直接変更してるし、Customer オブジェクトを直接参照してる。DDDの集約設計の観点からレビューして改善案を出してほしい。", "should_trigger": true},
-  {"query": "ブログシステムでPostとCommentを同じ集約にするか別の集約にするか迷ってる。コメントは1記事あたり最大100件で、いいね機能もある。集約の境界をどう決めるべき？", "should_trigger": true},
-  {"query": "うちのScalaプロジェクトで予約(Reservation)の集約を作りたい。部屋(Room)は別の集約で、予約には複数の日程(ReservationDate)が含まれる。不変条件として「同じ部屋の予約は日程が重複してはならない」がある。", "should_trigger": true},
-  {"query": "Kotlinで書いた在庫管理の Inventory 集約があるんだけど、StockItem を直接 mutableListOf で管理してて、外から inventory.items.add() できちゃう。これDDD的にまずいよね？直して。", "should_trigger": true},
-  {"query": "いまRustでCQRS/ESのプロジェクトやってるんだけど、BankAccount集約の状態遷移で、Opened → Active → Suspended → Closed のライフサイクルをどう表現すべき？集約のコマンドメソッドの設計パターンを教えて。", "should_trigger": true},
-  {"query": "ShoppingCartとCartItemって同じ集約にすべき？CartItemは最大50個まで。カートの合計金額はCartItemの合計と常に一致してる必要がある（真の不変条件）。", "should_trigger": true},
-  {"query": "Java (Spring Boot) で User 集約を実装してるんだけど、Addressを値オブジェクトにするのと、UserProfile をローカルエンティティにするのと、Role を別集約にするのと、それぞれの判断基準を知りたい。aggregate boundary の決め方。", "should_trigger": true},
-  {"query": "このTypeScriptのOrder集約、confirm()メソッドが void を返してて内部状態を直接変更してる。不変にしてスプレッド構文で新しいインスタンスを返すようにリファクタリングしたい。", "should_trigger": true},
-  {"query": "集約間の整合性って結果整合性でいいの？例えば注文確定したら在庫を減らす必要があるけど、OrderとInventoryは別集約。ドメインイベントでつなぐべき？Sagaパターンを使うべき？", "should_trigger": true},
-  {"query": "ReactでTodoアプリを作りたい。コンポーネント設計とstate管理のベストプラクティスを教えて。Zustandとjotaiどっちがいい？", "should_trigger": false},
-  {"query": "PostgreSQLでインデックスの貼り方がよくわからない。users テーブルの email カラムにユニークインデックスを追加したいんだけど、マイグレーションファイルの書き方を教えて。", "should_trigger": false},
-  {"query": "GitHub Actionsでci/cdパイプラインを構築したい。mainブランチへのpush時にテストを実行して、通ったらDockerイメージをビルドしてECRにプッシュする流れ。", "should_trigger": false},
-  {"query": "TypeScriptのエラーハンドリングで Result型（Either型）を使いたい。neverthrowとfp-tsどちらがおすすめ？プロジェクトの規模は中程度。", "should_trigger": false},
-  {"query": "Kotlinのcoroutineでバックプレッシャー制御ってどうやるの？Flowのbuffer()とconflate()の違いを教えて。大量のイベントを処理するシステムで使いたい。", "should_trigger": false},
-  {"query": "REST APIの設計で、ユーザー一覧取得のエンドポイントにページネーションを実装したい。カーソルベースとオフセットベースのどちらがいいか、パフォーマンスの観点から比較して。", "should_trigger": false},
-  {"query": "DDDのユビキタス言語って具体的にどうやって作るの？ドメインエキスパートとの会話からどうやって用語集を作って共有すればいい？Event Stormingとかやったほうがいい？", "should_trigger": false},
-  {"query": "クリーンアーキテクチャのレイヤー構成を教えて。ドメイン層、ユースケース層、インフラ層、それぞれに何を置くべき？依存関係の方向はどうあるべき？", "should_trigger": false},
-  {"query": "Dockerfileを最適化したい。マルチステージビルドでNode.jsアプリのイメージサイズを小さくする方法。現在1.2GBもあって重い。", "should_trigger": false},
-  {"query": "GraphQLのスキーマ設計で、User型にpostsフィールドを持たせるべきか、別のクエリにすべきか。N+1問題が気になる。DataLoaderの使い方も知りたい。", "should_trigger": false}
+  {
+    "query": "I want to design a TypeScript Order aggregate for an ecommerce system. It has order lines, shipping address, payment method, and Customer should remain a separate aggregate. Please follow Evans and Vernon aggregate rules.",
+    "should_trigger": true
+  },
+  {
+    "query": "Review this Order class from a DDD aggregate perspective. It has public fields, mutates items with items.push(), and directly references a Customer object.",
+    "should_trigger": true
+  },
+  {
+    "query": "For a blog system, should Post and Comment be the same aggregate or separate aggregates? Each post may have up to 100 comments and comments can be liked.",
+    "should_trigger": true
+  },
+  {
+    "query": "In a Scala reservation system, I need a Reservation aggregate. Room is another aggregate, Reservation has multiple ReservationDate values, and room bookings must not overlap.",
+    "should_trigger": true
+  },
+  {
+    "query": "My Kotlin Inventory aggregate exposes a mutable list of StockItem and callers can do inventory.items.add(). Fix the aggregate design.",
+    "should_trigger": true
+  },
+  {
+    "query": "In a Rust CQRS/ES project, how should a BankAccount aggregate represent lifecycle states Opened, Active, Suspended, and Closed?",
+    "should_trigger": true
+  },
+  {
+    "query": "Should ShoppingCart and CartItem be one aggregate? CartItem max is 50 and the cart total must always equal the sum of items.",
+    "should_trigger": true
+  },
+  {
+    "query": "For a Java Spring Boot User aggregate, how do I decide whether Address is a value object, UserProfile is a local entity, and Role is another aggregate?",
+    "should_trigger": true
+  },
+  {
+    "query": "Refactor this TypeScript Order aggregate so confirm() returns a new immutable instance instead of mutating internal state.",
+    "should_trigger": true
+  },
+  {
+    "query": "How should Order and Inventory coordinate when confirming an order must reduce stock but they are separate aggregates?",
+    "should_trigger": true
+  },
+  {
+    "query": "I want to build a React todo app. Should I use Zustand or jotai for state management?",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I add a unique PostgreSQL index to the users.email column in a migration?",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a GitHub Actions CI pipeline that tests on push to main and pushes a Docker image to ECR.",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to use Result types for TypeScript error handling. Should I choose neverthrow or fp-ts?",
+    "should_trigger": false
+  },
+  {
+    "query": "How does backpressure work with Kotlin Flow buffer() and conflate()?",
+    "should_trigger": false
+  },
+  {
+    "query": "Compare cursor pagination and offset pagination for a REST API list endpoint.",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I build a ubiquitous language glossary from conversations with domain experts?",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain Clean Architecture layers and dependency direction.",
+    "should_trigger": false
+  },
+  {
+    "query": "Optimize a Node.js Dockerfile with multi-stage builds because the image is 1.2GB.",
+    "should_trigger": false
+  },
+  {
+    "query": "For GraphQL schema design, should User have a posts field or a separate query to avoid N+1?",
+    "should_trigger": false
+  }
 ]

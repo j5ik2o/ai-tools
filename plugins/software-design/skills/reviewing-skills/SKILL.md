@@ -1,133 +1,35 @@
 ---
 name: reviewing-skills
 description: >-
-  Claude Codeスキルを公式ベストプラクティスに基づいてレビューする。SKILL.mdファイルのレビュー、
-  スキル品質のチェック、スキル構造の検証、改善提案が必要な場合に使用。
-  トリガー：「このスキルをレビューして」「スキル品質をチェック」「SKILL.mdを検証」
-  「このスキルを改善」などのスキルレビューリクエストで起動。
+  Use when reviewing or improving Claude Code, Codex, or compatible agent skills. Checks SKILL.md frontmatter, trigger boundary, progressive disclosure, no-op instructions, duplication, sediment, sprawl, examples, and validation readiness. Trigger for skill review, SKILL.md review, skill quality check, trigger debugging, or improving an existing skill.
 ---
 
-# スキルレビュー
+# Reviewing Skills
 
-公式ベストプラクティスに基づいてスキルをレビューし、具体的な改善提案を行う。
+Review skills for predictable agent behavior, not just readability.
 
-## レビューワークフロー
+## Workflow
 
-### ステップ1: 対象スキルの特定
+1. Identify the target skill directory and read `SKILL.md` completely.
 
-レビュー対象のSKILL.mdファイルを特定する：
+2. Read `references/best-practices.md` before producing findings.
 
-- ユーザーがパスを直接指定
-- カレントディレクトリでSKILL.mdを検索
-- 複数のスキルが存在する場合はユーザーに確認
+3. Check frontmatter name and description for trigger precision and exclusions.
 
-### ステップ2: 読み込みと分析
+4. Check the body for clear steps, completion criteria, progressive disclosure, duplication, no-ops, sediment, and sprawl.
 
-1. 対象のSKILL.mdファイルを完全に読み込む
-2. [best-practices.md](references/best-practices.md) でチェックリストを確認
-3. YAMLフロントマター（name, description）を解析
-4. ボディコンテンツの構造を分析
+5. Inspect bundled references, scripts, assets, and evals when present.
 
-### ステップ3: ベストプラクティスとの照合
+6. Return prioritized findings before optional rewrites.
 
-各カテゴリを評価：
+## Report Shape
 
-**フロントマターチェック**
+Use: `Critical`, `Warning`, `Info`, and `Suggested rewrite` when a concrete replacement is useful.
 
-- name: 長さ、形式、命名規則
-- description: 完全性、具体性、トリガー
+## Detailed Reference
 
-**ボディチェック**
+For non-trivial implementation, review, or refactoring work, read `references/details.md` before giving final guidance. It contains the detailed rules, examples, smells, and migration notes that do not belong in the short invocation body.
 
-- 行数（目標: 500行以下）
-- 構造の明確さ
-- Progressive Disclosureの使用
-- ワークフロー設計の品質
+## Output
 
-**コンテンツチェック**
-
-- 用語の一貫性
-- 例の品質
-- テンプレートの適切さ
-
-**アンチパターン検出**
-
-- デフォルトなしの複数選択肢
-- Windowsスタイルのパス
-- 時間に依存する情報
-- マジック定数
-
-### ステップ4: レビューレポート生成
-
-出力形式：
-
-```markdown
-# スキルレビューレポート: {skill-name}
-
-## サマリー
-- 総合評価: {PASS | NEEDS_IMPROVEMENT | CRITICAL_ISSUES}
-- Critical: {件数}
-- Warning: {件数}
-- Info: {件数}
-
-## Critical（必須修正）
-{修正必須の問題をリスト}
-
-## Warning（推奨修正）
-{推奨される改善をリスト}
-
-## Info（改善提案）
-{オプションの強化をリスト}
-
-## 具体的な推奨事項
-{例を含む具体的なアクションアイテム}
-```
-
-### ステップ5: インタラクティブな改善
-
-レポート提示後：
-
-1. ユーザーに修正を希望するか確認
-2. Critical問題を優先的に修正
-3. 段階的に修正を適用
-4. 各修正後に再検証
-
-## 重大度分類
-
-### Critical
-
-スキルの正常な機能を妨げる問題：
-
-- descriptionが空または不足
-- ボディが500行を大幅に超過
-- スクリプトのセキュリティ脆弱性
-- スクリプトのエラー処理不足
-
-### Warning
-
-スキルの効果を低下させる問題：
-
-- Progressive Disclosureが適用されていない
-- 例が不十分
-- 用語が一貫していない
-- ワークフローが不明確
-
-### Info
-
-改善の機会：
-
-- より簡潔にできる
-- 構造の最適化
-- 追加の例があると良い
-
-## レビューセッション例
-
-ユーザー: 「pdf-processorスキルをレビューして」
-
-```
-1. 読み込み: skills/pdf-processor/SKILL.md
-2. ロード: references/best-practices.md
-3. チェックリストに照らして分析
-4. 日本語でレポート生成
-5. 修正を提案
-```
+Lead with actionable findings and file references. If asked to fix, make the smallest changes that improve invocation, execution, and validation.
