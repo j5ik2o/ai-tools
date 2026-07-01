@@ -168,6 +168,7 @@ def parse_frontmatter(content: str) -> dict:
 
     Raises ValueError with a human-readable reason on malformed frontmatter.
     """
+    content = content.replace("\r\n", "\n")
     if not content.startswith("---"):
         raise ValueError("SKILL.md missing frontmatter (no opening ---)")
     match = FRONTMATTER_PATTERN.match(content)

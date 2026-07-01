@@ -307,6 +307,19 @@ class TestParseSkillMd:
         with pytest.raises(ValueError, match="YAML dictionary"):
             parse_skill_md(tmp_path)
 
+    def test_crlf_line_endings_are_accepted(self, tmp_path):
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_bytes(
+            b"---\r\n"
+            b"name: crlf-skill\r\n"
+            b"description: A skill saved with Windows line endings\r\n"
+            b"---\r\n\r\n"
+            b"# Body\r\n"
+        )
+        name, desc, _ = parse_skill_md(tmp_path)
+        assert name == "crlf-skill"
+        assert desc == "A skill saved with Windows line endings"
+
 
 class TestProjectSkillInstallDir:
     def test_claude_uses_project_claude_skills(self, tmp_path):
