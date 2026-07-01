@@ -1,84 +1,43 @@
 ---
 name: clean-architecture
 description: >-
-  クリーンアーキテクチャを採用しているプロジェクト向けの設計・レビュー支援。4層構造（ドメイン層、
-  ユースケース層、インターフェースアダプタ層、インフラストラクチャ層）に基づく。特にインフラ層は
-  横断的関心事（ロギング、設定管理）のみ、永続化やRPCはインターフェースアダプタ層に配置すべき
-  という原則を適用する。トリガー：「クリーンアーキテクチャで」「クリーンアーキテクチャに従って」
-  「クリーンアーキテクチャのレビュー」など、クリーンアーキテクチャを明示的に指定した場合のみ起動。
-  一般的な「設計レビュー」「アーキテクチャ相談」では起動しない。
+  Use only when the user explicitly asks for Clean Architecture design, implementation, or review. Applies a domain, use case, interface adapter, and infrastructure layer model, with persistence and RPC adapters outside the domain and use-case rules. Do not trigger for generic architecture advice, hexagonal architecture, onion architecture, or ordinary design review unless Clean Architecture is named.
 ---
 
-# クリーンアーキテクチャ
+# Clean Architecture
 
-クリーンアーキテクチャを採用しているプロジェクト向けの設計・レビュー支援。
+Use this skill only for projects that intentionally follow Clean Architecture. Keep policy inward and mechanisms outward.
 
-> **注意**: このスキルはプロジェクトがクリーンアーキテクチャを採用している場合にのみ使用する。
-> 他のアーキテクチャ（Hexagonal、Onion、レイヤード等）には適用しない。
+## Layer Rule
 
-## 層構造の概要
+- Domain: entities, value objects, aggregates, domain services, domain events, and invariants.
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Infrastructure（横断的関心事のみ）                   │
-│  ・ログ ・設定 ・メトリクス ・DI設定                  │
-├─────────────────────────────────────────────────────┤
-│  Interface Adapters（外部との境界）                  │
-│  ・Controller ・Repository実装 ・Gateway実装         │
-├─────────────────────────────────────────────────────┤
-│  Use Cases（アプリケーション固有ルール）             │
-│  ・Use Case ・Output Port（Repository Interface等）│
-├─────────────────────────────────────────────────────┤
-│  Domain（ビジネスルール）                            │
-│  ・Entity ・Value Object ・Domain Service           │
-└─────────────────────────────────────────────────────┘
-```
+- Use cases: application-specific orchestration, transaction boundaries, ports, authorization decisions that are application policy, and repository interface usage.
 
-## 重要な原則
+- Interface adapters: controllers, presenters, gateways, repository implementations, RPC adapters, DTO mapping, and persistence mapping.
 
-### 永続化・RPCの配置場所
+- Infrastructure: cross-cutting mechanisms such as logging, configuration, metrics, DI wiring, clocks, IDs, and concrete driver setup.
 
-| コンポーネント | 配置層 |
-|--------------|--------|
-| Repository Interface | ユースケース層（Output Port） |
-| **Repository 実装** | **インターフェースアダプタ層** |
-| Gateway Interface | ユースケース層（Output Port） |
-| **Gateway 実装（RPC等）** | **インターフェースアダプタ層** |
+## Workflow
 
-### インフラストラクチャ層の責務
+1. Confirm the project actually uses Clean Architecture.
 
-**配置するもの**（横断的関心事のみ）:
+2. Map the touched code to the four layers.
 
-- ロギング機構
-- 設定管理
-- メトリクス・トレーシング
-- DIコンテナ設定
+3. Check dependency direction: outer layers may depend inward; inward layers must not know outer mechanisms.
 
-**配置しないもの**:
+4. Move persistence, RPC, UI, and framework details out of domain and use-case code.
 
-- Repository実装 → インターフェースアダプタ層へ
-- 外部API Gateway → インターフェースアダプタ層へ
+5. Report the minimal relocation or interface extraction needed.
 
-## レビュー時のチェックポイント
+## Reference
 
-1. **ドメイン層に外部依存がないか**
-   - DB接続、HTTPクライアント等の混入を確認
+Read `references/layer-responsibilities.md` when placement is ambiguous.
 
-2. **Repository実装の配置が正しいか**
-   - インターフェースアダプタ層にあるべき
+## Detailed Reference
 
-3. **インフラストラクチャ層が肥大化していないか**
-   - 永続化コードが紛れ込んでいないか確認
+For non-trivial implementation, review, or refactoring work, read `references/details.md` before giving final guidance. It contains the detailed rules, examples, smells, and migration notes that do not belong in the short invocation body.
 
-4. **依存方向が内向きか**
-   - 外側の層から内側への依存のみ許可
+## Output
 
-## 詳細リファレンス
-
-各層の詳細な責務と配置すべきコンポーネントの一覧は [references/layer-responsibilities.md](references/layer-responsibilities.md) を参照。
-
-## 関連スキル（併読推奨）
-このスキルを使用する際は、以下のスキルも併せて参照すること：
-- `repository-placement`: クリーンアーキテクチャにおけるリポジトリインターフェースの配置
-- `package-design`: 各層内のパッケージ設計原則
-- `ddd-module-pattern`: ドメイン層内のモジュール構成
+Provide a layer-by-layer finding list, dependency violations, and concrete file-placement recommendations.

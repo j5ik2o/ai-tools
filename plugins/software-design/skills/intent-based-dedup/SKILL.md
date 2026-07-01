@@ -1,202 +1,39 @@
 ---
 name: intent-based-dedup
 description: >-
-  字面の同一性ではなく意図（目的）の同一性に基づいてコードの共通化を判断するスキル。
-  DRY原則の誤適用（字面が同じだが意図が異なるコードの共通化）を検出し、正しい共通化判定を
-  支援する。コードレビュー、リファクタリング、新規実装時に重複コードの扱いを判断する場合に使用。
-  対象言語: 言語非依存（Rust, Java, TypeScript, Go, Python, Kotlin, Scala等すべて）。
-  トリガー：「重複コードを共通化したい」「DRYに従いたい」「似たコードがある」
-  「この2つの関数をまとめたい」「コードの重複を減らしたい」「共通化すべきか」
-  「リファクタリングで共通関数にしたい」といった重複コード・共通化関連リクエストで起動。
+  Use when deciding whether similar code should be deduplicated. Prioritizes shared intent and change reason over textual similarity, avoiding harmful DRY abstractions when code looks alike but changes for different reasons. Trigger for duplicate code, DRY decisions, merging functions, common helpers, or refactoring similar implementations.
 ---
 
-# 意図ベースの共通化判定
+# Intent-Based Deduplication
 
-字面が同じかどうかより、意図（目的）が同じかどうかで共通化する。
+Deduplicate by intent, not by appearance. Similar text with different reasons to change should stay separate.
 
-## 核心原則
+## Workflow
 
-**「字面が同じなら共通化」という単純思考は危険。意図・目的の一致を最優先に判断する。**
+1. Identify the duplicated code and every caller.
 
-コード表現が同一でも、ビジネスロジック上の目的が異なれば共通化してはならない。
-逆に、表現が異なっていても目的が同じなら統一すべきである。
+2. Name the business or technical intent of each copy.
 
-## 判断マトリックス
+3. Compare future change reasons, owners, invariants, and release cadence.
 
-| 字面 | 意図 | 判定 | アクション |
-|------|------|------|-----------|
-| 同じ | 同じ | 共通化 ◎ | DRY原則を適用し共通関数に抽出 |
-| 異なる | 同じ | 統一 ◎ | どちらかの実装に統一 |
-| 同じ | 異なる | **共通化 ✗** | **絶対に共通化禁止**（最重要） |
-| 異なる | 異なる | 共通化 ✗ | 検討不要 |
+4. Deduplicate only when the shared abstraction can be named honestly and will change for one reason.
 
-## 判断フロー
+5. If intent differs, keep duplication or extract smaller mechanical helpers that do not pretend to be domain concepts.
 
-```
-重複コードを発見した
-    ↓
-2つのコードの「目的」は同じか？
-    ├─ YES → 字面は同じか？
-    │         ├─ YES → 共通化する（標準的DRY）
-    │         └─ NO → 実装方式を統一する
-    └─ NO → 字面は同じか？
-              ├─ YES → ⚠ 共通化禁止（最も危険なケース）
-              └─ NO → 何もしない
-```
+## Decision Matrix
 
-## アンチパターン検出
+- Same text, same intent: merge.
 
-以下のパターンを見つけたらDRY誤適用の兆候：
+- Same text, different intent: keep separate.
 
-```
-❌ 異なるドメイン概念に同じユーティリティ関数を使い回す
-❌ "たまたま同じ計算式" を共通関数に抽出
-❌ 共通化した関数に if (type == A) / else if (type == B) の分岐が増える
-❌ 共通関数名が汎用的すぎる（calculate, process, transform等）
-❌ 一方の仕様変更時に「もう一方も壊れないか」を心配する
-❌ 共通関数のパラメータが増殖し続ける
-```
+- Different text, same intent: consider unifying.
 
-## 4パターンの詳細
+- Different text, different intent: do not merge.
 
-### 1. 字面が同じ × 意図が同じ → 共通化する
+## Detailed Reference
 
-DRY原則が正しく適用されるケース。
+For non-trivial implementation, review, or refactoring work, read `references/details.md` before giving final guidance. It contains the detailed rules, examples, smells, and migration notes that do not belong in the short invocation body.
 
-```rust
-// ❌ 同じ目的の処理が2箇所に重複
-fn report_even_squares(numbers: &[i32]) -> Vec<i32> {
-    numbers.iter()
-        .filter(|&&x| x % 2 == 0)
-        .map(|&x| x * x)
-        .collect()
-}
+## Output
 
-fn display_even_squares(numbers: &[i32]) -> Vec<i32> {
-    numbers.iter()
-        .filter(|&&x| x % 2 == 0)
-        .map(|&x| x * x)
-        .collect()
-}
-
-// ✅ 共通化: 同じ目的なので1つにまとめる
-fn even_squares(numbers: &[i32]) -> Vec<i32> {
-    numbers.iter()
-        .filter(|&&x| x % 2 == 0)
-        .map(|&x| x * x)
-        .collect()
-}
-```
-
-### 2. 字面が異なる × 意図が同じ → 統一する
-
-同じ目的だが異なる実装スタイルで書かれているケース。
-
-```rust
-// パターンA: 関数型アプローチ
-fn total_a(values: &[i32]) -> i32 {
-    values.iter().fold(0, |acc, &x| acc + x)
-}
-
-// パターンB: 命令型アプローチ
-fn total_b(values: &[i32]) -> i32 {
-    let mut sum = 0;
-    for &v in values { sum += v; }
-    sum
-}
-
-// ✅ どちらか一方に統一（チーム規約に従う）
-fn total(values: &[i32]) -> i32 {
-    values.iter().sum()
-}
-```
-
-### 3. 字面が同じ × 意図が異なる → 共通化禁止（最重要）
-
-**最も危険なケース。** 形式上同じコードでも、ビジネス上の目的が異なる。
-
-```rust
-// ケース1: 攻撃力計算（地形倍率を適用）
-fn adjusted_attack_points(weapon_points: &[i32]) -> Vec<i32> {
-    weapon_points.iter()
-        .map(|&x| x * 2)
-        .filter(|&x| x % 2 == 0)
-        .map(|x| x * x)
-        .collect()
-}
-
-// ケース2: 武器加工費用計算
-fn weighted_crafting_costs(amounts: &[i32]) -> Vec<i32> {
-    amounts.iter()
-        .map(|&x| x * 2)
-        .filter(|&x| x % 2 == 0)
-        .map(|x| x * x)
-        .collect()
-}
-```
-
-**字面は同じだが共通化してはならない。** 理由：
-
-- 攻撃力の仕様変更（地形倍率が3倍に変わる等）が費用計算を壊す
-- 費用計算の変更（税率適用等）が攻撃力計算を壊す
-- 変更理由が異なる = 共通化すると結合度が不正に上がる
-
-```rust
-// ❌ 危険な共通化
-fn apply_formula(values: &[i32]) -> Vec<i32> { /* ... */ }
-
-let attack = apply_formula(&weapon_points);  // 攻撃力？
-let cost = apply_formula(&amounts);          // 費用？
-// → 一方を変更すると他方が壊れる
-```
-
-### 4. 字面が異なる × 意図が異なる → 何もしない
-
-検討不要。それぞれ独立したコードとして維持する。
-
-## 「意図の同一性」の判定基準
-
-目的が同じかどうかを見極めるための質問：
-
-1. **変更理由テスト**: 一方の仕様が変わったとき、もう一方も同じ理由で変わるか？
-   - YES → 意図が同じ（共通化可）
-   - NO → 意図が異なる（共通化不可）
-
-2. **命名テスト**: 共通化した関数に、両方の文脈で意味の通る名前を付けられるか？
-   - YES → 意図が同じ
-   - NO（汎用的な名前しか付けられない）→ 意図が異なる
-
-3. **ドメインテスト**: 2つのコードは同じドメイン概念を表しているか？
-   - YES → 意図が同じ
-   - NO → 意図が異なる
-
-## 適用指針
-
-### 推奨
-
-- 「似たコードがある」と報告されたコードレビュー
-- リファクタリングで共通関数を抽出しようとしている場面
-- ユーティリティ関数が複数のドメイン概念に使い回されている場合
-- 共通化した関数のパラメータが増殖し始めた場合
-
-### 過剰適用を避ける
-
-- 明らかに同一目的のボイラープレート（設定初期化、ログ出力等）
-- フレームワーク/ライブラリ提供のユーティリティ
-- 数学的に同一の演算（三角関数等、目的に依存しない純粋な計算）
-
-## レビュー観点
-
-コードレビュー時の確認ポイント：
-
-1. **意図の確認**: 共通化対象の2つのコードは同じ「目的」を持つか
-2. **変更理由の分離**: 一方の仕様変更が他方に波及しないか
-3. **命名の自然さ**: 共通化した名前は両方の文脈で意味が通るか
-4. **パラメータ増殖**: 共通関数に条件分岐やフラグが増えていないか
-5. **ドメイン境界**: 異なるドメイン概念を1つの関数に混ぜていないか
-
-## 関連スキル（併読推奨）
-このスキルを使用する際は、以下のスキルも併せて参照すること：
-- `domain-building-blocks`: 異なるドメインの同形コードを共通化しない判断
-- `first-class-collection`: 同じ構造のコレクションでも意図が異なれば別型とする判断
-- `package-design`: 同じコードでも変更理由が異なればパッケージを分ける判断
+Return the intent comparison, decision, proposed abstraction name if any, and risks of coupling.
