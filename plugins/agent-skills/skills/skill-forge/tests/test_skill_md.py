@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from scripts.run_eval import run_single_query
+from scripts.trigger_probe import TRIGGERED
 from scripts.utils import CLI_CLAUDE, parse_skill_md
 
 # ── 定数 ──────────────────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ def _trigger_rate(query: str, skill_info: tuple, project_root: str) -> float:
         )
         for _ in range(RUNS_PER_QUERY)
     ]
-    return sum(results) / len(results)
+    return sum(1 for r in results if r == TRIGGERED) / len(results)
 
 
 # ── テスト ────────────────────────────────────────────────────────────────────
