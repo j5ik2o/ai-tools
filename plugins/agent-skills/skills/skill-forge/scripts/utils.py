@@ -3,6 +3,7 @@
 import os
 import shutil
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 CLI_CLAUDE = "claude"
@@ -104,6 +105,57 @@ def resolve_skill_dir(cli_type: str, project_root: Path | None = None) -> Path:
         base_root = project_root if project_root is not None else find_project_root(cli_type)
         return base_root / ".agents" / "skills"
     return resolve_cli_home(cli_type, project_root) / "skills"
+
+
+def project_skill_install_dir(cli_type: str, project_root: Path) -> Path:
+    """Return the project-level skills directory the CLI discovers from cwd.
+
+    Unlike resolve_skill_dir, home-directory overrides are irrelevant here:
+    trigger evals run the CLI with cwd at the project root, and the CLI always
+    discovers this path regardless of any home override.
+    """
+    if cli_type == CLI_CODEX:
+        return project_root / ".agents" / "skills"
+    return project_root / ".claude" / "skills"
+
+
+@contextmanager
+def mask_installed_skill(cli_type: str, skill_name: str, project_root: Path):
+    """Temporarily move a same-named installed skill out of CLI discovery.
+
+    Trigger evals present the description under test through a temporary
+    skill. When the real skill is also installed in the project, both are
+    visible under the same name and the real one contaminates the
+    measurement (for Codex it even shadows the marker), so it is moved aside
+    for the duration and restored afterwards.
+
+    Yields the masked location (usable as a copy source), or None when the
+    skill is not installed in the project.
+    """
+    installed = project_skill_install_dir(cli_type, project_root) / skill_name
+    if not (installed.is_symlink() or installed.exists()):
+        yield None
+        return
+
+    # The mask dir sits at the same depth as the skills dir so relative
+    # symlink targets keep resolving from the masked location.
+    mask_root = installed.parent.parent / f"skill-forge-masked-{os.getpid()}"
+    mask_root.mkdir(parents=True, exist_ok=True)
+    masked = mask_root / skill_name
+    installed.rename(masked)
+    print(
+        f"Note: temporarily moved {installed} to {masked} during the trigger "
+        "eval; it is restored automatically when the eval finishes.",
+        file=sys.stderr,
+    )
+    try:
+        yield masked
+    finally:
+        masked.rename(installed)
+        try:
+            mask_root.rmdir()
+        except OSError:
+            pass
 
 
 def parse_skill_md(skill_path: Path) -> tuple[str, str, str]:

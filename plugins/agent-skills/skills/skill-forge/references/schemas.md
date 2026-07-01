@@ -90,6 +90,8 @@ Output from `scripts/run_eval.py`.
 - `attempted_runs`: Runs requested for the query
 - `status`: `ok`, `partial_error`, `error`, or `not_run`
 - `pass`: Whether the observed trigger rate matches `should_trigger`
+- `timeouts`: Optional number of runs that hit the timeout window (counted as
+  non-trigger runs)
 - `errors`: Optional list of run error messages
 - `error_count`: Optional number of failed runs
 

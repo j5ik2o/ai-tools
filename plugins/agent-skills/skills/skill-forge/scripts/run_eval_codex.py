@@ -1,15 +1,29 @@
 """Codex-specific trigger evaluation helpers."""
 
-import json
-import os
-import select
 import shutil
 import subprocess
-import time
+import tempfile
 import uuid
 from pathlib import Path
 
+from scripts.trigger_probe import COMPLETED, TRIGGERED, watch_process
 from scripts.utils import CLI_CODEX, get_cli_command, resolve_skill_dir
+
+
+def _make_codex_classifier(marker: str):
+    """Build a classifier for Codex exec JSON events."""
+
+    def classify(event: dict) -> str | None:
+        event_type = event.get("type", "")
+        if event_type in ("item.completed", "item.updated"):
+            item = event.get("item", {})
+            if item.get("type") == "agent_message" and marker in item.get("text", ""):
+                return TRIGGERED
+        elif event_type == "turn.completed":
+            return COMPLETED
+        return None
+
+    return classify
 
 
 def run_single_query_codex(
@@ -20,8 +34,11 @@ def run_single_query_codex(
     project_root: str,
     model: str | None = None,
     cli_command: str | None = None,
-) -> bool:
-    """Run a single query via Codex CLI and return whether the skill was triggered."""
+) -> str:
+    """Run a single query via Codex CLI and classify the trigger outcome.
+
+    Returns TRIGGERED, COMPLETED, or TIMEOUT.
+    """
     project_root_path = Path(project_root)
     unique_id = uuid.uuid4().hex[:8]
     marker = f"[SKILL_TRIGGERED:{unique_id}]"
@@ -57,66 +74,20 @@ def run_single_query_codex(
         if model:
             cmd.extend(["-m", model])
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=project_root,
-        )
-
-        start_time = time.time()
-        buffer = ""
-
-        try:
-            while time.time() - start_time < timeout:
-                if process.poll() is not None:
-                    remaining = process.stdout.read()
-                    if remaining:
-                        buffer += remaining.decode("utf-8", errors="replace")
-                    break
-
-                ready, _, _ = select.select([process.stdout], [], [], 1.0)
-                if not ready:
-                    continue
-
-                chunk = os.read(process.stdout.fileno(), 8192)
-                if not chunk:
-                    break
-                buffer += chunk.decode("utf-8", errors="replace")
-
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    line = line.strip()
-                    if not line:
-                        continue
-
-                    try:
-                        event = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-
-                    event_type = event.get("type", "")
-                    if event_type in ("item.completed", "item.updated"):
-                        item = event.get("item", {})
-                        if item.get("type") == "agent_message":
-                            text = item.get("text", "")
-                            if marker in text:
-                                return True
-                    elif event_type == "turn.completed":
-                        return False
-
-            return False
-        finally:
-            killed = False
-            if process.poll() is None:
-                process.kill()
-                process.wait()
-                killed = True
-            if not killed and process.returncode and process.returncode != 0:
-                stderr_output = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
-                raise RuntimeError(
-                    f"Codex CLI exited with code {process.returncode}: {stderr_output[:500]}"
-                )
+        with tempfile.TemporaryFile() as stderr_sink:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=stderr_sink,
+                cwd=project_root,
+            )
+            return watch_process(
+                process,
+                timeout=timeout,
+                classify=_make_codex_classifier(marker),
+                label="Codex CLI",
+                stderr_sink=stderr_sink,
+            )
     finally:
         if skill_dir.exists():
             shutil.rmtree(skill_dir, ignore_errors=True)
