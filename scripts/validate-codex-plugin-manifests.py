@@ -125,14 +125,11 @@ def validate_interface(interface: dict[str, Any], label: str, failures: list[str
             continue
         require_non_empty_string(interface, field, f"{label}.interface", failures)
 
-    default_prompt = interface.get("defaultPrompt") or interface.get("default_prompt")
-    if not default_prompt:
-        failures.append(f"{label}: interface.defaultPrompt is required")
-    elif isinstance(default_prompt, list):
-        if not all(isinstance(value, str) and value.strip() for value in default_prompt):
-            failures.append(f"{label}: interface.defaultPrompt entries must be non-empty strings")
-    elif not isinstance(default_prompt, str):
-        failures.append(f"{label}: interface.defaultPrompt must be a string or string list")
+    default_prompt = interface.get("defaultPrompt")
+    if not isinstance(default_prompt, list) or not default_prompt or not all(
+        isinstance(value, str) and value.strip() for value in default_prompt
+    ):
+        failures.append(f"{label}: interface.defaultPrompt must be a non-empty string list")
 
 
 def require_non_empty_string(
