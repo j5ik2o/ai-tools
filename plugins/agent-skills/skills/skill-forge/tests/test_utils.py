@@ -13,7 +13,9 @@ from scripts.utils import (
     detect_cli,
     find_project_root,
     get_cli_command,
+    mask_installed_skill,
     parse_skill_md,
+    project_skill_install_dir,
     resolve_cli_home,
     resolve_skill_dir,
 )
@@ -287,3 +289,57 @@ class TestParseSkillMd:
         skill_md.write_text("---\nname: bad\n")
         with pytest.raises(ValueError, match="no closing"):
             parse_skill_md(tmp_path)
+
+
+class TestProjectSkillInstallDir:
+    def test_claude_uses_project_claude_skills(self, tmp_path):
+        assert project_skill_install_dir(CLI_CLAUDE, tmp_path) == tmp_path / ".claude" / "skills"
+
+    def test_codex_uses_project_agents_skills(self, tmp_path):
+        assert project_skill_install_dir(CLI_CODEX, tmp_path) == tmp_path / ".agents" / "skills"
+
+    def test_ignores_home_overrides(self, tmp_path):
+        with patch.dict(os.environ, {"SKILL_FORGE_CLAUDE_HOME": "/elsewhere"}):
+            assert project_skill_install_dir(CLI_CLAUDE, tmp_path) == tmp_path / ".claude" / "skills"
+
+
+class TestMaskInstalledSkill:
+    def test_noop_when_skill_not_installed(self, tmp_path):
+        with mask_installed_skill(CLI_CLAUDE, "ghost", tmp_path) as masked:
+            assert masked is None
+
+    def test_masks_and_restores_installed_skill(self, tmp_path):
+        installed = tmp_path / ".claude" / "skills" / "foo"
+        installed.mkdir(parents=True)
+        (installed / "SKILL.md").write_text("content")
+
+        with mask_installed_skill(CLI_CLAUDE, "foo", tmp_path) as masked:
+            assert not installed.exists()
+            assert (masked / "SKILL.md").read_text() == "content"
+
+        assert (installed / "SKILL.md").read_text() == "content"
+        assert not masked.parent.exists()
+
+    def test_restores_on_exception(self, tmp_path):
+        installed = tmp_path / ".agents" / "skills" / "foo"
+        installed.mkdir(parents=True)
+
+        with pytest.raises(RuntimeError):
+            with mask_installed_skill(CLI_CODEX, "foo", tmp_path):
+                raise RuntimeError("boom")
+
+        assert installed.exists()
+
+    def test_masked_relative_symlink_still_resolves(self, tmp_path):
+        real = tmp_path / "plugins" / "foo"
+        real.mkdir(parents=True)
+        (real / "SKILL.md").write_text("real content")
+        skills = tmp_path / ".claude" / "skills"
+        skills.mkdir(parents=True)
+        (skills / "foo").symlink_to(Path("..") / ".." / "plugins" / "foo")
+
+        with mask_installed_skill(CLI_CLAUDE, "foo", tmp_path) as masked:
+            assert (masked / "SKILL.md").read_text() == "real content"
+
+        assert (skills / "foo" / "SKILL.md").read_text() == "real content"
+        assert (skills / "foo").is_symlink()

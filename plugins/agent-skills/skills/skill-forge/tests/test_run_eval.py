@@ -23,23 +23,23 @@ SKILL_NAME = "skill-forge"
 
 class TestRunSingleQueryDispatch:
     def test_dispatches_to_claude(self):
-        with patch("scripts.run_eval.run_single_query_claude", return_value=True) as mock:
+        with patch("scripts.run_eval.run_single_query_claude", return_value="triggered") as mock:
             result = run_single_query(
                 "test query", "skill", "desc", 10, "/tmp", cli_type=CLI_CLAUDE,
             )
-            assert result is True
+            assert result == "triggered"
             mock.assert_called_once()
 
     def test_dispatches_to_codex(self):
-        with patch("scripts.run_eval.run_single_query_codex", return_value=False) as mock:
+        with patch("scripts.run_eval.run_single_query_codex", return_value="completed") as mock:
             result = run_single_query(
                 "test query", "skill", "desc", 10, "/tmp", cli_type=CLI_CODEX,
             )
-            assert result is False
+            assert result == "completed"
             mock.assert_called_once()
 
     def test_passes_cli_command_to_claude(self):
-        with patch("scripts.run_eval.run_single_query_claude", return_value=True) as mock:
+        with patch("scripts.run_eval.run_single_query_claude", return_value="triggered") as mock:
             run_single_query(
                 "q", "s", "d", 10, "/tmp",
                 cli_type=CLI_CLAUDE, cli_command="/custom/claude",
@@ -48,7 +48,7 @@ class TestRunSingleQueryDispatch:
             assert args[-1] == "/custom/claude"
 
     def test_passes_cli_command_to_codex(self):
-        with patch("scripts.run_eval.run_single_query_codex", return_value=True) as mock:
+        with patch("scripts.run_eval.run_single_query_codex", return_value="triggered") as mock:
             run_single_query(
                 "q", "s", "d", 10, "/tmp",
                 cli_type=CLI_CODEX, cli_command="/custom/codex",
@@ -77,7 +77,7 @@ class TestCodexCommandArgs:
             return mock_proc
 
         with patch("scripts.run_eval_codex.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 run_single_query_codex(
                     "test query", "my-skill", "test desc", 5, str(project_root),
                 )
@@ -102,7 +102,7 @@ class TestCodexCommandArgs:
             return mock_proc
 
         with patch("scripts.run_eval_codex.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 run_single_query_codex(
                     "test query", "my-skill", "test desc", 5, str(project_root),
                 )
@@ -129,7 +129,7 @@ class TestCliExitCodeHandling:
         mock_process.returncode = 1
 
         with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 with pytest.raises(RuntimeError, match="Codex CLI exited with code 1"):
                     run_single_query_codex(
                         "test query", "my-skill", "test desc", 5, str(project_root),
@@ -145,7 +145,7 @@ class TestCliExitCodeHandling:
         def mock_run(query, *args, **kwargs):
             if query == "error query":
                 raise RuntimeError("CLI crashed")
-            return True
+            return "triggered"
 
         with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
             with patch("scripts.run_eval.run_single_query", side_effect=mock_run):
@@ -195,13 +195,13 @@ class TestRunSingleQueryClaude:
         mock_process, output = self._make_process_mock(events)
 
         with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is True
+        assert result == "triggered"
 
     def test_detects_stream_event_skill_tool_use(self, tmp_path):
         project_root = tmp_path / "project"
@@ -233,13 +233,13 @@ class TestRunSingleQueryClaude:
         mock_process, output = self._make_process_mock(events)
 
         with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is True
+        assert result == "triggered"
 
     def test_stream_event_shape_change_does_not_trigger(self, tmp_path):
         project_root = tmp_path / "project"
@@ -261,13 +261,13 @@ class TestRunSingleQueryClaude:
         mock_process, output = self._make_process_mock(events)
 
         with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is False
+        assert result == "completed"
 
     def test_ignores_non_matching_tool_before_skill_trigger(self, tmp_path):
         project_root = tmp_path / "project"
@@ -295,13 +295,13 @@ class TestRunSingleQueryClaude:
         mock_process, output = self._make_process_mock(events)
 
         with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is True
+        assert result == "triggered"
 
     def test_detects_skill_path_from_read_tool_use(self, tmp_path):
         project_root = tmp_path / "project"
@@ -327,13 +327,13 @@ class TestRunSingleQueryClaude:
         mock_process, output = self._make_process_mock(events)
 
         with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is True
+        assert result == "triggered"
 
     def test_uses_isolated_workspace_for_temp_skill_even_with_override(self, tmp_path):
         project_root = tmp_path / "project"
@@ -354,13 +354,13 @@ class TestRunSingleQueryClaude:
                 return mock_process
 
             with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
-                with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_claude.os.read", return_value=output):
+                with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.trigger_probe.os.read", return_value=output):
                         result = run_single_query_claude(
                             "test query", SKILL_NAME, "test desc", 5, str(project_root),
                         )
 
-        assert result is False
+        assert result == "completed"
         assert observed["cwd"] == project_root
         assert observed["claude_home"].parent == project_root
         assert observed["claude_config_dir"] == observed["claude_home"]
@@ -397,13 +397,13 @@ class TestRunSingleQueryClaude:
             return mock_process
 
         with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_claude.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_claude(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
 
-        assert result is False
+        assert result == "completed"
         assert "description: |\n  test desc\n" in observed["skill_md"]
         assert "old desc" not in observed["skill_md"]
         assert observed["supporting_file"] == "supporting file"
@@ -434,13 +434,13 @@ class TestRunSingleQueryClaude:
 
         with patch.dict(os.environ, {"SKILL_FORGE_CLAUDE_HOME": str(claude_home)}, clear=True):
             with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_claude.os.read", return_value=output):
+                with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.trigger_probe.os.read", return_value=output):
                         result = run_single_query_claude(
                             "test query", SKILL_NAME, "test desc", 5, str(project_root),
                         )
 
-        assert result is True
+        assert result == "triggered"
 
 
 class TestRunSingleQueryCodex:
@@ -467,12 +467,12 @@ class TestRunSingleQueryCodex:
         mock_process = self._make_process_mock(events)
 
         with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 result = run_single_query_codex(
                     "test query", "my-skill", "test desc", 5, str(project_root),
                 )
 
-        assert result is False
+        assert result == "completed"
         # Temp skill dir should be cleaned up
         skill_dirs = list((project_root / ".agents" / "skills").iterdir())
         assert len(skill_dirs) == 0
@@ -489,12 +489,12 @@ class TestRunSingleQueryCodex:
 
         with patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}, clear=True):
             with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+                with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                     result = run_single_query_codex(
                         "test query", "my-skill", "test desc", 5, str(project_root),
                     )
 
-        assert result is False
+        assert result == "completed"
         assert not (codex_home / "skills").exists()
         assert not (project_root / ".codex").exists()
         assert (project_root / ".agents" / "skills").is_dir()
@@ -524,13 +524,13 @@ class TestRunSingleQueryCodex:
             mock_process.returncode = 0
 
             with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_codex.os.read", return_value=output):
+                with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.trigger_probe.os.read", return_value=output):
                         result = run_single_query_codex(
                             "test query", "my-skill", "test desc", 5, str(project_root),
                         )
 
-            assert result is True
+            assert result == "triggered"
 
     def test_detects_marker_in_updated_agent_message(self, tmp_path):
         project_root = tmp_path / "project"
@@ -553,13 +553,13 @@ class TestRunSingleQueryCodex:
             mock_process.returncode = 0
 
             with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_codex.os.read", return_value=output):
+                with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.trigger_probe.os.read", return_value=output):
                         result = run_single_query_codex(
                             "test query", "my-skill", "test desc", 5, str(project_root),
                         )
 
-            assert result is True
+            assert result == "triggered"
 
     def test_codex_event_shape_change_does_not_trigger(self, tmp_path):
         project_root = tmp_path / "project"
@@ -586,13 +586,13 @@ class TestRunSingleQueryCodex:
             mock_process.returncode = 0
 
             with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_codex.os.read", return_value=output):
+                with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.trigger_probe.os.read", return_value=output):
                         result = run_single_query_codex(
                             "test query", "my-skill", "test desc", 5, str(project_root),
                         )
 
-            assert result is False
+            assert result == "completed"
 
     def test_no_trigger_returns_false(self, tmp_path):
         """No marker in output means not triggered."""
@@ -613,13 +613,13 @@ class TestRunSingleQueryCodex:
         mock_process.returncode = 0
 
         with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
-            with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
-                with patch("scripts.run_eval_codex.os.read", return_value=output):
+            with patch("scripts.trigger_probe.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.trigger_probe.os.read", return_value=output):
                     result = run_single_query_codex(
                         "test query", "my-skill", "test desc", 5, str(project_root),
                     )
 
-        assert result is False
+        assert result == "completed"
 
 
 class TestRunEval:
@@ -631,7 +631,7 @@ class TestRunEval:
         ]
 
         def mock_run_single(query, *args, **kwargs):
-            return query == "trigger me"
+            return "triggered" if query == "trigger me" else "completed"
 
         # Patch ProcessPoolExecutor to use ThreadPoolExecutor (avoids pickle issues)
         with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
@@ -660,9 +660,9 @@ class TestRunEval:
             {"query": "should not trigger", "should_trigger": False},
         ]
 
-        # Both return False
+        # Both complete without triggering
         with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
-            with patch("scripts.run_eval.run_single_query", return_value=False):
+            with patch("scripts.run_eval.run_single_query", return_value="completed"):
                 result = run_eval(
                     eval_set=eval_set,
                     skill_name="test",
@@ -685,7 +685,7 @@ class TestRunEval:
 
         def capture_call(*args, **kwargs):
             calls.append((args, kwargs))
-            return True
+            return "triggered"
 
         with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
             with patch("scripts.run_eval.run_single_query", side_effect=capture_call):
@@ -703,7 +703,8 @@ class TestRunEval:
 
         assert len(calls) == 1
         args, _ = calls[0]
-        # args: query, skill_name, description, timeout, project_root, model, cli_type, cli_command
+        # args: query, skill_name, description, timeout, project_root, model,
+        #       cli_type, cli_command, source_skill_dir
         assert args[6] == CLI_CODEX
         assert args[7] == "/custom/codex"
 
@@ -714,7 +715,7 @@ class TestRunEval:
         def count_calls(*args, **kwargs):
             nonlocal call_count
             call_count += 1
-            return True
+            return "triggered"
 
         with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
             with patch("scripts.run_eval.run_single_query", side_effect=count_calls):
@@ -804,7 +805,7 @@ class TestTemporarySkillNames:
 
         with patch.dict(os.environ, {}, clear=True):
             with patch("scripts.run_eval_codex.subprocess.Popen", side_effect=capture_popen):
-                with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+                with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                     run_single_query_codex(
                         "test query", SKILL_NAME, "test desc", 5, str(project_root),
                     )
@@ -833,7 +834,7 @@ class TestTemporarySkillNames:
             return mock_process
 
         with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_claude.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 run_single_query_claude(
                     "test query", SKILL_NAME, "test desc", 5, str(project_root),
                 )
@@ -867,7 +868,7 @@ class TestTemporarySkillNames:
 
         with patch.dict(os.environ, {}, clear=True):
             with patch("scripts.run_eval_codex.subprocess.Popen", side_effect=capture_popen):
-                with patch("scripts.run_eval_codex.select.select", return_value=([], [], [])):
+                with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                     with ThreadPoolExecutor(max_workers=2) as executor:
                         futures = [
                             executor.submit(
@@ -881,7 +882,7 @@ class TestTemporarySkillNames:
                             for _ in range(2)
                         ]
                         for future in futures:
-                            assert future.result() is False
+                            assert future.result() == "completed"
 
         assert len(observed_snapshots) == 2
         assert all(len(snapshot) == 2 for snapshot in observed_snapshots)
@@ -911,7 +912,7 @@ class TestTemporarySkillNames:
             return mock_process
 
         with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_claude.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     futures = [
                         executor.submit(
@@ -925,7 +926,7 @@ class TestTemporarySkillNames:
                         for _ in range(2)
                     ]
                     for future in futures:
-                        assert future.result() is False
+                        assert future.result() == "completed"
 
         assert len(observed_paths) == 2
         assert len({path for path, _ in observed_paths}) == 2
@@ -949,12 +950,148 @@ class TestTemporarySkillNames:
             return mock_process
 
         with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
-            with patch("scripts.run_eval_claude.select.select", return_value=([], [], [])):
+            with patch("scripts.trigger_probe.select.select", return_value=([], [], [])):
                 result = run_single_query_claude(
                     "test query", SKILL_NAME, "test desc", 5, str(project_root),
                 )
 
-        assert result is False
+        assert result == "completed"
         assert observed["cwd"] == project_root
         assert observed["claude_home"].parent == project_root
         assert not observed["claude_home"].exists()
+
+
+class TestTimeoutOutcome:
+    def test_claude_timeout_returns_timeout_outcome(self, tmp_path):
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = None
+
+        with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
+            result = run_single_query_claude(
+                "test query", SKILL_NAME, "test desc", 0, str(project_root),
+            )
+
+        assert result == "timeout"
+        mock_process.kill.assert_called_once()
+
+    def test_codex_timeout_returns_timeout_outcome(self, tmp_path):
+        project_root = tmp_path / "project"
+        (project_root / ".agents" / "skills").mkdir(parents=True)
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = None
+
+        with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
+            result = run_single_query_codex(
+                "test query", "my-skill", "test desc", 0, str(project_root),
+            )
+
+        assert result == "timeout"
+        mock_process.kill.assert_called_once()
+
+    def test_run_eval_counts_timeouts_as_non_triggers(self):
+        eval_set = [{"query": "slow query", "should_trigger": True}]
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
+            with patch("scripts.run_eval.run_single_query", return_value="timeout"):
+                result = run_eval(
+                    eval_set=eval_set,
+                    skill_name="test",
+                    description="desc",
+                    num_workers=1,
+                    timeout=10,
+                    project_root=Path("/tmp"),
+                    runs_per_query=2,
+                    trigger_threshold=0.5,
+                    cli_type=CLI_CLAUDE,
+                )
+
+        entry = result["results"][0]
+        assert entry["runs"] == 2
+        assert entry["triggers"] == 0
+        assert entry["timeouts"] == 2
+        assert entry["status"] == "ok"
+        assert entry["pass"] is False
+        assert result["summary"]["timeouts"] == 2
+
+    def test_run_eval_omits_timeouts_field_when_none(self):
+        eval_set = [{"query": "q", "should_trigger": True}]
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
+            with patch("scripts.run_eval.run_single_query", return_value="triggered"):
+                result = run_eval(
+                    eval_set=eval_set,
+                    skill_name="test",
+                    description="desc",
+                    num_workers=1,
+                    timeout=10,
+                    project_root=Path("/tmp"),
+                    runs_per_query=1,
+                    cli_type=CLI_CLAUDE,
+                )
+
+        assert "timeouts" not in result["results"][0]
+        assert result["summary"]["timeouts"] == 0
+
+
+class TestInstalledSkillMasking:
+    def _run_eval_with_capture(self, project_root, cli_type, installed):
+        captured = {}
+
+        def mock_run(*args, **kwargs):
+            captured["source_skill_dir"] = args[8]
+            captured["installed_hidden"] = not installed.exists()
+            return "completed"
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
+            with patch("scripts.run_eval.run_single_query", side_effect=mock_run):
+                run_eval(
+                    eval_set=[{"query": "q", "should_trigger": False}],
+                    skill_name="test",
+                    description="candidate desc",
+                    num_workers=1,
+                    timeout=10,
+                    project_root=project_root,
+                    runs_per_query=1,
+                    cli_type=cli_type,
+                )
+        return captured
+
+    def test_masks_installed_claude_skill_during_runs(self, tmp_path):
+        project_root = tmp_path / "project"
+        installed = project_root / ".claude" / "skills" / "test"
+        installed.mkdir(parents=True)
+        (installed / "SKILL.md").write_text("---\nname: test\ndescription: original\n---\n")
+
+        captured = self._run_eval_with_capture(project_root, CLI_CLAUDE, installed)
+
+        assert captured["installed_hidden"] is True
+        source = Path(captured["source_skill_dir"])
+        assert source.name == "test"
+        assert source.parent.name.startswith("skill-forge-masked-")
+        # Restored after the eval, mask dir cleaned up
+        assert (installed / "SKILL.md").exists()
+        assert not source.parent.exists()
+
+    def test_masks_installed_codex_skill_during_runs(self, tmp_path):
+        project_root = tmp_path / "project"
+        installed = project_root / ".agents" / "skills" / "test"
+        installed.mkdir(parents=True)
+        (installed / "SKILL.md").write_text("---\nname: test\ndescription: original\n---\n")
+
+        captured = self._run_eval_with_capture(project_root, CLI_CODEX, installed)
+
+        assert captured["installed_hidden"] is True
+        assert (installed / "SKILL.md").exists()
+
+    def test_no_masking_when_skill_not_installed(self, tmp_path):
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        installed = project_root / ".claude" / "skills" / "test"
+
+        captured = self._run_eval_with_capture(project_root, CLI_CLAUDE, installed)
+
+        assert captured["source_skill_dir"] is None
