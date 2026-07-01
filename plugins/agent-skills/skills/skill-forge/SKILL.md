@@ -190,6 +190,18 @@ After this, use `uv run` for every script call (shown in the examples below). `u
 
 If `uv` is not installed, direct the user to https://docs.astral.sh/uv/ — it's a one-line install and there's no alternative setup path.
 
+## Validating skills
+
+Use `scripts/quick_validate.py` before packaging or publishing a skill. The validator supports platform-specific checks:
+
+```bash
+uv run python scripts/quick_validate.py <skill-dir>                  # auto: accepts Claude/Codex frontmatter and validates agents/openai.yaml if present
+uv run python scripts/quick_validate.py <skill-dir> --platform claude
+uv run python scripts/quick_validate.py <skill-dir> --platform codex
+```
+
+Use `--platform claude` when checking Claude Code-only frontmatter such as `disable-model-invocation`, `user-invocable`, or `when_to_use`. Use `--platform codex` when checking Codex skills and `agents/openai.yaml` metadata.
+
 ## Running and evaluating test cases
 
 This section is one continuous sequence — don't stop partway through. Do NOT use `/skill-test` or any other testing skill.
