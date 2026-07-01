@@ -124,16 +124,16 @@ Generate Codex UI metadata after the target skill has stable `SKILL.md`
 frontmatter:
 
 ```bash
-uv run python scripts/generate_openai_yaml.py <skill-dir>
+uv run python -m scripts.generate_openai_yaml <skill-dir>
 ```
 
 Run validation before packaging or publishing:
 
 ```bash
-uv run python scripts/quick_validate.py <skill-dir>
-uv run python scripts/quick_validate.py <skill-dir> --platform claude
-uv run python scripts/quick_validate.py <skill-dir> --platform codex
-uv run python scripts/quick_validate.py <skill-dir> --platform codex --strict-openai-yaml
+uv run python -m scripts.quick_validate <skill-dir>
+uv run python -m scripts.quick_validate <skill-dir> --platform claude
+uv run python -m scripts.quick_validate <skill-dir> --platform codex
+uv run python -m scripts.quick_validate <skill-dir> --platform codex --strict-openai-yaml
 ```
 
 Use `--platform claude` for Claude Code-only frontmatter such as

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Quick validation script for skills."""
+"""Quick validation script for skills.
+
+Run as a module so shared helpers resolve: `uv run python -m scripts.quick_validate`.
+"""
 
 import argparse
 import hashlib
@@ -7,6 +10,8 @@ import sys
 import re
 import yaml
 from pathlib import Path
+
+from scripts.utils import parse_frontmatter
 
 PLATFORM_AUTO = "auto"
 PLATFORM_CLAUDE = "claude"
@@ -202,24 +207,10 @@ def validate_skill(skill_path, platform=PLATFORM_AUTO, strict_openai_yaml=False)
         return False, "SKILL.md not found"
 
     # Read and validate frontmatter
-    content = skill_md.read_text()
-    if not content.startswith('---'):
-        return False, "No YAML frontmatter found"
-
-    # Extract frontmatter
-    match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
-    if not match:
-        return False, "Invalid frontmatter format"
-
-    frontmatter_text = match.group(1)
-
-    # Parse YAML frontmatter
     try:
-        frontmatter = yaml.safe_load(frontmatter_text)
-        if not isinstance(frontmatter, dict):
-            return False, "Frontmatter must be a YAML dictionary"
-    except yaml.YAMLError as e:
-        return False, f"Invalid YAML in frontmatter: {e}"
+        frontmatter = parse_frontmatter(skill_md.read_text())
+    except ValueError as e:
+        return False, str(e)
 
     allowed_properties = _allowed_properties(platform)
 

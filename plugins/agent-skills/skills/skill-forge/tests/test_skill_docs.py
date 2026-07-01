@@ -67,7 +67,7 @@ class TestSkillDocs:
         reference = (SKILL_DIR / "references" / "openai_yaml.md").read_text()
 
         assert "references/openai_yaml.md" in skill_md
-        assert "scripts/generate_openai_yaml.py" in skill_md
+        assert "scripts.generate_openai_yaml" in skill_md
         assert "--strict-openai-yaml" in skill_md
         assert "display_name" in reference
         assert "short_description" in reference

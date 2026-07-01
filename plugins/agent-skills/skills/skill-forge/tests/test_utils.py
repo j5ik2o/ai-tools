@@ -290,6 +290,23 @@ class TestParseSkillMd:
         with pytest.raises(ValueError, match="no closing"):
             parse_skill_md(tmp_path)
 
+    def test_invalid_yaml_raises(self, tmp_path):
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_text(
+            "---\n"
+            "name: bad-skill\n"
+            "description: broken: because: of: colons\n"
+            "---\n"
+        )
+        with pytest.raises(ValueError, match="Invalid YAML"):
+            parse_skill_md(tmp_path)
+
+    def test_non_dict_frontmatter_raises(self, tmp_path):
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_text("---\n- just\n- a list\n---\n")
+        with pytest.raises(ValueError, match="YAML dictionary"):
+            parse_skill_md(tmp_path)
+
 
 class TestProjectSkillInstallDir:
     def test_claude_uses_project_claude_skills(self, tmp_path):
