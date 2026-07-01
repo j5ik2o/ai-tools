@@ -1,10 +1,10 @@
 # README Template
 
-```md
+````md
 # <Project Name>
-<One-liner: 何を解決し、誰に有益か>
+<One-liner: what problem it solves and who benefits>
 
-[English](README.md) | [日本語](README.ja.md)
+[English](README.md) | [Japanese](README.ja.md)
 
 ## Highlights
 - <Feature/Benefit 1>
@@ -48,11 +48,11 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 <License name>. See [LICENSE](LICENSE).
-```
+````
 
 ## Adaptation Notes
 
-- ライブラリ: API最小例を `Usage` の先頭に置く
-- CLI: `Run` にコマンド例を複数置く
-- Webアプリ: 起動URLと初期ログイン情報を明記する
-- GitHub Action: `uses:` の最小YAML例を置く
+- Library: Put the smallest useful API example at the start of `Usage`.
+- CLI: Include multiple command examples in `Run`.
+- Web app: State the local URL and initial login information when applicable.
+- GitHub Action: Include the smallest useful `uses:` YAML example.

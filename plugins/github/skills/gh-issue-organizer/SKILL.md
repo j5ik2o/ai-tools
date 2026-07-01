@@ -1,269 +1,272 @@
 ---
 name: gh-issue-organizer
 description: >
-  GitHub Issue の棚卸し・整理を体系的に実行するスキル。オープンイシューの分類、
-  グルーピング、クローズ判定、優先度付け、バッチ化を行う。
-  CodeRabbit 自動生成イシューと手動報告イシューの区別、根本原因別グルーピング、
-  完了済みイシューの特定とクローズ提案を含む。
-  トリガー：「イシューを整理して」「issue を棚卸し」「GitHub issue をトリアージ」
-  「stale issue をクローズ」「issue の優先度付け」
-  といった GitHub Issue 整理関連リクエストで起動。
+  Systematically inventory and organize GitHub Issues. Classify open issues,
+  group related work, identify close candidates, prioritize remaining work, and
+  propose useful batches. This includes separating CodeRabbit-generated issues
+  from human-reported issues, grouping by root cause, and finding completed
+  issues that can be closed. Trigger on GitHub Issue organization requests such
+  as "organize issues", "triage GitHub issues", "audit open issues", "close
+  stale issues", or "prioritize issues".
 ---
 
-# GitHub Issue 整理スキル
+# GitHub Issue Organizer
 
-オープンイシューの棚卸し・分類・整理を体系的に実行する。
+Systematically inventory, classify, and organize open GitHub Issues.
 
-## ワークフロー
+## Workflow
 
-以下の5ステップで順番に実行する。
+Run the following five steps in order.
 
-### ステップ 1: 現状把握（取得・集計）
+### Step 1: Understand the Current State
 
-`gh` CLI でオープンイシューを全件取得し、現状を把握する。
+Use the `gh` CLI to fetch every open issue and summarize the current backlog.
 
-> **全件取得の保証**: `gh issue list` の `--limit` は取得件数の上限（省略時の既定は30件）であり、これを超えるオープンIssueは黙って欠落する。件数確認・全件取得のいずれも上限で頭打ちにしないこと。
-> - 件数確認: `gh issue list --state open --limit 100000 --json number --jq 'length'`（`--limit` を十分大きく取り実件数を得る。省略すると既定30件で頭打ちになり、上限超えの判定を誤る）
-> - 全件取得: `--limit` を実件数以上に設定する。大規模リポジトリでは `gh api --paginate "repos/{owner}/{repo}/issues?state=open&per_page=100" | jq -s 'add | [.[] | select(.pull_request | not)]'` でページング取得する。`--paginate` はページごとに JSON 配列を出力するため、`--jq` をページ単位で適用すると配列が分断される。`jq -s 'add'` で全ページを1つの配列に集約してから、Issues エンドポイントが返す PR（`.pull_request` を持つ要素）を除外すること。
+> **Complete retrieval guarantee**: `gh issue list --limit` is an upper bound, and the default limit is 30. Open issues beyond the limit are silently omitted. Do not let counting or retrieval stop at the default limit.
+> - Count issues with a sufficiently high limit: `gh issue list --state open --limit 100000 --json number --jq 'length'`.
+> - Fetch all issues with a limit at least as large as the actual issue count. For large repositories, use `gh api --paginate "repos/{owner}/{repo}/issues?state=open&per_page=100" | jq -s 'add | [.[] | select(.pull_request | not)]'`. `--paginate` emits one JSON array per page, so applying `--jq` page by page splits the result. Use `jq -s 'add'` to combine all pages first, then remove PRs returned by the Issues endpoint by excluding entries with `.pull_request`.
 
 ```bash
-# 全オープンイシューを取得（ラベル・作成者・作成日付き。--limit はオープンIssue数以上に設定する）
+# Fetch all open issues with labels, author, and timestamps. Set --limit above the open issue count.
 gh issue list --state open --limit 1000 --json number,title,labels,author,createdAt,updatedAt,body
 
-# ラベル別の件数を確認
+# Count issues by label.
 gh issue list --state open --limit 1000 --json labels --jq '[.[].labels[].name] | group_by(.) | map({label: .[0], count: length}) | sort_by(-.count)'
 ```
 
-結果をサマリーテーブルとして整理する:
+Summarize the result as a table:
 
-| 項目 | 件数 |
-|------|------|
-| オープンイシュー合計 | N件 |
-| CodeRabbit 自動生成 | N件 |
-| 手動報告（＝合計 − CodeRabbit 自動生成） | N件 |
+| Item | Count |
+|------|-------|
+| Total open issues | N |
+| CodeRabbit-generated | N |
+| Human-reported | N |
 
-> ここでは「自動生成 / 手動報告」の2区分のみで概況を把握する（合計 ＝ CodeRabbit 自動生成 ＋ 手動報告）。CodeRabbit 自動生成と手動報告の判定基準（author `coderabbitai` または `coderabbit` ラベル。`github-actions[bot]` 等の他ボットは CodeRabbit に含めない）と抽出コマンドはステップ2で定義する。ステップ1の件数はその基準に基づく概算とし、確定値・カテゴリ内訳（バグ・機能要求・Epic / リファクタリング・その他）はステップ2で分類してステップ5で集計する。
+> At this stage, use only two high-level buckets: generated and human-reported. Total equals CodeRabbit-generated plus human-reported. The CodeRabbit criteria are author `coderabbitai` or a label containing `coderabbit`; other bots such as `github-actions[bot]` are not CodeRabbit. Step 2 defines the detailed extraction commands. Treat Step 1 counts as a preliminary overview, then produce final category counts in Step 5 after classification.
 
-### ステップ 2: 分類
+### Step 2: Classify Issues
 
-各イシューを以下のカテゴリに分類する。
+Classify each issue into the categories below.
 
-#### 分類基準
+#### Classification Criteria
 
-| カテゴリ | 判定条件 |
-|----------|----------|
-| **CodeRabbit 自動生成** | author が `coderabbitai`、またはラベルに `coderabbit` を含む（`github-actions[bot]` 等の他の自動化ボットは含めない。該当しないボット生成イシューは「その他」へ） |
-| **手動報告（バグ）** | `bug` ラベルが付いている、またはタイトルに「バグ」「不具合」を含む |
-| **手動報告（機能要求）** | ラベルに `enhancement` / `feature` を含む |
-| **Epic / リファクタリング** | ラベルに `refactoring` / `epic` を含む、またはタイトルに「Phase」「リファクタリング」を含む |
-| **その他** | 上記4カテゴリのいずれにも該当しないすべてのイシュー（バグ・機能要求・Epic の手掛かりがない人間作成イシューに加え、CodeRabbit 以外のボット生成イシュー（Dependabot 等）も含む真の包括カテゴリ） |
+| Category | Rule |
+|----------|------|
+| **CodeRabbit-generated** | Author is `coderabbitai`, or any label contains `coderabbit`. Other automation bots such as `github-actions[bot]` are not included; put non-CodeRabbit bot issues in Other. |
+| **Human-reported bug** | Issue has the `bug` label, or the title contains clear bug wording such as `bug`, `defect`, `failure`, or `broken`. |
+| **Human-reported feature request** | Labels include `enhancement` or `feature`. |
+| **Epic / refactoring** | Labels include `refactoring` or `epic`, or the title contains `Phase` or `refactoring`. |
+| **Other** | Every issue that does not match the four categories above, including human-created issues with no bug, feature, or epic signal, and non-CodeRabbit bot issues such as Dependabot. |
 
-> 分類は上から順に判定し、最初に一致したカテゴリを採用する（先勝ち）。**CodeRabbit 自動生成** 以外を、バグ → 機能要求 → Epic / リファクタリング の順で判定し、いずれにも該当しないものをすべて **その他** とする（その他は非 CodeRabbit のボット生成イシューも含む包括カテゴリ。これにより全イシューが必ずいずれか1カテゴリに入り、ステップ5の合計と整合する）。バグ判定の確実な根拠はラベル `bug` であり、タイトル語句（「バグ」「不具合」）は言語依存のベストエフォートな補助に過ぎない。ラベルが無く機械判定が難しいイシュー（英語タイトルのバグ報告等）は無理にバグへ寄せず **その他** に置き、必要に応じて手動で確認して `bug` ラベルを付与する。
+> Evaluate categories from top to bottom and use the first match. After CodeRabbit-generated, check bug, then feature request, then Epic / refactoring, and finally Other. This guarantees every issue belongs to exactly one category and keeps Step 5 totals consistent. The reliable bug signal is the `bug` label; title keywords are best-effort language-dependent helpers. If an unlabeled issue is hard to classify mechanically, leave it in Other and ask for a label when needed.
 
-#### 判定用コマンド
+#### Classification Commands
 
 ```bash
-# CodeRabbit 生成イシューを抽出（author または `coderabbit` ラベル。分類表と一致させる）
+# Extract CodeRabbit-generated issues. Keep this aligned with the classification table.
 gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select(.author.login == "coderabbitai" or (.labels | any(.name | ascii_downcase | contains("coderabbit"))))]'
 
-# 手動報告イシューを抽出（上記 CodeRabbit 条件の否定）
+# Extract human-reported issues by negating the CodeRabbit condition.
 gh issue list --state open --limit 1000 --json number,title,author,labels --jq '[.[] | select((.author.login == "coderabbitai" or (.labels | any(.name | ascii_downcase | contains("coderabbit")))) | not)]'
 ```
 
-### ステップ 3: グルーピング
+### Step 3: Group Related Work
 
-分類済みイシューを根本原因・テーマ別にグループ化する。
+Group classified issues by root cause or theme.
 
-#### グルーピングの観点
+#### Grouping Dimensions
 
-1. **コード領域**: 対象モジュール・クレート（actor-core, remote, cluster, streams 等）
-2. **根本原因**: 共通の設計課題（mutex戦略、型設計、カプセル化、エラー処理 等）
-3. **対応の粒度**: 単独対応可 vs 一括対応が効率的
+1. **Code area**: target module, crate, package, service, or UI area.
+2. **Root cause**: shared design problem, such as locking strategy, type design, encapsulation, or error handling.
+3. **Work granularity**: independently fixable versus more efficient as a batch.
 
-#### 出力フォーマット
+#### Output Format
 
+```md
+## Group: [Theme]
+- Related issues: #N, #M, #K
+- Root cause: [Explanation]
+- Proposed handling: [Individual / Batch]
+- Estimated effort: [Small / Medium / Large]
 ```
-## グループ: [テーマ名]
-- 関連イシュー: #N, #M, #K
-- 根本原因: [説明]
-- 対応方針: [個別 / バッチ]
-- 推定作業量: [小 / 中 / 大]
-```
 
-### ステップ 4: クローズ判定（コード検証必須）
+### Step 4: Decide Close Candidates With Code Verification
 
-各イシューについて、**実際にコードを読んで**解決済みかどうかを判定する。
-PR履歴やコミットログだけで判断してはならない。必ず現在のコードを確認すること。
+For each issue, decide whether it is already resolved by **reading the current code**.
+Do not rely only on PR history or commit logs. Always inspect the current code.
 
-#### 判定手順
+#### Verification Steps
 
-**各イシューに対して以下を順番に実行する:**
+**Run these steps for each issue:**
 
-1. **イシュー本文の解析**: イシュー本文から以下を抽出する
-   - 対象ファイルパス
-   - 対象シンボル（関数名、構造体名、トレイト名 等）
-   - 指摘内容（何が問題とされているか）
-   - コードスニペット（引用されているコード）
+1. **Parse the issue body** and extract:
+   - Target file paths
+   - Target symbols, such as function names, structs, classes, traits, or types
+   - The reported problem
+   - Quoted code snippets
 
-2. **対象コードの存在確認**: ファイル・シンボルが現在のコードベースに存在するか確認する
+2. **Check whether the target code still exists**:
    ```bash
-   # ファイルパスが分かっている場合
-   test -f <ファイルパス>
+   # When a file path is known.
+   test -f <file-path>
 
-   # シンボル・関数名・型名を現在のコードベースから検索
-   rg -n "<シンボル名>|<関数名>|<型名>" .
+   # Search current code for symbols, function names, or type names.
+   rg -n "<symbol>|<function>|<type>" .
 
-   # 指摘本文の特徴的なコード片・エラーメッセージを検索
-   rg -n "<特徴的な文字列>" .
+   # Search for distinctive snippets or error messages from the issue.
+   rg -n "<distinctive-string>" .
    ```
-   `rg` が使えない環境では、利用可能な file read / grep 相当の手段で同じ確認を行う。
-   現在のパス・名前で見つかった場合は手順3へ進む。
+   If `rg` is unavailable, use the best available file-read or grep equivalent.
+   If the current path or name is found, continue to step 3.
 
-   **見つからない場合でも、即「対象消失」と判断してはならない**。リネーム・移動・分割で別の場所へ動いた可能性があるため、必ず git 履歴で追跡する（リネームを見落とすと、まだ有効な指摘を誤ってクローズしてしまう）:
+   **If it is not found, do not immediately mark the target as gone.** It may have been renamed, moved, or split. Track it through git history so a still-valid issue is not closed incorrectly:
    ```bash
-   # ファイルのリネーム/移動を追跡（-M でリネーム検出、--follow で履歴を辿る）
-   git log --follow -M --oneline -- <ファイルパス>
-   git log -p -M --follow -- <ファイルパス>        # 移動先・変更内容まで確認
+   # Track file renames and moves.
+   git log --follow -M --oneline -- <file-path>
+   git log -p -M --follow -- <file-path>        # Inspect moved paths and changed content.
 
-   # シンボル（関数・型名等）が移動した先を特定する
-   git log -S'<シンボル名>' --oneline --all        # その文字列の出現数が変化したコミット
-   git log -G'<シンボル名>' --oneline --all        # その文字列を含む差分があるコミット
-   # 現在のコードベース全体でも改名後の名前を rg で広めに検索する
-   rg -n "<改名後の候補名>|<関連語>" .
+   # Find where a symbol may have moved.
+   git log -S'<symbol>' --oneline --all         # Commits where the string occurrence count changed.
+   git log -G'<symbol>' --oneline --all         # Commits with diffs containing the string.
+
+   # Search broadly for possible renamed terms in the current codebase.
+   rg -n "<renamed-candidate>|<related-term>" .
    ```
-   - リネーム・移動先が見つかった → その新しいパス/名前のコードを手順3で読んで判定する（**対象消失にしない**）
-   - git 履歴上も削除されており移動先が無い → **対象消失**（理由: 対象コード削除済み）
+   - If a rename or move is found, inspect the new path or name in step 3. Do not treat it as gone.
+   - If git history shows deletion and no moved target, mark it as **Target gone**.
 
-   ※ git 履歴はあくまで「コードが現在どこにあるか」を特定するために使う。解決済みかどうかの判定は、移動先の**現在のコードを実際に読んで**行う（手順3）。
+   Git history is only for locating the current code. The resolved/unresolved decision must still come from reading the current implementation.
 
-3. **コードの実読**: 対象シンボル（リネーム・移動後を含む）が見つかった場合、**実際にコードを読んで**指摘内容が解消されているか判定する
+3. **Read the relevant code** for the target symbol, including renamed or moved targets:
    ```bash
-   # 行番号が分かっている場合は該当範囲を読む
-   sed -n '<開始行>,<終了行>p' <ファイルパス>
+   # Read the relevant range when line numbers are known.
+   sed -n '<start-line>,<end-line>p' <file-path>
 
-   # 対象周辺を広めに読む
-   rg -n "<シンボル名>|<指摘パターン>" <ファイルパス>
+   # Search around the target.
+   rg -n "<symbol>|<reported-pattern>" <file-path>
    ```
-   file read ツールが使える環境では、該当ファイルの該当箇所を直接読む。
-   Serena などのシンボリックツールが利用可能な場合だけ補助的に使ってよいが、
-   その有無を前提にしない。
-   確認観点:
-   - 指摘されていた問題のコードパターンがまだ残っているか？
-   - リファクタリングにより構造が変わって指摘が無効化されているか？
-   - 指摘通りの修正が既に適用されているか？
+   If a file-read tool is available, use it to inspect the relevant section directly.
+   Symbolic tools such as Serena may be used as optional helpers only when available; do not depend on them.
 
-4. **判定結果の記録**: 各イシューに以下のいずれかのステータスを付与する
+   Check:
+   - Does the reported problematic pattern still exist?
+   - Did refactoring make the report obsolete?
+   - Has the exact requested fix already been applied?
 
-| ステータス | 基準 | 根拠の記載方法 |
-|-----------|------|---------------|
-| **クローズ可能** | コードを読んだ結果、指摘が解消されている | 「`<ファイル>` の `<シンボル>` を確認。指摘内容の `<問題>` は `<現在の実装>` により解消済み」 |
-| **対象消失** | 指摘対象のファイル・シンボルが存在せず、git 履歴でもリネーム・移動先が無い（削除済み） | 「`<ファイル>` は削除済み（`git log --follow` で移動先なしを確認）」または「`<シンボル>` は存在しない」 |
-| **未解決** | コードを読んだ結果、指摘内容がまだ該当する | 「`<ファイル>` の `<シンボル>` を確認。指摘の `<問題>` は依然として存在」 |
-| **要確認** | コードだけでは判断できない（設計意図に依存等） | 判断できない理由を明記 |
-| **重複** | 別イシューと同一の指摘 | 重複先の Issue 番号を明記 |
+4. **Record one status for each issue**:
 
-#### 判定の原則
+| Status | Rule | Evidence format |
+|--------|------|-----------------|
+| **Closable** | Current code shows the report has been resolved. | "Checked `<symbol>` in `<file>`; the reported `<problem>` is resolved by `<current implementation>`." |
+| **Target gone** | The target file or symbol no longer exists, and git history shows no rename or move target. | "`<file>` was deleted; `git log --follow` showed no moved target" or "`<symbol>` no longer exists." |
+| **Unresolved** | Current code still contains the reported problem. | "Checked `<symbol>` in `<file>`; the reported `<problem>` still exists." |
+| **Needs confirmation** | Code alone cannot decide because the result depends on design intent or product direction. | State why the decision cannot be made from code alone. |
+| **Duplicate** | The same report is already covered by another issue. | State the duplicate issue number. |
 
-- **コードを読まずにクローズ判定してはならない**。PR タイトルやコミットメッセージだけで「修正済み」と判断しない。
-- **ファイル・シンボルが見つからない＝削除、と即断しない**。対象消失と判定する前に、必ず git 履歴（`git log --follow -M` / `git log -S` / `git log -G`）でリネーム・移動を追跡し、移動先があればそのコードで判定する。
-- イシュー1件ごとに、対象コードの該当箇所を実際に読んで確認する。
-- CodeRabbit イシューは指摘箇所が具体的（ファイルパス・行番号付き）なので、その箇所を直接読む。
-- 大量のイシューを処理する場合は Agent ツールで並列に検証してもよい。
+#### Decision Principles
 
-#### クローズ時のコメント
+- **Do not mark an issue as closable without reading code**. Do not infer resolution from PR titles, commit messages, or merge history alone.
+- **Do not assume missing file or symbol equals deletion**. Before using Target gone, follow renames and moves with `git log --follow -M`, `git log -S`, and `git log -G`; if a moved target exists, inspect that current code.
+- Inspect the relevant current code for every issue.
+- CodeRabbit issues usually point to a concrete file and line, so inspect that exact location first.
+- For large issue sets, use agent tooling to verify issues in parallel when available.
 
-クローズする際は、**コード確認の根拠を含めて**以下のフォーマットでコメントを付ける:
+#### Close Comment Format
 
-```
-## 解決確認
+When closing an issue, include code-verification evidence in this format:
 
-- 確認対象: `<ファイルパス>` の `<シンボル名>`
-- 確認結果: <指摘内容>は<具体的な現在の実装の説明>により解消済み
-- 関連: [PR #N / リファクタリング Phase X]（該当する場合）
+```md
+## Resolution Check
 
-クローズします。
-```
+- Checked target: `<symbol>` in `<file-path>`
+- Result: `<reported problem>` is resolved by `<specific current implementation>`
+- Related: [PR #N / Refactoring Phase X] when applicable
 
-**重要**: 実際のクローズ操作は、判定結果をユーザーに報告し承認を得てから実行する。
-
-### ステップ 5: 報告
-
-分析結果を以下のフォーマットで報告する。
-
-#### サマリー
-
-```
-## Issue 棚卸しサマリー
-
-| カテゴリ | 件数 | クローズ候補 | 残存 |
-|----------|------|-------------|------|
-| CodeRabbit 自動生成 | N | N | N |
-| 手動報告（バグ） | N | N | N |
-| 手動報告（機能要求） | N | N | N |
-| Epic / リファクタリング | N | N | N |
-| その他 | N | N | N |
-| 合計 | N | N | N |
+Closing this issue.
 ```
 
-#### クローズ候補一覧
+**Important**: Do not close issues until the user approves the proposed close list. The skill may prepare the analysis automatically, but the actual close action requires user approval.
 
+### Step 5: Report
+
+Report the analysis in the format below.
+
+#### Summary
+
+```md
+## Issue Inventory Summary
+
+| Category | Count | Close candidates | Remaining |
+|----------|-------|------------------|-----------|
+| CodeRabbit-generated | N | N | N |
+| Human-reported bug | N | N | N |
+| Human-reported feature request | N | N | N |
+| Epic / refactoring | N | N | N |
+| Other | N | N | N |
+| Total | N | N | N |
 ```
-## クローズ候補
 
-| # | タイトル | ステータス | 確認箇所 | 根拠 |
-|---|---------|-----------|---------|------|
-| #N | ... | クローズ可能 | `src/actor/foo.rs` の `Bar::baz()` | 指摘の mutex 使用は Arc<RwLock> に変更済み |
-| #N | ... | 対象消失 | `src/old_module.rs` | ファイル削除済み |
-| #N | ... | 重複 | - | #M と同一指摘 |
+#### Close Candidates
+
+```md
+## Close Candidates
+
+| # | Title | Status | Checked location | Evidence |
+|---|-------|--------|------------------|----------|
+| #N | ... | Closable | `Bar::baz()` in `src/actor/foo.rs` | Reported mutex usage has been replaced with `Arc<RwLock>`. |
+| #N | ... | Target gone | `src/old_module.rs` | File was deleted. |
+| #N | ... | Duplicate | - | Same report as #M. |
 ```
 
-#### グループ別詳細
+#### Group Details
 
-各グループごとに以下を記載:
-- 関連イシュー一覧
-- 根本原因の説明
-- 推奨アクション（クローズ / 対応 / 保留）
-- バッチ対応の提案（同時に対処すべきイシュー群）
+For each group, include:
 
-#### 優先度提案
+- Related issues
+- Root cause
+- Recommended action: close, fix, or defer
+- Batch proposal for issues that should be handled together
 
-残存イシューに対する対応順の提案:
-1. **High**: セーフティ・正確性に関わるもの
-2. **Medium**: 設計改善・保守性向上
-3. **Low**: スタイル・軽微な改善
+#### Priority Proposal
 
-## gh CLI コマンドリファレンス
+Recommend the order for remaining issues:
+
+1. **High**: Safety or correctness issues
+2. **Medium**: Design or maintainability improvements
+3. **Low**: Style or minor improvements
+
+## gh CLI Command Reference
 
 ```bash
-# イシュー一覧（詳細）
+# Detailed issue list.
 gh issue list --state open --limit 1000 --json number,title,labels,author,createdAt,updatedAt,body,comments
 
-# 特定ラベルのイシュー
+# Issues with a specific label.
 gh issue list --state open --limit 1000 --label "bug" --json number,title
 
-# イシュー詳細の確認
+# Issue details.
 gh issue view <number> --json number,title,body,labels,author,comments
 
-# イシューのクローズ（コメント付き）
-gh issue close <number> --comment "理由"
+# Close an issue with a comment.
+gh issue close <number> --comment "Reason"
 
-# イシューへのラベル追加
+# Add a label to an issue.
 gh issue edit <number> --add-label "label-name"
 
-# マージ済みPR一覧
+# Recently merged PRs.
 gh pr list --state merged --limit 50 --json number,title,mergedAt
 
-# PR の変更ファイル確認
+# Files changed by a PR.
 gh pr view <number> --json files
 ```
 
-## 注意事項
+## Notes
 
-- **クローズ判定は必ずコードを読んで行う**。PR履歴・コミットメッセージ・タイトルだけで判断しない。指摘箇所の現在のコードを実際に確認する。
-- **クローズ操作は必ずユーザー承認後に実行する**。判定結果の報告まではスキルが自動実行し、実際のクローズはユーザーの確認を経て行う。
-- コード確認は `rg`、file read、`git log --follow -M`、`git log -S`、`git log -G` を第一候補にする。Serena などのシンボリックツールは利用可能な場合だけ補助的に使う。
-- CodeRabbit イシューは指摘箇所が具体的（ファイルパス・行番号付き）なので、その箇所を直接読んで判定する。
-- CodeRabbit イシューは数が多いため、まずグルーピングで全体像を把握してからクローズ判定に進む。
-- 大量のイシューを効率的に処理するため、同一ファイルに関するイシューはまとめて確認する。
-- イシュー本文が長い場合は `--jq` で必要なフィールドのみ抽出し、効率的に処理する。
-- 判断に迷うイシューは「要確認」として残し、ユーザーに判断を委ねる。
+- **Close decisions must be based on reading current code**. Do not decide from PR history, commit messages, or titles alone.
+- **Close actions require user approval**. The skill can prepare the findings, but the user must approve actual closures.
+- Prefer `rg`, file read, `git log --follow -M`, `git log -S`, and `git log -G` for code verification. Use symbolic tools such as Serena only as optional helpers when available.
+- CodeRabbit issues usually include concrete file and line references, so inspect those locations directly.
+- CodeRabbit issue sets can be large; group them first to understand the shape of the backlog before close-candidate verification.
+- To process many issues efficiently, inspect issues about the same file together.
+- When issue bodies are long, use `--jq` to extract only the needed fields.
+- Leave ambiguous issues as Needs confirmation and ask the user to decide.
