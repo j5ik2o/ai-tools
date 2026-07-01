@@ -9,6 +9,20 @@ SKILL_DIR = Path(__file__).parent.parent
 
 
 class TestSkillDocs:
+    def test_skill_md_stays_under_progressive_disclosure_line_budget(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+
+        assert len(skill_md.splitlines()) < 500
+
+    def test_split_references_are_discoverable_from_skill_md(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+
+        assert "references/skill_authoring.md" in skill_md
+        assert "references/eval_workflow.md" in skill_md
+        assert "references/description_optimization.md" in skill_md
+        assert "references/platform_notes.md" in skill_md
+        assert "Read only the reference files needed for the current branch" in skill_md
+
     def test_frontmatter_description_mentions_existing_skill_and_boundary(self):
         _, description, _ = parse_skill_md(SKILL_DIR)
 
