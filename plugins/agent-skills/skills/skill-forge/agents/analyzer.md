@@ -208,7 +208,7 @@ You receive these parameters in your prompt:
 2. Note the configurations tested (with_skill, without_skill)
 3. Understand the run_summary aggregates already calculated
 
-### Step 2: Analyze Per-Assertion Patterns
+### Step 2: Analyze Per-Expectation Patterns
 
 For each expectation across all runs:
 - Does it **always pass** in both configurations? (may not differentiate skill value)
@@ -239,7 +239,7 @@ Write freeform observations as a list of strings. Each note should:
 - Help the user understand something the aggregate metrics don't show
 
 Examples:
-- "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value"
+- "Expectation 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value"
 - "Eval 3 shows high variance (50% ± 40%) - run 2 had an unusual failure that may be flaky"
 - "Without-skill runs consistently fail on table extraction expectations (0% pass rate)"
 - "Skill adds 13s average execution time but improves pass rate by 50%"
@@ -252,7 +252,7 @@ Save notes to `{output_path}` as a JSON array of strings:
 
 ```json
 [
-  "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
+  "Expectation 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
   "Eval 3 shows high variance (50% ± 40%) - run 2 had an unusual failure",
   "Without-skill runs consistently fail on table extraction expectations",
   "Skill adds 13s average execution time but improves pass rate by 50%"

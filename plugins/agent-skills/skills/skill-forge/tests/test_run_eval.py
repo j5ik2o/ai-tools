@@ -63,7 +63,7 @@ class TestCodexCommandArgs:
     def test_no_invalid_approval_flag(self, tmp_path):
         """Ensure -a flag is not used (removed in current codex CLI)."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         captured_cmd = []
 
@@ -88,7 +88,7 @@ class TestCodexCommandArgs:
     def test_codex_command_includes_required_flags(self, tmp_path):
         """Verify codex exec includes --json, -s, -C flags."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         captured_cmd = []
 
@@ -119,7 +119,7 @@ class TestCliExitCodeHandling:
 
     def test_codex_nonzero_exit_raises(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         mock_process = MagicMock()
         mock_process.poll.side_effect = [0, 0]
@@ -203,6 +203,72 @@ class TestRunSingleQueryClaude:
 
         assert result is True
 
+    def test_detects_stream_event_skill_tool_use(self, tmp_path):
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+
+        events = [
+            json.dumps({
+                "type": "stream_event",
+                "event": {
+                    "type": "content_block_start",
+                    "content_block": {"type": "tool_use", "name": "Skill"},
+                },
+            }),
+            json.dumps({
+                "type": "stream_event",
+                "event": {
+                    "type": "content_block_delta",
+                    "delta": {
+                        "type": "input_json_delta",
+                        "partial_json": json.dumps({"skill": SKILL_NAME}),
+                    },
+                },
+            }),
+            json.dumps({
+                "type": "stream_event",
+                "event": {"type": "content_block_stop"},
+            }),
+        ]
+        mock_process, output = self._make_process_mock(events)
+
+        with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
+            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.run_eval_claude.os.read", return_value=output):
+                    result = run_single_query_claude(
+                        "test query", SKILL_NAME, "test desc", 5, str(project_root),
+                    )
+
+        assert result is True
+
+    def test_stream_event_shape_change_does_not_trigger(self, tmp_path):
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+
+        events = [
+            json.dumps({
+                "type": "stream_event",
+                "event": {
+                    "type": "content_block_delta",
+                    "delta": {
+                        "type": "text_delta",
+                        "text": json.dumps({"skill": SKILL_NAME}),
+                    },
+                },
+            }),
+            json.dumps({"type": "result"}),
+        ]
+        mock_process, output = self._make_process_mock(events)
+
+        with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
+            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.run_eval_claude.os.read", return_value=output):
+                    result = run_single_query_claude(
+                        "test query", SKILL_NAME, "test desc", 5, str(project_root),
+                    )
+
+        assert result is False
+
     def test_ignores_non_matching_tool_before_skill_trigger(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
@@ -269,7 +335,7 @@ class TestRunSingleQueryClaude:
 
         assert result is True
 
-    def test_uses_isolated_workspace_for_temp_command_even_with_override(self, tmp_path):
+    def test_uses_isolated_workspace_for_temp_skill_even_with_override(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
         claude_home = tmp_path / "custom-claude-home"
@@ -284,6 +350,7 @@ class TestRunSingleQueryClaude:
             def capture_popen(*args, **kwargs):
                 observed["cwd"] = Path(kwargs["cwd"])
                 observed["claude_home"] = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"])
+                observed["claude_config_dir"] = Path(kwargs["env"]["CLAUDE_CONFIG_DIR"])
                 return mock_process
 
             with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
@@ -296,43 +363,50 @@ class TestRunSingleQueryClaude:
         assert result is False
         assert observed["cwd"] == project_root
         assert observed["claude_home"].parent == project_root
+        assert observed["claude_config_dir"] == observed["claude_home"]
         assert not observed["claude_home"].exists()
         assert not (claude_home / "commands").exists()
+        assert not (claude_home / "skills").exists()
         assert not (project_root / ".claude").exists()
 
-    def test_detects_skill_path_from_override_claude_home(self, tmp_path):
+    def test_copies_supporting_files_into_temp_skill(self, tmp_path):
         project_root = tmp_path / "project"
-        project_root.mkdir()
-        claude_home = tmp_path / "custom-claude-home"
+        source_skill = project_root / ".claude" / "skills" / SKILL_NAME
+        source_skill.mkdir(parents=True)
+        (source_skill / "SKILL.md").write_text(
+            "---\n"
+            f"name: {SKILL_NAME}\n"
+            "description: old desc\n"
+            "---\n\n"
+            "# Old\n"
+        )
+        (source_skill / "references").mkdir()
+        (source_skill / "references" / "guide.md").write_text("supporting file")
+
+        observed = {}
 
         events = [
-            json.dumps({
-                "type": "assistant",
-                "message": {
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "name": "Read",
-                            "input": {
-                                "file_path": str(claude_home / "skills" / SKILL_NAME / "SKILL.md"),
-                            },
-                        },
-                    ],
-                },
-            }),
             json.dumps({"type": "result"}),
         ]
         mock_process, output = self._make_process_mock(events)
 
-        with patch.dict(os.environ, {"SKILL_FORGE_CLAUDE_HOME": str(claude_home)}, clear=True):
-            with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_claude.os.read", return_value=output):
-                        result = run_single_query_claude(
-                            "test query", SKILL_NAME, "test desc", 5, str(project_root),
-                        )
+        def capture_popen(*args, **kwargs):
+            temp_skill = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "skills" / SKILL_NAME
+            observed["skill_md"] = (temp_skill / "SKILL.md").read_text()
+            observed["supporting_file"] = (temp_skill / "references" / "guide.md").read_text()
+            return mock_process
 
-        assert result is True
+        with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
+            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.run_eval_claude.os.read", return_value=output):
+                    result = run_single_query_claude(
+                        "test query", SKILL_NAME, "test desc", 5, str(project_root),
+                    )
+
+        assert result is False
+        assert "description: |\n  test desc\n" in observed["skill_md"]
+        assert "old desc" not in observed["skill_md"]
+        assert observed["supporting_file"] == "supporting file"
 
     def test_detects_relative_skill_path_from_read_tool_use(self, tmp_path):
         project_root = tmp_path / "project"
@@ -385,7 +459,7 @@ class TestRunSingleQueryCodex:
     def test_creates_and_cleans_temp_skill(self, tmp_path):
         """Verify temp skill dir is created and cleaned up."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         events = [
             json.dumps({"type": "turn.completed", "usage": {}}),
@@ -400,10 +474,10 @@ class TestRunSingleQueryCodex:
 
         assert result is False
         # Temp skill dir should be cleaned up
-        skill_dirs = list((project_root / ".codex" / "skills").iterdir())
+        skill_dirs = list((project_root / ".agents" / "skills").iterdir())
         assert len(skill_dirs) == 0
 
-    def test_creates_and_cleans_temp_skill_in_codex_home_override(self, tmp_path):
+    def test_creates_temp_skill_in_repo_agents_even_with_codex_home_override(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir(parents=True)
         codex_home = tmp_path / "custom-codex-home"
@@ -421,14 +495,15 @@ class TestRunSingleQueryCodex:
                     )
 
         assert result is False
-        assert (codex_home / "skills").is_dir()
+        assert not (codex_home / "skills").exists()
         assert not (project_root / ".codex").exists()
-        assert not any((codex_home / "skills").iterdir())
+        assert (project_root / ".agents" / "skills").is_dir()
+        assert not any((project_root / ".agents" / "skills").iterdir())
 
     def test_detects_marker_in_agent_message(self, tmp_path):
         """Verify marker detection in codex JSONL output."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         with patch("scripts.run_eval_codex.uuid.uuid4") as mock_uuid:
             mock_uuid.return_value.hex = "abcd1234xxxxxxxxxxxxxxxx"
@@ -457,10 +532,72 @@ class TestRunSingleQueryCodex:
 
             assert result is True
 
+    def test_detects_marker_in_updated_agent_message(self, tmp_path):
+        project_root = tmp_path / "project"
+        (project_root / ".agents" / "skills").mkdir(parents=True)
+
+        with patch("scripts.run_eval_codex.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value.hex = "abcd1234xxxxxxxxxxxxxxxx"
+            marker = "[SKILL_TRIGGERED:abcd1234]"
+
+            events = [
+                json.dumps({"type": "item.updated", "item": {"type": "agent_message", "text": f"{marker}"}}),
+            ]
+            output = ("\n".join(events) + "\n").encode()
+
+            mock_process = MagicMock()
+            mock_process.poll.side_effect = [None, 0]
+            mock_process.stdout.fileno.return_value = 0
+            mock_process.stdout.read.return_value = output
+            mock_process.stderr.read.return_value = b""
+            mock_process.returncode = 0
+
+            with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
+                with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.run_eval_codex.os.read", return_value=output):
+                        result = run_single_query_codex(
+                            "test query", "my-skill", "test desc", 5, str(project_root),
+                        )
+
+            assert result is True
+
+    def test_codex_event_shape_change_does_not_trigger(self, tmp_path):
+        project_root = tmp_path / "project"
+        (project_root / ".agents" / "skills").mkdir(parents=True)
+
+        with patch("scripts.run_eval_codex.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value.hex = "abcd1234xxxxxxxxxxxxxxxx"
+            marker = "[SKILL_TRIGGERED:abcd1234]"
+
+            events = [
+                json.dumps({
+                    "type": "message.completed",
+                    "message": {"role": "assistant", "content": f"{marker}"},
+                }),
+                json.dumps({"type": "turn.completed", "usage": {}}),
+            ]
+            output = ("\n".join(events) + "\n").encode()
+
+            mock_process = MagicMock()
+            mock_process.poll.side_effect = [None, 0]
+            mock_process.stdout.fileno.return_value = 0
+            mock_process.stdout.read.return_value = output
+            mock_process.stderr.read.return_value = b""
+            mock_process.returncode = 0
+
+            with patch("scripts.run_eval_codex.subprocess.Popen", return_value=mock_process):
+                with patch("scripts.run_eval_codex.select.select", return_value=([mock_process.stdout], [], [])):
+                    with patch("scripts.run_eval_codex.os.read", return_value=output):
+                        result = run_single_query_codex(
+                            "test query", "my-skill", "test desc", 5, str(project_root),
+                        )
+
+            assert result is False
+
     def test_no_trigger_returns_false(self, tmp_path):
         """No marker in output means not triggered."""
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         events = [
             json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "No skill here."}}),
@@ -514,6 +651,8 @@ class TestRunEval:
         assert result["summary"]["total"] == 2
         assert result["summary"]["passed"] == 2
         assert result["summary"]["failed"] == 0
+        assert {r["status"] for r in result["results"]} == {"ok"}
+        assert {r["attempted_runs"] for r in result["results"]} == {1}
 
     def test_eval_with_failures(self):
         eval_set = [
@@ -614,19 +753,44 @@ class TestRunEval:
         assert result["summary"]["failed"] == 1
         assert result["summary"]["errors"] == 1
         assert result["results"][0]["runs"] == 0
+        assert result["results"][0]["attempted_runs"] == 1
+        assert result["results"][0]["status"] == "error"
         assert result["results"][0]["pass"] is False
         assert result["results"][0]["error_count"] == 1
+
+    def test_query_with_zero_attempted_runs_is_marked_not_run(self):
+        eval_set = [{"query": "do not trigger", "should_trigger": False}]
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", ThreadPoolExecutor):
+            result = run_eval(
+                eval_set=eval_set,
+                skill_name="test",
+                description="desc",
+                num_workers=1,
+                timeout=10,
+                project_root=Path("/tmp"),
+                runs_per_query=0,
+                trigger_threshold=0.5,
+                cli_type=CLI_CLAUDE,
+            )
+
+        assert result["summary"]["total"] == 1
+        assert result["summary"]["failed"] == 1
+        assert result["results"][0]["runs"] == 0
+        assert result["results"][0]["attempted_runs"] == 0
+        assert result["results"][0]["status"] == "not_run"
+        assert result["results"][0]["pass"] is False
 
 
 class TestTemporarySkillNames:
     def test_codex_temp_skill_keeps_original_visible_name(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         observed = {}
 
         def capture_popen(cmd, **kwargs):
-            skill_root = project_root / ".codex" / "skills"
+            skill_root = project_root / ".agents" / "skills"
             skill_file = next(skill_root.glob("*/SKILL.md"))
             observed["path"] = skill_file
             observed["content"] = skill_file.read_text()
@@ -649,17 +813,17 @@ class TestTemporarySkillNames:
         assert "name: skill-forge\n" in observed["content"]
         assert f"name: {SKILL_NAME}-skill-" not in observed["content"]
 
-    def test_claude_temp_command_keeps_original_visible_name(self, tmp_path):
+    def test_claude_temp_skill_keeps_original_visible_name(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
 
         observed = {}
 
         def capture_popen(cmd, **kwargs):
-            command_root = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "commands"
-            command_file = next(command_root.glob("*.md"))
-            observed["path"] = command_file
-            observed["content"] = command_file.read_text()
+            skill_root = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "skills"
+            skill_file = next(skill_root.glob("*/SKILL.md"))
+            observed["path"] = skill_file
+            observed["content"] = skill_file.read_text()
 
             mock_process = MagicMock()
             mock_process.poll.side_effect = [0, 0]
@@ -674,19 +838,21 @@ class TestTemporarySkillNames:
                     "test query", SKILL_NAME, "test desc", 5, str(project_root),
                 )
 
-        assert observed["path"].name == f"{SKILL_NAME}.md"
+        assert observed["path"].parent.name == SKILL_NAME
+        assert observed["path"].name == "SKILL.md"
+        assert f"name: {SKILL_NAME}\n" in observed["content"]
         assert f"# {SKILL_NAME}\n" in observed["content"]
 
     def test_codex_temp_skill_paths_are_isolated_per_run(self, tmp_path):
         project_root = tmp_path / "project"
-        (project_root / ".codex" / "skills").mkdir(parents=True)
+        (project_root / ".agents" / "skills").mkdir(parents=True)
 
         observed_snapshots = []
         observed_lock = threading.Lock()
         barrier = threading.Barrier(2)
 
         def capture_popen(cmd, **kwargs):
-            skill_root = project_root / ".codex" / "skills"
+            skill_root = project_root / ".agents" / "skills"
             barrier.wait(timeout=2)
             snapshot = sorted(path.name for path in skill_root.iterdir())
             with observed_lock:
@@ -721,7 +887,7 @@ class TestTemporarySkillNames:
         assert all(len(snapshot) == 2 for snapshot in observed_snapshots)
         assert all(len(set(snapshot)) == 2 for snapshot in observed_snapshots)
 
-    def test_claude_temp_command_paths_are_isolated_per_run(self, tmp_path):
+    def test_claude_temp_skill_paths_are_isolated_per_run(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
 
@@ -731,9 +897,9 @@ class TestTemporarySkillNames:
 
         def capture_popen(cmd, **kwargs):
             claude_home = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"])
-            command_root = claude_home / "commands"
+            skill_root = claude_home / "skills"
             barrier.wait(timeout=2)
-            snapshot = sorted(path.name for path in command_root.glob("*.md"))
+            snapshot = sorted(path.name for path in skill_root.iterdir())
             with observed_lock:
                 observed_paths.append((claude_home.name, snapshot))
 
@@ -763,7 +929,7 @@ class TestTemporarySkillNames:
 
         assert len(observed_paths) == 2
         assert len({path for path, _ in observed_paths}) == 2
-        assert all(snapshot == [f"{SKILL_NAME}.md"] for _, snapshot in observed_paths)
+        assert all(snapshot == [SKILL_NAME] for _, snapshot in observed_paths)
 
     def test_claude_runs_in_project_root_with_isolated_home(self, tmp_path):
         project_root = tmp_path / "project"

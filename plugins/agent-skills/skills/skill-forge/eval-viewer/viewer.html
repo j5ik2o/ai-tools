@@ -885,7 +885,7 @@
       html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
       html += '</div>';
 
-      // Assertions list
+      // Expectations list
       html += '<ul class="assertion-list">';
       for (const exp of expectations) {
         const statusClass = exp.passed ? "pass" : "fail";
@@ -1250,42 +1250,42 @@
           }
           html += "</tbody></table>";
 
-          // Per-assertion detail for this eval
+          // Per-expectation detail for this eval
           const runsWithExpectations = {};
           for (const config of configGroups) {
             runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
           }
           const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
           if (hasAnyExpectations) {
-            // Collect all unique assertion texts across all configs
-            const allAssertions = [];
+            // Collect all unique expectation texts across all configs
+            const allExpectations = [];
             const seen = new Set();
             for (const config of configGroups) {
               for (const run of runsWithExpectations[config]) {
                 for (const exp of (run.expectations || [])) {
                   if (!seen.has(exp.text)) {
                     seen.add(exp.text);
-                    allAssertions.push(exp.text);
+                    allExpectations.push(exp.text);
                   }
                 }
               }
             }
 
             html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
-            html += "<thead><tr><th>Assertion</th>";
+            html += "<thead><tr><th>Expectation</th>";
             for (const config of configGroups) {
               const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
               html += "<th>" + escapeHtml(label) + "</th>";
             }
             html += "</tr></thead><tbody>";
 
-            for (const assertionText of allAssertions) {
-              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+            for (const expectationText of allExpectations) {
+              html += "<tr><td>" + escapeHtml(expectationText) + "</td>";
 
               for (const config of configGroups) {
                 html += "<td>";
                 for (const run of runsWithExpectations[config]) {
-                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  const exp = (run.expectations || []).find(e => e.text === expectationText);
                   if (exp) {
                     const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
                     const icon = exp.passed ? "\u2713" : "\u2717";

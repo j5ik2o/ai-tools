@@ -100,6 +100,9 @@ def resolve_cli_home(cli_type: str, project_root: Path | None = None) -> Path:
 
 def resolve_skill_dir(cli_type: str, project_root: Path | None = None) -> Path:
     """Resolve the effective skills directory for the CLI."""
+    if cli_type == CLI_CODEX:
+        base_root = project_root if project_root is not None else find_project_root(cli_type)
+        return base_root / ".agents" / "skills"
     return resolve_cli_home(cli_type, project_root) / "skills"
 
 

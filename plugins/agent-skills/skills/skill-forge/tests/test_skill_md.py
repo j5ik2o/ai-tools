@@ -55,16 +55,13 @@ def project_root():
     """開発環境を汚染しないよう /tmp 以下に隔離された作業ディレクトリを作成する。
 
     claude が動作するために必要な構造:
-      .claude/commands/              ← run_single_query_claude が一時コマンドファイルを置く場所
-      .claude/skills/<skill-name>/   ← claude が SKILL.md 本体を読みに来る場所
+      .claude/skills/<skill-name>/   ← run_single_query_claude が一時 skill home にコピーする元
     """
     tmp_dir = tempfile.mkdtemp(prefix="skill-forge-test-")
     tmp_path = Path(tmp_dir)
 
     # claude -p requires a git repository to function correctly
     subprocess.run(["git", "init", "-q"], cwd=tmp_dir, check=True)
-
-    (tmp_path / ".claude" / "commands").mkdir(parents=True)
 
     _IGNORE = shutil.ignore_patterns(".venv", "__pycache__", ".pytest_cache", "*.pyc")
     skill_name, _, _ = parse_skill_md(SKILL_DIR)

@@ -58,10 +58,17 @@ def run_eval(
 ) -> dict:
     """Run the full eval set and return results."""
     results = []
+    query_triggers: dict[str, list[bool]] = {}
+    query_errors: dict[str, list[str]] = {}
+    query_items: dict[str, dict] = {}
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         future_to_info = {}
         for item in eval_set:
+            query = item["query"]
+            query_triggers.setdefault(query, [])
+            query_errors.setdefault(query, [])
+            query_items[query] = item
             for run_idx in range(runs_per_query):
                 future = executor.submit(
                     run_single_query,
@@ -76,16 +83,9 @@ def run_eval(
                 )
                 future_to_info[future] = (item, run_idx)
 
-        query_triggers: dict[str, list[bool]] = {}
-        query_errors: dict[str, list[str]] = {}
-        query_items: dict[str, dict] = {}
         for future in as_completed(future_to_info):
             item, _ = future_to_info[future]
             query = item["query"]
-            query_items[query] = item
-            if query not in query_triggers:
-                query_triggers[query] = []
-                query_errors[query] = []
             try:
                 query_triggers[query].append(future.result())
             except Exception as e:
@@ -113,14 +113,24 @@ def run_eval(
             did_pass = trigger_rate >= trigger_threshold
         else:
             did_pass = trigger_rate < trigger_threshold
-        if effective_runs == 0 and errors:
+        if effective_runs == 0:
             did_pass = False
+        if effective_runs == 0 and errors:
+            status = "error"
+        elif effective_runs == 0:
+            status = "not_run"
+        elif errors:
+            status = "partial_error"
+        else:
+            status = "ok"
         result_entry: dict = {
             "query": query,
             "should_trigger": should_trigger,
             "trigger_rate": trigger_rate,
             "triggers": sum(triggers),
             "runs": effective_runs,
+            "attempted_runs": runs_per_query,
+            "status": status,
             "pass": did_pass,
         }
         if errors:

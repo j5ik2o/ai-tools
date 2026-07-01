@@ -195,11 +195,24 @@ class TestResolveCliHome:
             result = resolve_cli_home(CLI_CODEX, project)
             assert result == override
 
-    def test_resolve_skill_dir_uses_cli_home(self, tmp_path):
+    def test_claude_resolve_skill_dir_uses_cli_home(self, tmp_path):
+        override = tmp_path / "custom-claude-home"
+        with patch.dict(os.environ, {"SKILL_FORGE_CLAUDE_HOME": str(override)}, clear=True):
+            result = resolve_skill_dir(CLI_CLAUDE, tmp_path / "project")
+            assert result == override / "skills"
+
+    def test_codex_resolve_skill_dir_uses_repo_agents_skills(self, tmp_path):
+        project = tmp_path / "project"
+        with patch.dict(os.environ, {}, clear=True):
+            result = resolve_skill_dir(CLI_CODEX, project)
+            assert result == project / ".agents" / "skills"
+
+    def test_codex_resolve_skill_dir_ignores_codex_home_for_repo_scope(self, tmp_path):
+        project = tmp_path / "project"
         override = tmp_path / "custom-codex-home"
         with patch.dict(os.environ, {"CODEX_HOME": str(override)}, clear=True):
-            result = resolve_skill_dir(CLI_CODEX, tmp_path / "project")
-            assert result == override / "skills"
+            result = resolve_skill_dir(CLI_CODEX, project)
+            assert result == project / ".agents" / "skills"
 
     def test_utils_module_does_not_expose_resolve_command_dir(self):
         assert not hasattr(utils_module, "resolve_command_dir")
