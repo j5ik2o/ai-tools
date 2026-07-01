@@ -8,6 +8,8 @@ This document defines the JSON schemas used by skill-forge.
 
 Defines the evals for a skill. Located at `evals/evals.json` within the skill directory.
 
+Canonical graded checks are called `expectations`. Older hand-written files may use `assertions`; readers should normalize that legacy field to `expectations` when accepting old artifacts, and writers must emit `expectations`.
+
 ```json
 {
   "skill_name": "example-skill",
@@ -33,6 +35,32 @@ Defines the evals for a skill. Located at `evals/evals.json` within the skill di
 - `evals[].expected_output`: Human-readable description of success
 - `evals[].files`: Optional list of input file paths (relative to skill root)
 - `evals[].expectations`: List of verifiable statements
+
+---
+
+## eval_metadata.json
+
+Per-eval metadata written next to each eval directory. Located at `<workspace>/iteration-<N>/eval-<ID>/eval_metadata.json`.
+
+Use `expectations` as the canonical field for verifiable checks. Older hand-written files may use `assertions`; readers may accept that field as a legacy alias, but writers must emit `expectations`.
+
+```json
+{
+  "eval_id": 0,
+  "eval_name": "invoice-table-extraction",
+  "prompt": "The user's task prompt",
+  "expectations": [
+    "The output includes a table with invoice number, date, and total",
+    "The extracted total matches the source invoice"
+  ]
+}
+```
+
+**Fields:**
+- `eval_id`: Numeric eval identifier
+- `eval_name`: Human-readable eval name used by the viewer
+- `prompt`: User prompt under test
+- `expectations`: List of verifiable statements for grading
 
 ---
 
@@ -173,11 +201,11 @@ Output from the grader agent. Located at `<run-dir>/grading.json`.
   "eval_feedback": {
     "suggestions": [
       {
-        "assertion": "The output includes the name 'John Smith'",
+        "expectation": "The output includes the name 'John Smith'",
         "reason": "A hallucinated document that mentions the name would also pass"
       }
     ],
-    "overall": "Assertions check presence but not correctness."
+    "overall": "Expectations check presence but not correctness."
   }
 }
 ```
@@ -189,7 +217,7 @@ Output from the grader agent. Located at `<run-dir>/grading.json`.
 - `timing`: Wall clock timing (from timing.json)
 - `claims`: Extracted and verified claims from the output
 - `user_notes_summary`: Issues flagged by the executor
-- `eval_feedback`: (optional) Improvement suggestions for the evals, only present when the grader identifies issues worth raising
+- `eval_feedback`: (optional) Improvement suggestions for the evals, only present when the grader identifies issues worth raising. Suggestions use `expectation` for a related check; legacy `assertion` may appear only in older artifacts.
 
 ---
 
@@ -310,7 +338,7 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
   },
 
   "notes": [
-    "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
+    "Expectation 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
     "Eval 3 shows high variance (50% ± 40%) - may be flaky or model-dependent",
     "Without-skill runs consistently fail on table extraction expectations",
     "Skill adds 13s average execution time but improves pass rate by 50%"

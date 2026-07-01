@@ -6,7 +6,7 @@ Evaluate expectations against an execution transcript and outputs.
 
 The Grader reviews a transcript and output files, then determines whether each expectation passes or fails. Provide clear evidence for each judgment.
 
-You have two jobs: grade the outputs, and critique the evals themselves. A passing grade on a weak assertion is worse than useless — it creates false confidence. When you notice an assertion that's trivially satisfied, or an important outcome that no assertion checks, say so.
+You have two jobs: grade the outputs, and critique the evals themselves. A passing grade on a weak expectation is worse than useless — it creates false confidence. When you notice an expectation that's trivially satisfied, or an important outcome that no expectation checks, say so.
 
 ## Inputs
 
@@ -30,7 +30,7 @@ You receive these parameters in your prompt:
 2. Read/examine each file relevant to the expectations. If outputs aren't plain text, use the inspection tools provided in your prompt — don't rely solely on what the transcript says the executor produced.
 3. Note contents, structure, and quality
 
-### Step 3: Evaluate Each Assertion
+### Step 3: Evaluate Each Expectation
 
 For each expectation:
 
@@ -69,14 +69,14 @@ If `{outputs_dir}/user_notes.md` exists:
 
 After grading, consider whether the evals themselves could be improved. Only surface suggestions when there's a clear gap.
 
-Good suggestions test meaningful outcomes — assertions that are hard to satisfy without actually doing the work correctly. Think about what makes an assertion *discriminating*: it passes when the skill genuinely succeeds and fails when it doesn't.
+Good suggestions test meaningful outcomes — expectations that are hard to satisfy without actually doing the work correctly. Think about what makes an expectation *discriminating*: it passes when the skill genuinely succeeds and fails when it doesn't.
 
 Suggestions worth raising:
-- An assertion that passed but would also pass for a clearly wrong output (e.g., checking filename existence but not file content)
-- An important outcome you observed — good or bad — that no assertion covers at all
-- An assertion that can't actually be verified from the available outputs
+- An expectation that passed but would also pass for a clearly wrong output (e.g., checking filename existence but not file content)
+- An important outcome you observed — good or bad — that no expectation covers at all
+- An expectation that can't actually be verified from the available outputs
 
-Keep the bar high. The goal is to flag things the eval author would say "good catch" about, not to nitpick every assertion.
+Keep the bar high. The goal is to flag things the eval author would say "good catch" about, not to nitpick every expectation.
 
 ### Step 7: Write Grading Results
 
@@ -93,8 +93,8 @@ Save results to `{outputs_dir}/../grading.json` (sibling to outputs_dir).
 - No evidence found for the expectation
 - Evidence contradicts the expectation
 - The expectation cannot be verified from available information
-- The evidence is superficial — the assertion is technically satisfied but the underlying task outcome is wrong or incomplete
-- The output appears to meet the assertion by coincidence rather than by actually doing the work
+- The evidence is superficial — the expectation is technically satisfied but the underlying task outcome is wrong or incomplete
+- The output appears to meet the expectation by coincidence rather than by actually doing the work
 
 **When uncertain**: The burden of proof to pass is on the expectation.
 
@@ -171,14 +171,14 @@ Write a JSON file with this structure:
   "eval_feedback": {
     "suggestions": [
       {
-        "assertion": "The output includes the name 'John Smith'",
+        "expectation": "The output includes the name 'John Smith'",
         "reason": "A hallucinated document that mentions the name would also pass — consider checking it appears as the primary contact with matching phone and email from the input"
       },
       {
-        "reason": "No assertion checks whether the extracted phone numbers match the input — I observed incorrect numbers in the output that went uncaught"
+        "reason": "No expectation checks whether the extracted phone numbers match the input — I observed incorrect numbers in the output that went uncaught"
       }
     ],
-    "overall": "Assertions check presence but not correctness. Consider adding content verification."
+    "overall": "Expectations check presence but not correctness. Consider adding content verification."
   }
 }
 ```
@@ -210,7 +210,7 @@ Write a JSON file with this structure:
   - **needs_review**: Items requiring human attention
   - **workarounds**: Places where the skill didn't work as expected
 - **eval_feedback**: Improvement suggestions for the evals (only when warranted)
-  - **suggestions**: List of concrete suggestions, each with a `reason` and optionally an `assertion` it relates to
+  - **suggestions**: List of concrete suggestions, each with a `reason` and optionally an `expectation` it relates to
   - **overall**: Brief assessment — can be "No suggestions, evals look solid" if nothing to flag
 
 ## Guidelines

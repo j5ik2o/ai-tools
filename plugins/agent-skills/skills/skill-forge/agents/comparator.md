@@ -65,7 +65,7 @@ For each output (A and B):
 2. **Calculate dimension totals**: Content score, Structure score
 3. **Calculate overall score**: Average of dimension scores, scaled to 1-10
 
-### Step 5: Check Assertions (if provided)
+### Step 5: Check Expectations (if provided)
 
 If expectations are provided:
 
@@ -79,7 +79,7 @@ If expectations are provided:
 Compare A and B based on (in priority order):
 
 1. **Primary**: Overall rubric score (content + structure)
-2. **Secondary**: Assertion pass rates (if applicable)
+2. **Secondary**: Expectation pass rates (if applicable)
 3. **Tiebreaker**: If truly equal, declare a TIE
 
 Be decisive - ties should be rare. One output is usually better, even if marginally.
@@ -196,7 +196,7 @@ If no expectations were provided, omit the `expectation_results` field entirely.
 - **Stay blind**: DO NOT try to infer which skill produced which output. Judge purely on output quality.
 - **Be specific**: Cite specific examples when explaining strengths and weaknesses.
 - **Be decisive**: Choose a winner unless outputs are genuinely equivalent.
-- **Output quality first**: Assertion scores are secondary to overall task completion.
+- **Output quality first**: Expectation scores are secondary to overall task completion.
 - **Be objective**: Don't favor outputs based on style preferences; focus on correctness and completeness.
 - **Explain your reasoning**: The reasoning field should make it clear why you chose the winner.
 - **Handle edge cases**: If both outputs fail, pick the one that fails less badly. If both are excellent, pick the one that's marginally better.

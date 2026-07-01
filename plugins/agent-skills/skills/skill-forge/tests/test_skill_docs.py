@@ -56,6 +56,16 @@ class TestSkillDocs:
         assert "status" in schemas
         assert "attempted_runs" in schemas
 
+    def test_eval_schema_terms_are_consistent(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+        schemas = (SKILL_DIR / "references" / "schemas.md").read_text()
+
+        assert '"expectations": []' in skill_md
+        assert "## eval_metadata.json" in schemas
+        assert "`expectations` as the canonical field" in schemas
+        assert "legacy alias" in schemas
+        assert "writers must emit `expectations`" in schemas
+
 
 class TestProjectMetadata:
     def test_pyproject_does_not_depend_on_anthropic(self):

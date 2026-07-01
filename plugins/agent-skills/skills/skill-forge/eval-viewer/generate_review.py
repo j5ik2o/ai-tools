@@ -135,6 +135,8 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
             except (json.JSONDecodeError, OSError):
                 pass
             if grading:
+                if "expectations" not in grading and "assertions" in grading:
+                    grading["expectations"] = grading["assertions"]
                 break
 
     return {

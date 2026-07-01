@@ -45,6 +45,13 @@ WORKSPACE_LAYOUT_GLOB = "eval-*"
 LEGACY_LAYOUT_DIRNAME = "runs"
 
 
+def normalize_expectations(grading: dict) -> list:
+    """Return canonical graded expectations, accepting legacy assertions."""
+    if "expectations" in grading:
+        return grading.get("expectations", [])
+    return grading.get("assertions", [])
+
+
 def calculate_stats(values: list[float]) -> dict:
     """Calculate mean, stddev, min, max for a list of values."""
     if not values:
@@ -161,8 +168,10 @@ def load_run_results(benchmark_dir: Path) -> dict:
                     result["tokens"] = metrics.get("output_chars", 0)
                 result["errors"] = metrics.get("errors_encountered", 0)
 
-                # Extract expectations — viewer requires fields: text, passed, evidence
-                raw_expectations = grading.get("expectations", [])
+                # Extract expectations — viewer requires fields: text, passed, evidence.
+                # Legacy grading.json files may use "assertions"; normalize to the
+                # canonical "expectations" field for benchmark.json.
+                raw_expectations = normalize_expectations(grading)
                 for exp in raw_expectations:
                     if "text" not in exp or "passed" not in exp:
                         print(f"Warning: expectation in {grading_file} missing required fields (text, passed, evidence): {exp}")
