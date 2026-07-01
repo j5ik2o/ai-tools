@@ -118,7 +118,7 @@ def validate_interface(interface: dict[str, Any], label: str, failures: list[str
     for field in REQUIRED_INTERFACE_FIELDS:
         if field == "capabilities":
             capabilities = interface.get(field)
-            if not isinstance(capabilities, list) or not all(
+            if not isinstance(capabilities, list) or not capabilities or not all(
                 isinstance(value, str) and value.strip() for value in capabilities
             ):
                 failures.append(f"{label}: interface.capabilities must be a non-empty string list")
