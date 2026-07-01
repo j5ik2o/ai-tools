@@ -31,6 +31,18 @@ class TestSkillDocs:
         assert "improvement step always uses the Anthropic API directly" not in skill_md
         assert "No separate Anthropic API client setup is required" in skill_md
 
+    def test_codex_openai_yaml_flow_is_documented(self):
+        skill_md = (SKILL_DIR / "SKILL.md").read_text()
+        reference = (SKILL_DIR / "references" / "openai_yaml.md").read_text()
+
+        assert "references/openai_yaml.md" in skill_md
+        assert "scripts/generate_openai_yaml.py" in skill_md
+        assert "--strict-openai-yaml" in skill_md
+        assert "display_name" in reference
+        assert "short_description" in reference
+        assert "default_prompt" in reference
+        assert "Difference from OpenAI skill-creator" in reference
+
 
 class TestProjectMetadata:
     def test_pyproject_does_not_depend_on_anthropic(self):

@@ -2,6 +2,7 @@
 """Quick validation script for skills."""
 
 import argparse
+import hashlib
 import sys
 import re
 import yaml
@@ -49,6 +50,7 @@ OPENAI_YAML_INTERFACE_KEYS = {
 OPENAI_YAML_POLICY_KEYS = {"allow_implicit_invocation"}
 OPENAI_YAML_DEPENDENCIES_KEYS = {"tools"}
 OPENAI_YAML_TOOL_KEYS = {"type", "value", "description", "transport", "url"}
+OPENAI_YAML_SOURCE_HASH_PATTERN = re.compile(r"^# skill-forge-source-sha256: ([a-f0-9]{64})\n")
 
 
 def _allowed_properties(platform: str) -> set[str]:
@@ -59,13 +61,32 @@ def _allowed_properties(platform: str) -> set[str]:
     return CLAUDE_PROPERTIES | CODEX_PROPERTIES
 
 
-def _validate_openai_yaml(skill_path: Path) -> tuple[bool, str]:
+def _validate_openai_yaml(
+    skill_path: Path,
+    skill_name: str,
+    strict_openai_yaml: bool = False,
+) -> tuple[bool, str]:
     openai_yaml = skill_path / "agents" / "openai.yaml"
     if not openai_yaml.exists():
+        if strict_openai_yaml:
+            return False, "agents/openai.yaml not found"
         return True, ""
 
+    skill_md = skill_path / "SKILL.md"
+    openai_yaml_text = openai_yaml.read_text()
+    if strict_openai_yaml:
+        source_hash_match = OPENAI_YAML_SOURCE_HASH_PATTERN.match(openai_yaml_text)
+        if not source_hash_match:
+            return False, (
+                "agents/openai.yaml is missing skill-forge source hash. "
+                "Regenerate metadata after updating the skill."
+            )
+        source_hash = hashlib.sha256(skill_md.read_bytes()).hexdigest()
+        if source_hash_match.group(1) != source_hash:
+            return False, "agents/openai.yaml is stale. Regenerate metadata after updating SKILL.md."
+
     try:
-        metadata = yaml.safe_load(openai_yaml.read_text())
+        metadata = yaml.safe_load(openai_yaml_text)
     except yaml.YAMLError as e:
         return False, f"Invalid YAML in agents/openai.yaml: {e}"
 
@@ -98,6 +119,25 @@ def _validate_openai_yaml(skill_path: Path) -> tuple[bool, str]:
         for key, value in interface.items():
             if value is not None and not isinstance(value, str):
                 return False, f"agents/openai.yaml interface.{key} must be a string"
+
+        if strict_openai_yaml:
+            for key in ("display_name", "short_description", "default_prompt"):
+                value = interface.get(key)
+                if not isinstance(value, str) or not value.strip():
+                    return False, f"agents/openai.yaml interface.{key} is required in strict mode"
+
+            short_description = interface["short_description"]
+            if not 25 <= len(short_description) <= 64:
+                return False, (
+                    "agents/openai.yaml interface.short_description must be 25-64 characters "
+                    f"(got {len(short_description)})"
+                )
+
+            default_prompt = interface["default_prompt"]
+            if f"${skill_name}" not in default_prompt:
+                return False, f"agents/openai.yaml interface.default_prompt must mention ${skill_name}"
+    elif strict_openai_yaml:
+        return False, "agents/openai.yaml interface is required in strict mode"
 
     policy = metadata.get("policy")
     if policy is not None:
@@ -149,7 +189,7 @@ def _validate_openai_yaml(skill_path: Path) -> tuple[bool, str]:
     return True, ""
 
 
-def validate_skill(skill_path, platform=PLATFORM_AUTO):
+def validate_skill(skill_path, platform=PLATFORM_AUTO, strict_openai_yaml=False):
     """Basic validation of a skill"""
     if platform not in PLATFORMS:
         return False, f"Unknown platform '{platform}'. Use one of: {', '.join(sorted(PLATFORMS))}"
@@ -234,7 +274,11 @@ def validate_skill(skill_path, platform=PLATFORM_AUTO):
             return False, f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters."
 
     if platform in (PLATFORM_AUTO, PLATFORM_CODEX):
-        valid, message = _validate_openai_yaml(skill_path)
+        valid, message = _validate_openai_yaml(
+            skill_path,
+            skill_name=name,
+            strict_openai_yaml=strict_openai_yaml,
+        )
         if not valid:
             return valid, message
 
@@ -249,8 +293,17 @@ if __name__ == "__main__":
         default=PLATFORM_AUTO,
         help="Validation target. Default 'auto' accepts Claude and Codex frontmatter and validates agents/openai.yaml when present.",
     )
+    parser.add_argument(
+        "--strict-openai-yaml",
+        action="store_true",
+        help="Require fresh Codex agents/openai.yaml metadata with display_name, short_description, and default_prompt.",
+    )
     args = parser.parse_args()
 
-    valid, message = validate_skill(args.skill_directory, platform=args.platform)
+    valid, message = validate_skill(
+        args.skill_directory,
+        platform=args.platform,
+        strict_openai_yaml=args.strict_openai_yaml,
+    )
     print(message)
     sys.exit(0 if valid else 1)

@@ -91,6 +91,8 @@ skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter (name, description required)
 │   └── Markdown instructions
+├── agents/
+│   └── openai.yaml - Codex UI metadata, invocation policy, and tool dependencies
 └── Bundled Resources (optional)
     ├── scripts/    - Executable code for deterministic/repetitive tasks
     ├── references/ - Docs loaded into context as needed
@@ -192,15 +194,24 @@ If `uv` is not installed, direct the user to https://docs.astral.sh/uv/ — it's
 
 ## Validating skills
 
+For Codex-compatible skills, read `references/openai_yaml.md` before generating or reviewing `agents/openai.yaml`.
+
+Generate Codex UI metadata after the target skill has a stable `SKILL.md` frontmatter:
+
+```bash
+uv run python scripts/generate_openai_yaml.py <skill-dir>
+```
+
 Use `scripts/quick_validate.py` before packaging or publishing a skill. The validator supports platform-specific checks:
 
 ```bash
 uv run python scripts/quick_validate.py <skill-dir>                  # auto: accepts Claude/Codex frontmatter and validates agents/openai.yaml if present
 uv run python scripts/quick_validate.py <skill-dir> --platform claude
 uv run python scripts/quick_validate.py <skill-dir> --platform codex
+uv run python scripts/quick_validate.py <skill-dir> --platform codex --strict-openai-yaml
 ```
 
-Use `--platform claude` when checking Claude Code-only frontmatter such as `disable-model-invocation`, `user-invocable`, or `when_to_use`. Use `--platform codex` when checking Codex skills and `agents/openai.yaml` metadata.
+Use `--platform claude` when checking Claude Code-only frontmatter such as `disable-model-invocation`, `user-invocable`, or `when_to_use`. Use `--platform codex` when checking Codex skills and `agents/openai.yaml` metadata. Use `--strict-openai-yaml` before publishing Codex metadata; it requires `display_name`, `short_description`, and `default_prompt`, and detects stale metadata after `SKILL.md` changes.
 
 ## Running and evaluating test cases
 

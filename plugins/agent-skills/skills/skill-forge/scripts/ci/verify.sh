@@ -23,6 +23,7 @@ uv run pytest -m "not integration"
 # ── スキルバリデーション ─────────────────────────────
 echo "==> Validating skill"
 uv run python scripts/quick_validate.py .
+uv run python scripts/quick_validate.py . --platform codex --strict-openai-yaml
 
 echo ""
 echo "All checks passed."
