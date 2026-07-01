@@ -16,33 +16,39 @@ def _is_expected_claude_tool_input(
     tool_name: str,
     tool_input: dict,
     skill_name: str,
-    command_name: str,
     skills_dir: Path,
-    commands_dir: Path,
 ) -> bool:
     """Return True when a Claude tool call targets the skill under test."""
     if tool_name == "Skill":
-        return tool_input.get("skill", "") in (skill_name, command_name)
+        return tool_input.get("skill", "") == skill_name
 
     if tool_name == "Read":
         file_path = tool_input.get("file_path", "")
-        expected_paths = (
-            skills_dir / skill_name / "SKILL.md",
-            commands_dir / f"{command_name}.md",
-        )
-        expected_suffixes = (
-            Path("skills") / skill_name / "SKILL.md",
-            Path("commands") / f"{command_name}.md",
-        )
+        expected_path = skills_dir / skill_name / "SKILL.md"
+        expected_suffix = Path("skills") / skill_name / "SKILL.md"
         normalized_file_path = file_path.replace("\\", "/")
-        return any(
-            normalized_file_path == str(path).replace("\\", "/")
-            or normalized_file_path.endswith(str(path).replace("\\", "/"))
-            or normalized_file_path.endswith(str(suffix).replace("\\", "/"))
-            for path, suffix in zip(expected_paths, expected_suffixes, strict=True)
+        return (
+            normalized_file_path == str(expected_path).replace("\\", "/")
+            or normalized_file_path.endswith(str(expected_path).replace("\\", "/"))
+            or normalized_file_path.endswith(str(expected_suffix).replace("\\", "/"))
         )
 
     return False
+
+
+def _write_skill_under_test(skill_file: Path, skill_name: str, skill_description: str) -> None:
+    """Write a real SKILL.md for the description under test."""
+    indented_desc = "\n  ".join(skill_description.split("\n"))
+    skill_content = (
+        f"---\n"
+        f"name: {skill_name}\n"
+        f"description: |\n"
+        f"  {indented_desc}\n"
+        f"---\n\n"
+        f"# {skill_name}\n\n"
+        f"This skill handles: {skill_description}\n"
+    )
+    skill_file.write_text(skill_content)
 
 
 def run_single_query_claude(
@@ -58,27 +64,17 @@ def run_single_query_claude(
     project_root_path = Path(project_root)
     source_skills_dir = resolve_skill_dir(CLI_CLAUDE, project_root_path)
     temp_claude_home = Path(tempfile.mkdtemp(prefix="skill-forge-claude-home-", dir=project_root_path))
-    temp_commands_dir = temp_claude_home / "commands"
     temp_skills_dir = temp_claude_home / "skills"
-    command_name = skill_name
-    command_file = temp_commands_dir / f"{command_name}.md"
+    temp_skill_dir = temp_skills_dir / skill_name
+    skill_file = temp_skill_dir / "SKILL.md"
 
     try:
-        temp_commands_dir.mkdir(parents=True, exist_ok=True)
         source_skill_dir = source_skills_dir / skill_name
         if source_skill_dir.exists():
-            shutil.copytree(source_skill_dir, temp_skills_dir / skill_name)
-
-        indented_desc = "\n  ".join(skill_description.split("\n"))
-        command_content = (
-            f"---\n"
-            f"description: |\n"
-            f"  {indented_desc}\n"
-            f"---\n\n"
-            f"# {skill_name}\n\n"
-            f"This skill handles: {skill_description}\n"
-        )
-        command_file.write_text(command_content)
+            shutil.copytree(source_skill_dir, temp_skill_dir)
+        else:
+            temp_skill_dir.mkdir(parents=True, exist_ok=True)
+        _write_skill_under_test(skill_file, skill_name, skill_description)
 
         cmd = [
             get_cli_command(CLI_CLAUDE, cli_command),
@@ -92,6 +88,7 @@ def run_single_query_claude(
 
         env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         env["SKILL_FORGE_CLAUDE_HOME"] = str(temp_claude_home)
+        env["CLAUDE_CONFIG_DIR"] = str(temp_claude_home)
 
         process = subprocess.Popen(
             cmd,
@@ -159,9 +156,7 @@ def run_single_query_claude(
                                     pending_tool_name,
                                     tool_input,
                                     skill_name,
-                                    command_name,
                                     temp_skills_dir,
-                                    temp_commands_dir,
                                 ):
                                     return True
 
@@ -175,9 +170,7 @@ def run_single_query_claude(
                                     pending_tool_name,
                                     tool_input,
                                     skill_name,
-                                    command_name,
                                     temp_skills_dir,
-                                    temp_commands_dir,
                                 ):
                                     return True
                                 pending_tool_name = None
@@ -192,9 +185,7 @@ def run_single_query_claude(
                                 content_item.get("name", ""),
                                 content_item.get("input", {}),
                                 skill_name,
-                                command_name,
                                 temp_skills_dir,
-                                temp_commands_dir,
                             ):
                                 triggered = True
                                 return True

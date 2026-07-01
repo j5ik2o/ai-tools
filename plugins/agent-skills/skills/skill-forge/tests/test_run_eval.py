@@ -269,7 +269,7 @@ class TestRunSingleQueryClaude:
 
         assert result is True
 
-    def test_uses_isolated_workspace_for_temp_command_even_with_override(self, tmp_path):
+    def test_uses_isolated_workspace_for_temp_skill_even_with_override(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
         claude_home = tmp_path / "custom-claude-home"
@@ -284,6 +284,7 @@ class TestRunSingleQueryClaude:
             def capture_popen(*args, **kwargs):
                 observed["cwd"] = Path(kwargs["cwd"])
                 observed["claude_home"] = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"])
+                observed["claude_config_dir"] = Path(kwargs["env"]["CLAUDE_CONFIG_DIR"])
                 return mock_process
 
             with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
@@ -296,43 +297,50 @@ class TestRunSingleQueryClaude:
         assert result is False
         assert observed["cwd"] == project_root
         assert observed["claude_home"].parent == project_root
+        assert observed["claude_config_dir"] == observed["claude_home"]
         assert not observed["claude_home"].exists()
         assert not (claude_home / "commands").exists()
+        assert not (claude_home / "skills").exists()
         assert not (project_root / ".claude").exists()
 
-    def test_detects_skill_path_from_override_claude_home(self, tmp_path):
+    def test_copies_supporting_files_into_temp_skill(self, tmp_path):
         project_root = tmp_path / "project"
-        project_root.mkdir()
-        claude_home = tmp_path / "custom-claude-home"
+        source_skill = project_root / ".claude" / "skills" / SKILL_NAME
+        source_skill.mkdir(parents=True)
+        (source_skill / "SKILL.md").write_text(
+            "---\n"
+            f"name: {SKILL_NAME}\n"
+            "description: old desc\n"
+            "---\n\n"
+            "# Old\n"
+        )
+        (source_skill / "references").mkdir()
+        (source_skill / "references" / "guide.md").write_text("supporting file")
+
+        observed = {}
 
         events = [
-            json.dumps({
-                "type": "assistant",
-                "message": {
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "name": "Read",
-                            "input": {
-                                "file_path": str(claude_home / "skills" / SKILL_NAME / "SKILL.md"),
-                            },
-                        },
-                    ],
-                },
-            }),
             json.dumps({"type": "result"}),
         ]
         mock_process, output = self._make_process_mock(events)
 
-        with patch.dict(os.environ, {"SKILL_FORGE_CLAUDE_HOME": str(claude_home)}, clear=True):
-            with patch("scripts.run_eval_claude.subprocess.Popen", return_value=mock_process):
-                with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
-                    with patch("scripts.run_eval_claude.os.read", return_value=output):
-                        result = run_single_query_claude(
-                            "test query", SKILL_NAME, "test desc", 5, str(project_root),
-                        )
+        def capture_popen(*args, **kwargs):
+            temp_skill = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "skills" / SKILL_NAME
+            observed["skill_md"] = (temp_skill / "SKILL.md").read_text()
+            observed["supporting_file"] = (temp_skill / "references" / "guide.md").read_text()
+            return mock_process
 
-        assert result is True
+        with patch("scripts.run_eval_claude.subprocess.Popen", side_effect=capture_popen):
+            with patch("scripts.run_eval_claude.select.select", return_value=([mock_process.stdout], [], [])):
+                with patch("scripts.run_eval_claude.os.read", return_value=output):
+                    result = run_single_query_claude(
+                        "test query", SKILL_NAME, "test desc", 5, str(project_root),
+                    )
+
+        assert result is False
+        assert "description: |\n  test desc\n" in observed["skill_md"]
+        assert "old desc" not in observed["skill_md"]
+        assert observed["supporting_file"] == "supporting file"
 
     def test_detects_relative_skill_path_from_read_tool_use(self, tmp_path):
         project_root = tmp_path / "project"
@@ -650,17 +658,17 @@ class TestTemporarySkillNames:
         assert "name: skill-forge\n" in observed["content"]
         assert f"name: {SKILL_NAME}-skill-" not in observed["content"]
 
-    def test_claude_temp_command_keeps_original_visible_name(self, tmp_path):
+    def test_claude_temp_skill_keeps_original_visible_name(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
 
         observed = {}
 
         def capture_popen(cmd, **kwargs):
-            command_root = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "commands"
-            command_file = next(command_root.glob("*.md"))
-            observed["path"] = command_file
-            observed["content"] = command_file.read_text()
+            skill_root = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"]) / "skills"
+            skill_file = next(skill_root.glob("*/SKILL.md"))
+            observed["path"] = skill_file
+            observed["content"] = skill_file.read_text()
 
             mock_process = MagicMock()
             mock_process.poll.side_effect = [0, 0]
@@ -675,7 +683,9 @@ class TestTemporarySkillNames:
                     "test query", SKILL_NAME, "test desc", 5, str(project_root),
                 )
 
-        assert observed["path"].name == f"{SKILL_NAME}.md"
+        assert observed["path"].parent.name == SKILL_NAME
+        assert observed["path"].name == "SKILL.md"
+        assert f"name: {SKILL_NAME}\n" in observed["content"]
         assert f"# {SKILL_NAME}\n" in observed["content"]
 
     def test_codex_temp_skill_paths_are_isolated_per_run(self, tmp_path):
@@ -722,7 +732,7 @@ class TestTemporarySkillNames:
         assert all(len(snapshot) == 2 for snapshot in observed_snapshots)
         assert all(len(set(snapshot)) == 2 for snapshot in observed_snapshots)
 
-    def test_claude_temp_command_paths_are_isolated_per_run(self, tmp_path):
+    def test_claude_temp_skill_paths_are_isolated_per_run(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()
 
@@ -732,9 +742,9 @@ class TestTemporarySkillNames:
 
         def capture_popen(cmd, **kwargs):
             claude_home = Path(kwargs["env"]["SKILL_FORGE_CLAUDE_HOME"])
-            command_root = claude_home / "commands"
+            skill_root = claude_home / "skills"
             barrier.wait(timeout=2)
-            snapshot = sorted(path.name for path in command_root.glob("*.md"))
+            snapshot = sorted(path.name for path in skill_root.iterdir())
             with observed_lock:
                 observed_paths.append((claude_home.name, snapshot))
 
@@ -764,7 +774,7 @@ class TestTemporarySkillNames:
 
         assert len(observed_paths) == 2
         assert len({path for path, _ in observed_paths}) == 2
-        assert all(snapshot == [f"{SKILL_NAME}.md"] for _, snapshot in observed_paths)
+        assert all(snapshot == [SKILL_NAME] for _, snapshot in observed_paths)
 
     def test_claude_runs_in_project_root_with_isolated_home(self, tmp_path):
         project_root = tmp_path / "project"
