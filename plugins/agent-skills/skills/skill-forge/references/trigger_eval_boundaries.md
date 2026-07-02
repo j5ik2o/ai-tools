@@ -87,6 +87,16 @@ The Codex path creates a temporary repository skill under `.agents/skills/<skill
 
 It runs `codex exec --json -s read-only -C <project-root> <query>`.
 
+Codex runs execute serially regardless of `--num-workers`: all runs share the
+repository `.agents/skills/`, so concurrent temp skills carry the same visible
+name and a run may read another run's marker copy. Measured on a real batch,
+8-way parallelism dropped the positive trigger rate from ~50% to ~4%.
+
+Codex detection also needs the full response: the marker only becomes visible
+in a completed `agent_message`, so a triggering run typically takes 1-3
+minutes. Use `--timeout 240` or higher; the 30s default is claude-oriented and
+would count almost every Codex run as a timeout non-trigger.
+
 The detector treats the skill as triggered only when:
 
 - `type` is `item.completed` or `item.updated`

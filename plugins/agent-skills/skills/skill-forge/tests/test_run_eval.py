@@ -987,6 +987,56 @@ class TestTemporarySkillNames:
         assert not observed["claude_home"].exists()
 
 
+class TestCodexSerialization:
+    def test_codex_eval_forces_single_worker(self):
+        eval_set = [{"query": "q", "should_trigger": False}]
+        captured = {}
+
+        class CapturingExecutor(ThreadPoolExecutor):
+            def __init__(self, max_workers=None, **kwargs):
+                captured["max_workers"] = max_workers
+                super().__init__(max_workers=max_workers, **kwargs)
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", CapturingExecutor):
+            with patch("scripts.run_eval.run_single_query", return_value="completed"):
+                run_eval(
+                    eval_set=eval_set,
+                    skill_name="test",
+                    description="desc",
+                    num_workers=8,
+                    timeout=10,
+                    project_root=Path("/tmp"),
+                    runs_per_query=1,
+                    cli_type=CLI_CODEX,
+                )
+
+        assert captured["max_workers"] == 1
+
+    def test_claude_eval_keeps_requested_workers(self):
+        eval_set = [{"query": "q", "should_trigger": False}]
+        captured = {}
+
+        class CapturingExecutor(ThreadPoolExecutor):
+            def __init__(self, max_workers=None, **kwargs):
+                captured["max_workers"] = max_workers
+                super().__init__(max_workers=max_workers, **kwargs)
+
+        with patch("scripts.run_eval.ProcessPoolExecutor", CapturingExecutor):
+            with patch("scripts.run_eval.run_single_query", return_value="completed"):
+                run_eval(
+                    eval_set=eval_set,
+                    skill_name="test",
+                    description="desc",
+                    num_workers=8,
+                    timeout=10,
+                    project_root=Path("/tmp"),
+                    runs_per_query=1,
+                    cli_type=CLI_CLAUDE,
+                )
+
+        assert captured["max_workers"] == 8
+
+
 class TestTimeoutOutcome:
     def test_claude_timeout_returns_timeout_outcome(self, tmp_path):
         project_root = tmp_path / "project"
