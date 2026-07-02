@@ -303,6 +303,15 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
         for r in config
     ))
 
+    # Derive runs per configuration from the data instead of assuming a
+    # fixed count; report the largest (eval, config) group when they differ.
+    run_counts = [
+        sum(1 for r in config_results if r["eval_id"] == eval_id)
+        for config_results in results.values()
+        for eval_id in {r["eval_id"] for r in config_results}
+    ]
+    runs_per_configuration = max(run_counts, default=0)
+
     benchmark = {
         "metadata": {
             "skill_name": skill_name or "<skill-name>",
@@ -311,7 +320,7 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
             "analyzer_model": "<model-name>",
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "evals_run": eval_ids,
-            "runs_per_configuration": 3
+            "runs_per_configuration": runs_per_configuration
         },
         "runs": runs,
         "run_summary": run_summary,
