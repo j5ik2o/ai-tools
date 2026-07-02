@@ -65,6 +65,18 @@ def run_eval(
     Results are keyed by eval-set position and returned in input order, so
     duplicate query texts stay independent.
     """
+    if cli_type == CLI_CODEX and num_workers > 1:
+        # Codex discovers repo skills from the shared .agents/skills/, so
+        # concurrent runs would see each other's same-named temp skills and
+        # read the wrong marker. Measured: parallel runs drop the trigger
+        # rate to roughly 1/num_workers of the serial value.
+        print(
+            "Note: Codex trigger evals run serially — concurrent runs share "
+            ".agents/skills/ and contaminate each other's measurements.",
+            file=sys.stderr,
+        )
+        num_workers = 1
+
     run_outcomes: list[list[str]] = [[] for _ in eval_set]
     run_errors: list[list[str]] = [[] for _ in eval_set]
 
