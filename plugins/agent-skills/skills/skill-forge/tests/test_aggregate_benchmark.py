@@ -95,3 +95,15 @@ class TestDeltaOrientation:
 
         assert delta["comparison"] == "alt - baseline"
         assert delta["pass_rate"] == "+0.30"
+
+    def test_runs_per_configuration_is_derived_from_data(self, tmp_path):
+        for run_number in (1, 2):
+            run_dir = tmp_path / "eval-0" / "with_skill" / f"run-{run_number}"
+            run_dir.mkdir(parents=True)
+            (run_dir / "grading.json").write_text(
+                json.dumps({"summary": {"pass_rate": 1.0, "passed": 1, "failed": 0, "total": 1}})
+            )
+
+        benchmark = generate_benchmark(tmp_path, skill_name="test-skill")
+
+        assert benchmark["metadata"]["runs_per_configuration"] == 2
