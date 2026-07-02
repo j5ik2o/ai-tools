@@ -133,7 +133,9 @@ def run_single_query_claude(
     masked during an eval batch).
     """
     project_root_path = Path(project_root)
-    temp_claude_home = Path(tempfile.mkdtemp(prefix="skill-forge-claude-home-", dir=project_root_path))
+    # System temp, not the project root: a hard-killed run must not leave
+    # temp homes behind in the user's repository.
+    temp_claude_home = Path(tempfile.mkdtemp(prefix="skill-forge-claude-home-"))
     temp_skills_dir = temp_claude_home / "skills"
     temp_skill_dir = temp_skills_dir / skill_name
     skill_file = temp_skill_dir / "SKILL.md"
