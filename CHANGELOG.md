@@ -1,3 +1,18 @@
+## [0.5.1](https://github.com/j5ik2o/ai-tools/compare/v0.5.0...v0.5.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **skill-forge:** accept CRLF line endings in SKILL.md frontmatter ([6f772e5](https://github.com/j5ik2o/ai-tools/commit/6f772e5861fdc205568897275b3db51d534eb92c))
+* **skill-forge:** address review findings on delta ordering and report cells ([1fefc4b](https://github.com/j5ik2o/ai-tools/commit/1fefc4b5d87598a4550f926ae17508495855d061))
+* **skill-forge:** count trigger outcomes in SKILL.md integration test ([4a3f6cc](https://github.com/j5ik2o/ai-tools/commit/4a3f6cc993da4e8b08077949f2e019e3194d0611))
+* **skill-forge:** derive benchmark run counts from data ([dd37077](https://github.com/j5ik2o/ai-tools/commit/dd3707707ca71585832d7ab394f6b9988423046f))
+* **skill-forge:** isolate trigger evals from installed skills and surface timeouts ([b0e9302](https://github.com/j5ik2o/ai-tools/commit/b0e930290a7735fbd1ee8a0942aee5e8069189e9))
+* **skill-forge:** key eval results by position and drop legacy history aliases ([14efdde](https://github.com/j5ik2o/ai-tools/commit/14efddebacbf38af41fb566fd48cf910d5fedc4f))
+* **skill-forge:** make benchmark delta orientation explicit ([efed664](https://github.com/j5ik2o/ai-tools/commit/efed664ee2e207ff99bc9c13f103034f4a8c386b))
+* **skill-forge:** serialize codex trigger eval runs ([6b1ea14](https://github.com/j5ik2o/ai-tools/commit/6b1ea1420dbb8127b364dff7dbde21a2aed00975))
+* **skill-forge:** stop killing processes on the eval viewer port ([705d9b6](https://github.com/j5ik2o/ai-tools/commit/705d9b6a14f0d39e1c5f0301409882e4fc175ff3))
+
 ## [0.5.0](https://github.com/j5ik2o/ai-tools/compare/v0.4.1...v0.5.0) (2026-07-01)
 
 
