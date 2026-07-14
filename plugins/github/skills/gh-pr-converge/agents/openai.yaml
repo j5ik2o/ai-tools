@@ -1,0 +1,5 @@
+# skill-forge-source-sha256: 27cf64bc0f92063d46879245691233c6ab3a0d3cd01d32a3a2eb22b7c225a532
+interface:
+  display_name: "GitHub PR Convergence"
+  short_description: "Converge PR feedback and required checks"
+  default_prompt: "Use $gh-pr-converge to resolve actionable PR feedback and fix checks until all required checks pass."
