@@ -24,7 +24,9 @@
       "category": "development",
       "strict": true,
       "skills": [
-        "./skills/gh-issue-organizer"
+        "./skills/gh-issue-organizer",
+        "./skills/gh-pr-converge",
+        "./skills/gh-pr-review-follow-up"
       ]
     },
     {
