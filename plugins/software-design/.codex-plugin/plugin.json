@@ -1,0 +1,34 @@
+{
+  "name": "software-design",
+  "version": "0.1.0",
+  "description": "Software design skills for domain modeling, architecture, error handling, package design, and refactoring.",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  },
+  "repository": "https://github.com/j5ik2o/ai-tools",
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "software-design",
+    "domain-driven-design",
+    "architecture",
+    "refactoring"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Software Design",
+    "shortDescription": "Design maintainable software and domain models",
+    "longDescription": "Software design skills for domain-driven design, clean architecture, error handling, package design, and maintainable refactoring.",
+    "developerName": "Junichi Kato",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $ddd-aggregate-design to design this aggregate.",
+      "Use $clean-architecture to review this architecture.",
+      "Use $error-handling to improve this error design."
+    ]
+  }
+}

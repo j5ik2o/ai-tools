@@ -1,0 +1,31 @@
+{
+  "name": "agent-skills",
+  "version": "0.1.0",
+  "description": "Agent skill authoring, validation, evaluation, and improvement workflows.",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  },
+  "repository": "https://github.com/j5ik2o/ai-tools",
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "agent-skills",
+    "skill-authoring",
+    "evaluation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Skills",
+    "shortDescription": "Create and improve reusable agent skills",
+    "longDescription": "Agent skill workflows for authoring, validating, evaluating, and improving reusable skills for Claude Code and Codex.",
+    "developerName": "Junichi Kato",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $skill-forge to create or improve this skill."
+    ]
+  }
+}
