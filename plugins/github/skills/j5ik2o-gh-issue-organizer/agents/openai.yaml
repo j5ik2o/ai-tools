@@ -1,0 +1,5 @@
+# skill-forge-source-sha256: aa87009aa3b1cdcec0d2c1ad96b4f425b7192e7aa61a116c0616d6d8a8ccd27c
+interface:
+  display_name: "GitHub Issue Organizer"
+  short_description: "Triage and organize GitHub issues"
+  default_prompt: "Use $j5ik2o-gh-issue-organizer to triage open GitHub issues."

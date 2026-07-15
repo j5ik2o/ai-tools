@@ -1,5 +1,0 @@
-# skill-forge-source-sha256: 4cea1c05941d828066df0163eebf630c2d49ee0db28bf85a2f45c482f1b66777
-interface:
-  display_name: "Git Commit"
-  short_description: "Create safe Conventional Commits"
-  default_prompt: "Use $j5ik2o:git-commit to commit these changes."

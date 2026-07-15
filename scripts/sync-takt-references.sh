@@ -71,9 +71,9 @@ echo "Source: $TAKT_SRC"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-task-builder
+# j5ik2o-takt-task-builder
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-task-builder"
+SKILL="j5ik2o-takt-task-builder"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 
@@ -93,9 +93,9 @@ clean_orphans "$TAKT_SRC/src/infra/task" "$DST/src/infra/task"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-workflow-builder
+# j5ik2o-takt-workflow-builder
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-workflow-builder"
+SKILL="j5ik2o-takt-workflow-builder"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 
@@ -109,9 +109,9 @@ sync_dir "$TAKT_SRC/builtins/ja/" "$DST/builtins/ja/"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-facet-builder
+# j5ik2o-takt-facet-builder
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-facet-builder"
+SKILL="j5ik2o-takt-facet-builder"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 
@@ -123,9 +123,9 @@ sync_dir "$TAKT_SRC/builtins/ja/" "$DST/builtins/ja/"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-analyzer
+# j5ik2o-takt-analyzer
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-analyzer"
+SKILL="j5ik2o-takt-analyzer"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 
@@ -150,9 +150,9 @@ clean_orphans "$TAKT_SRC/src/shared/utils" "$DST/src/shared/utils"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-optimizer
+# j5ik2o-takt-optimizer
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-optimizer"
+SKILL="j5ik2o-takt-optimizer"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 
@@ -166,9 +166,9 @@ sync_dir "$TAKT_SRC/builtins/ja/" "$DST/builtins/ja/"
 echo ""
 
 # ------------------------------------------------------------------
-# j5ik2o:takt-skill-updater
+# j5ik2o-takt-skill-updater
 # ------------------------------------------------------------------
-SKILL="j5ik2o:takt-skill-updater"
+SKILL="j5ik2o-takt-skill-updater"
 echo "[$SKILL]"
 DST="$SKILLS_DIR/$SKILL/references/takt"
 

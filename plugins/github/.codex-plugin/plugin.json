@@ -25,8 +25,8 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use $j5ik2o:gh-issue-organizer to triage open GitHub issues.",
-      "Use $j5ik2o:deep-research-read-me to improve this README."
+      "Use $j5ik2o-gh-issue-organizer to triage open GitHub issues.",
+      "Use $j5ik2o-deep-research-read-me to improve this README."
     ]
   }
 }
