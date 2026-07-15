@@ -1,0 +1,5 @@
+# skill-forge-source-sha256: ca351e65fef6334af31e77822175683f341e47562174a5a4cb50720d7ee707cf
+interface:
+  display_name: "GitHub PR Resolve Conflicts"
+  short_description: "Resolve and validate GitHub PR merge conflicts"
+  default_prompt: "Use $gh-pr-resolve-conflicts to resolve the current PR merge conflicts and validate the result."

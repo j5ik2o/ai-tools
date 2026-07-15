@@ -25,7 +25,8 @@
       "strict": true,
       "skills": [
         "./skills/gh-issue-organizer",
-        "./skills/gh-pr-converge",
+        "./skills/gh-pr-converge-loop",
+        "./skills/gh-pr-resolve-conflicts",
         "./skills/gh-pr-review-follow-up"
       ]
     },
