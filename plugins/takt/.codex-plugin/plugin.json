@@ -1,0 +1,33 @@
+{
+  "name": "takt",
+  "version": "0.1.0",
+  "description": "TAKT workflow engine skills for multi-agent orchestration, analysis, authoring, and optimization.",
+  "author": {
+    "name": "Junichi Kato",
+    "email": "j5ik2o@gmail.com"
+  },
+  "repository": "https://github.com/j5ik2o/ai-tools",
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "takt",
+    "workflow",
+    "multi-agent"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TAKT",
+    "shortDescription": "Build and optimize TAKT workflows",
+    "longDescription": "TAKT workflow engine skills for creating, analyzing, validating, and optimizing multi-agent workflow definitions and facets.",
+    "developerName": "Junichi Kato",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $takt-workflow-builder to create a TAKT workflow.",
+      "Use $takt-analyzer to analyze this TAKT workflow.",
+      "Use $takt-optimizer to optimize this TAKT workflow."
+    ]
+  }
+}
