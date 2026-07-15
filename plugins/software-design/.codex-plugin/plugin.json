@@ -26,9 +26,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use $ddd-aggregate-design to design this aggregate.",
-      "Use $clean-architecture to review this architecture.",
-      "Use $error-handling to improve this error design."
+      "Use $j5ik2o:ddd-aggregate-design to design this aggregate.",
+      "Use $j5ik2o:clean-architecture to review this architecture.",
+      "Use $j5ik2o:error-handling to improve this error design."
     ]
   }
 }

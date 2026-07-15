@@ -5,7 +5,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "$REPO_ROOT"
 
-SKILL_NAME="skill-forge"
+SKILL_NAME="j5ik2o:skill-forge"
 
 SKILL_DIRS=(
   ".agents/skills"

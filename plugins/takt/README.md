@@ -6,12 +6,12 @@ TAKT skills for Claude Code and Codex CLI. This plugin bundles builders, analyze
 
 | Skill | Description |
 |-------|-------------|
-| `takt-task-builder` | Create and edit TAKT `tasks.yaml` entries and `.takt/tasks/{slug}/order.md` task directories |
-| `takt-workflow-builder` | Create and customize TAKT workflow YAML and related facet files |
-| `takt-facet-builder` | Create and edit individual TAKT facets such as Persona, Policy, Instruction, Knowledge, and Output Contract |
-| `takt-analyzer` | Analyze existing TAKT workflows, facets, and execution logs to find issues and improvement opportunities |
-| `takt-optimizer` | Optimize existing TAKT workflows for lower token usage, simpler rules, and better execution flow |
-| `takt-skill-updater` | Update the `takt-*` skills after the `references/takt` submodule is refreshed |
+| `j5ik2o:takt-task-builder` | Create and edit TAKT `tasks.yaml` entries and `.takt/tasks/{slug}/order.md` task directories |
+| `j5ik2o:takt-workflow-builder` | Create and customize TAKT workflow YAML and related facet files |
+| `j5ik2o:takt-facet-builder` | Create and edit individual TAKT facets such as Persona, Policy, Instruction, Knowledge, and Output Contract |
+| `j5ik2o:takt-analyzer` | Analyze existing TAKT workflows, facets, and execution logs to find issues and improvement opportunities |
+| `j5ik2o:takt-optimizer` | Optimize existing TAKT workflows for lower token usage, simpler rules, and better execution flow |
+| `j5ik2o:takt-skill-updater` | Update the `takt-*` skills after the `references/takt` submodule is refreshed |
 
 ## Installation
 
@@ -57,7 +57,7 @@ Copy or symlink the TAKT skills you want into `.codex/skills/` or `.agents/skill
 
 ```bash
 # Example: install a single skill
-ln -s /path/to/ai-tools/plugins/takt/skills/takt-workflow-builder .codex/skills/takt-workflow-builder
+ln -s /path/to/ai-tools/plugins/takt/skills/j5ik2o:takt-workflow-builder .codex/skills/j5ik2o:takt-workflow-builder
 
 # Example: install all TAKT skills
 for skill in /path/to/ai-tools/plugins/takt/skills/*; do
@@ -86,7 +86,7 @@ claude plugin marketplace remove j5ik2o-takt
 Remove the installed TAKT skill directories or symlinks:
 
 ```bash
-rm -rf .codex/skills/takt-*
+rm -rf .codex/skills/j5ik2o:takt-*
 ```
 
 ## Skill Structure

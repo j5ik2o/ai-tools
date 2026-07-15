@@ -1,0 +1,5 @@
+# skill-forge-source-sha256: 4dcf5e42808ea32c84f5bd4afc2bd4e0467184121eb38ff9050895d2282359de
+interface:
+  display_name: "README Research"
+  short_description: "Create and review GitHub OSS READMEs"
+  default_prompt: "Use $j5ik2o:deep-research-read-me to improve this README."

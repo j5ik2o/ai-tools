@@ -1,7 +1,0 @@
-# skill-forge-source-sha256: bbcf122b6e88156d13b5f6ec30c450b24f885d30671d6bec7b65f74a9b426745
-interface:
-  display_name: "GitHub PR Review Follow-up"
-  short_description: "Address actionable GitHub PR review comments"
-  icon_small: "./assets/github-small.svg"
-  icon_large: "./assets/github.png"
-  default_prompt: "Use $gh-pr-review-follow-up to inspect unresolved PR feedback and apply the selected fixes."

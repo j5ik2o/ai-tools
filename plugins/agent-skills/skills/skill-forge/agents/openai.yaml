@@ -1,5 +1,0 @@
-# skill-forge-source-sha256: 5ed735b2ea51c15ab7682506369d2762d694c5290721cc5de1fb4a4398c9fad7
-interface:
-  display_name: "Skill Forge"
-  short_description: "Create and improve agent skills"
-  default_prompt: "Use $skill-forge to improve this skill."
