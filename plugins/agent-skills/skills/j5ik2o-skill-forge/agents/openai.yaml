@@ -1,0 +1,5 @@
+# skill-forge-source-sha256: 31cdf236b0c7aa31f38503e27ab60f9b628f1f01760b09bb87289a20e7fc551f
+interface:
+  display_name: "Skill Forge"
+  short_description: "Create and improve agent skills"
+  default_prompt: "Use $j5ik2o-skill-forge to improve this skill."

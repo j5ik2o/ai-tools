@@ -60,7 +60,7 @@ GitHub CLI provides `gh skill` for installing agent skills from GitHub repositor
 Install a specific skill from this repository:
 
 ```shell
-gh skill install j5ik2o/ai-tools j5ik2o:deep-research-read-me --agent codex --scope user --pin main
+gh skill install j5ik2o/ai-tools j5ik2o-deep-research-read-me --agent codex --scope user --pin main
 ```
 
 Install every skill exposed through the standard `skills/` directory:
@@ -81,11 +81,11 @@ npx skills add j5ik2o/ai-tools
 
 | Plugin | Description | Key skills | Details |
 |--------|-------------|------------|---------|
-| [`git`](plugins/git) | Git workflow skills, including staging and committing working-tree changes following Conventional Commits | [`j5ik2o:git-commit`](plugins/git/skills/j5ik2o:git-commit) | [plugin.json](plugins/git/.claude-plugin/plugin.json) |
-| [`github`](plugins/github) | GitHub workflow skills, including systematic issue triage and GitHub OSS README creation, improvement, and review | [`j5ik2o:gh-issue-organizer`](plugins/github/skills/j5ik2o:gh-issue-organizer), [`j5ik2o:deep-research-read-me`](plugins/github/skills/j5ik2o:deep-research-read-me) | [plugin.json](plugins/github/.claude-plugin/plugin.json) |
-| [`agent-skills`](plugins/agent-skills) | Agent skills demonstrating skill creation, evaluation, and iterative improvement workflows | [`j5ik2o:skill-forge`](plugins/agent-skills/skills/j5ik2o:skill-forge) | [README](plugins/agent-skills/README.md) |
-| [`takt`](plugins/takt) | TAKT workflow engine skills for multi-agent orchestration, analysis, building, and optimization | `j5ik2o:takt-task-builder`, `j5ik2o:takt-workflow-builder`, `j5ik2o:takt-facet-builder`, `j5ik2o:takt-analyzer`, `j5ik2o:takt-optimizer`, `j5ik2o:takt-skill-updater` | [README](plugins/takt/README.md) |
-| [`software-design`](plugins/software-design) | Software design skills for DDD, clean architecture, error handling, package design, refactoring, and maintainable domain modeling | `j5ik2o:ddd-aggregate-design`, `j5ik2o:clean-architecture`, `j5ik2o:error-handling`, `j5ik2o:package-design`, `j5ik2o:refactoring-packages` | [plugin.json](plugins/software-design/.claude-plugin/plugin.json) |
+| [`git`](plugins/git) | Git workflow skills, including staging and committing working-tree changes following Conventional Commits | [`j5ik2o-git-commit`](plugins/git/skills/j5ik2o-git-commit) | [plugin.json](plugins/git/.claude-plugin/plugin.json) |
+| [`github`](plugins/github) | GitHub workflow skills, including systematic issue triage and GitHub OSS README creation, improvement, and review | [`j5ik2o-gh-issue-organizer`](plugins/github/skills/j5ik2o-gh-issue-organizer), [`j5ik2o-deep-research-read-me`](plugins/github/skills/j5ik2o-deep-research-read-me) | [plugin.json](plugins/github/.claude-plugin/plugin.json) |
+| [`agent-skills`](plugins/agent-skills) | Agent skills demonstrating skill creation, evaluation, and iterative improvement workflows | [`j5ik2o-skill-forge`](plugins/agent-skills/skills/j5ik2o-skill-forge) | [README](plugins/agent-skills/README.md) |
+| [`takt`](plugins/takt) | TAKT workflow engine skills for multi-agent orchestration, analysis, building, and optimization | `j5ik2o-takt-task-builder`, `j5ik2o-takt-workflow-builder`, `j5ik2o-takt-facet-builder`, `j5ik2o-takt-analyzer`, `j5ik2o-takt-optimizer`, `j5ik2o-takt-skill-updater` | [README](plugins/takt/README.md) |
+| [`software-design`](plugins/software-design) | Software design skills for DDD, clean architecture, error handling, package design, refactoring, and maintainable domain modeling | `j5ik2o-ddd-aggregate-design`, `j5ik2o-clean-architecture`, `j5ik2o-error-handling`, `j5ik2o-package-design`, `j5ik2o-refactoring-packages` | [plugin.json](plugins/software-design/.claude-plugin/plugin.json) |
 
 ## Repository Structure
 
@@ -100,42 +100,42 @@ mise.toml
 plugins/
 ├── git/
 │   └── skills/
-│       └── j5ik2o:git-commit/
+│       └── j5ik2o-git-commit/
 ├── github/
 │   └── skills/
-│       ├── j5ik2o:deep-research-read-me/
-│       └── j5ik2o:gh-issue-organizer/
+│       ├── j5ik2o-deep-research-read-me/
+│       └── j5ik2o-gh-issue-organizer/
 ├── agent-skills/
 │   ├── README.md
 │   └── skills/
-│       └── j5ik2o:skill-forge/
+│       └── j5ik2o-skill-forge/
 ├── takt/
 │   ├── README.md
 │   └── skills/
-│       ├── j5ik2o:takt-analyzer/
-│       ├── j5ik2o:takt-facet-builder/
-│       ├── j5ik2o:takt-optimizer/
-│       ├── j5ik2o:takt-skill-updater/
-│       └── j5ik2o:takt-task-builder/
+│       ├── j5ik2o-takt-analyzer/
+│       ├── j5ik2o-takt-facet-builder/
+│       ├── j5ik2o-takt-optimizer/
+│       ├── j5ik2o-takt-skill-updater/
+│       └── j5ik2o-takt-task-builder/
 └── software-design/
     └── skills/
-        ├── j5ik2o:clean-architecture/
-        ├── j5ik2o:ddd-aggregate-design/
-        ├── j5ik2o:error-handling/
+        ├── j5ik2o-clean-architecture/
+        ├── j5ik2o-ddd-aggregate-design/
+        ├── j5ik2o-error-handling/
         └── ...
 
 skills/
-├── j5ik2o:deep-research-read-me -> ../plugins/github/skills/j5ik2o:deep-research-read-me
-├── j5ik2o:skill-forge -> ../plugins/agent-skills/skills/j5ik2o:skill-forge
-├── j5ik2o:takt-analyzer -> ../plugins/takt/skills/j5ik2o:takt-analyzer
+├── j5ik2o-deep-research-read-me -> ../plugins/github/skills/j5ik2o-deep-research-read-me
+├── j5ik2o-skill-forge -> ../plugins/agent-skills/skills/j5ik2o-skill-forge
+├── j5ik2o-takt-analyzer -> ../plugins/takt/skills/j5ik2o-takt-analyzer
 └── ...
 
 .agents/skills/
-├── j5ik2o:deep-research-read-me -> ../../plugins/github/skills/j5ik2o:deep-research-read-me
+├── j5ik2o-deep-research-read-me -> ../../plugins/github/skills/j5ik2o-deep-research-read-me
 └── ...
 
 .claude/skills/
-├── j5ik2o:deep-research-read-me -> ../../plugins/github/skills/j5ik2o:deep-research-read-me
+├── j5ik2o-deep-research-read-me -> ../../plugins/github/skills/j5ik2o-deep-research-read-me
 └── ...
 
 template/
@@ -144,11 +144,11 @@ template/
 
 ## Creating a New Skill
 
-1. Copy `template/SKILL.md.template` to `plugins/agent-skills/skills/j5ik2o:<your-skill>/SKILL.md`
+1. Copy `template/SKILL.md.template` to `plugins/agent-skills/skills/j5ik2o-<your-skill>/SKILL.md`
 2. Edit the frontmatter (`name`, `description`) and add instructions
 3. Create a symlink in `skills/` if you want direct CLI consumption:
    ```shell
-   ln -s ../plugins/agent-skills/skills/j5ik2o:<your-skill> skills/j5ik2o:<your-skill>
+   ln -s ../plugins/agent-skills/skills/j5ik2o-<your-skill> skills/j5ik2o-<your-skill>
    ```
 4. Add or update entries in `.claude-plugin/marketplace.json` if you are publishing a new plugin collection
 

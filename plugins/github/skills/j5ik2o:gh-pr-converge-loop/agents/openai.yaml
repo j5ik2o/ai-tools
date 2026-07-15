@@ -1,5 +1,0 @@
-# skill-forge-source-sha256: 5a297724c09eedfb4f85a13af7fee18489ca143d6cc823c2767c195cb70b3209
-interface:
-  display_name: "GitHub PR Convergence Loop"
-  short_description: "Loop until PR conflicts, feedback, and checks converge"
-  default_prompt: "Use $j5ik2o:gh-pr-converge-loop to keep resolving conflicts, review feedback, and failing checks until this PR is merge-ready."

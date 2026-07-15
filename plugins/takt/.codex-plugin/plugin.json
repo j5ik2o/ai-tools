@@ -25,9 +25,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use $j5ik2o:takt-workflow-builder to create a TAKT workflow.",
-      "Use $j5ik2o:takt-analyzer to analyze this TAKT workflow.",
-      "Use $j5ik2o:takt-optimizer to optimize this TAKT workflow."
+      "Use $j5ik2o-takt-workflow-builder to create a TAKT workflow.",
+      "Use $j5ik2o-takt-analyzer to analyze this TAKT workflow.",
+      "Use $j5ik2o-takt-optimizer to optimize this TAKT workflow."
     ]
   }
 }
