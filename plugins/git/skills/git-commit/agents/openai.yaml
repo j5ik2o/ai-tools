@@ -1,5 +1,0 @@
-# skill-forge-source-sha256: 524c6c7cde6701f16b535efee8a60261c1c9072f69d48e1bf6e4256b4f926ec3
-interface:
-  display_name: "Git Commit"
-  short_description: "Create safe Conventional Commits"
-  default_prompt: "Use $git-commit to commit these changes."

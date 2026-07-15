@@ -25,7 +25,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use $skill-forge to create or improve this skill."
+      "Use $j5ik2o:skill-forge to create or improve this skill."
     ]
   }
 }

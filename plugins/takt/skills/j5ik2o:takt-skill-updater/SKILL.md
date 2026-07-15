@@ -1,0 +1,409 @@
+---
+name: j5ik2o:takt-skill-updater
+description: >
+  nrslib/takt の新バージョンリリース時に、takt-*スキル群（j5ik2o:takt-task-builder, j5ik2o:takt-workflow-builder,
+  j5ik2o:takt-facet-builder, j5ik2o:takt-analyzer, j5ik2o:takt-optimizer）を最新のtaktバージョンに追従させるスキル。
+  TypeScriptスキーマ（taskRecordSchemas.ts / taskExecutionSchemas.ts）、ワークフローYAML、ファセットMarkdownの差分を検出し、
+  SKILL.md・参照ドキュメント（task-schema.md等）を体系的に更新する。
+  トリガー：「taktスキルを更新」「takt-*スキルの鮮度チェック」「taktバージョンアップ対応」
+  「スキルが古くないか確認」「takt skill updater」
+---
+
+# TAKT Skill Updater
+
+nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
+
+> **前提 takt バージョン**: v0.47.0
+
+## パス表記について
+
+本スキルでは `skills/` で始まるパスを使用する。実際のパスは実行環境に応じて読み替える：
+
+| 環境 | プレフィックス |
+|------|---------------|
+| Claude Code | `.claude/skills/` |
+| Codex CLI | `.codex/skills/` |
+| 共通（実体） | `.agents/skills/` |
+
+takt の source of truth は環境変数 `TAKT_SRC` が指す nrslib/takt のチェックアウトとする。git submodule や特定リポジトリのレイアウトには依存せず、Step 0 の手順で nrslib/takt を直接 clone して使う。
+
+## 対象スキル
+
+| スキル | 実体パス | チェック対象 |
+|--------|---------|-------------|
+| j5ik2o:takt-task-builder | `skills/j5ik2o:takt-task-builder/SKILL.md` | TaskRecordスキーマ、ステータス遷移、フィールド一覧 |
+| j5ik2o:takt-workflow-builder | `skills/j5ik2o:takt-workflow-builder/SKILL.md` | ビルトインワークフロー一覧、YAML構造、新機能フィールド |
+| j5ik2o:takt-facet-builder | `skills/j5ik2o:takt-facet-builder/SKILL.md` | ファセット種別、スタイルガイド参照パス |
+| j5ik2o:takt-analyzer | `skills/j5ik2o:takt-analyzer/SKILL.md` | エンジン仕様参照、ビルトインパス |
+| j5ik2o:takt-optimizer | `skills/j5ik2o:takt-optimizer/SKILL.md` | ログ形式、最適化パラメータ |
+
+## ワークフロー
+
+### Step 0: takt ソースの取得
+
+nrslib/takt のチェックアウトを用意し、`TAKT_SRC` に設定する。手元に既存のチェックアウトがあればそれを `TAKT_SRC` に指定してもよい。
+更新先バージョンが指定されている場合（CI から呼ばれる場合等）は `NEW_VERSION` にそのタグを設定する。目的のタグを checkout 済みの `TAKT_SRC` が与えられている場合、この Step は省略してよい。
+
+```bash
+TAKT_SRC="${TAKT_SRC:-/tmp/takt}"
+if [[ ! -d "$TAKT_SRC" ]]; then
+  git clone https://github.com/nrslib/takt.git "$TAKT_SRC"
+fi
+git -C "$TAKT_SRC" fetch --tags
+# NEW_VERSION 指定時はそのタグを、未指定時は最新の安定版タグを checkout する
+git -C "$TAKT_SRC" checkout \
+  "${NEW_VERSION:-$(git -C "$TAKT_SRC" tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)}"
+```
+
+### Step 1: takt バージョン確認
+
+takt チェックアウト（`TAKT_SRC`）のバージョンと、各スキルが前提とするバージョンを比較する。
+
+```bash
+# 更新先の takt バージョン（TAKT_SRC のチェックアウトから取得）
+NEW_VERSION=$(git -C "$TAKT_SRC" describe --tags --abbrev=0)
+echo "更新先のtaktバージョン: ${NEW_VERSION}"
+
+# 各スキルの前提バージョン（旧バージョンの特定に使う）
+grep -r "前提 takt バージョン" skills/j5ik2o:takt-*-builder/SKILL.md skills/j5ik2o:takt-analyzer/SKILL.md skills/j5ik2o:takt-optimizer/SKILL.md
+```
+
+各スキルの前提バージョンから旧バージョン（`OLD_VERSION`）を特定する。全スキルが同じバージョンであればその値を使う。異なる場合は最も古いバージョンを `OLD_VERSION` とする。
+
+`OLD_VERSION` と `NEW_VERSION` が一致していれば更新不要。差分がある場合は Step 1.5 に進む。
+
+### Step 1.5: リファレンスファイルの同期
+
+`TAKT_SRC` のチェックアウトから、各スキルの `references/takt/` ディレクトリにリファレンスファイルを同期する。
+`rsync --delete` により、takt 側で削除されたファイルもスキル側から自動的に削除される。
+
+```bash
+# sync スクリプトがある場合（TAKT_SRC で更新元を指定する）
+TAKT_SRC="$TAKT_SRC" scripts/sync-takt-references.sh --dry-run
+TAKT_SRC="$TAKT_SRC" scripts/sync-takt-references.sh
+```
+
+sync スクリプトが存在しない repo では、各スキルが参照するサブセットを `rsync -a --delete` で個別同期する。`builtins/`, `docs/`, `builtins/skill/references/`, `src/infra/task/`, `src/core/logging/`, `src/core/workflow/` など、当該スキルが実際に読む範囲だけを同期対象にする。
+
+各スキルには自身が参照する takt リソースのサブセットのみが同期される。
+同期対象の定義は `scripts/sync-takt-references.sh` 内の各スキルセクションを参照。
+
+#### 同期内容の品質チェック（誤読防止）
+
+「本家がそう書いてあったから」での盲目的コピーはしない。同期で追加・変更されたドキュメントを読み、
+誤読を招く記述（設定例の誤り、正式リファレンスと矛盾する説明、ネスト構造が曖昧な設定キー表記等）がないか、
+正とする情報源（`docs/configuration.md`、スキーマ定義、実装コード）と突き合わせて確認する。
+
+検出した場合の対応:
+
+1. スナップショット側を修正し、「ローカル修正の記録」（本ファイル末尾）に追記する
+2. 既存の記録エントリは毎回の同期後に必ず確認する。上流で修正済みなら記録から削除し、未修正なら同じ修正を再適用する（`rsync --delete` で上書きされて消えているため）
+3. 上流（nrslib/takt）への issue / PR での報告を検討する（報告が修正の恒久化につながる）
+
+### Step 2: タグ間差分の取得
+
+旧バージョンと現バージョン間の差分を取得し、どのスキルに影響があるかを判定する。
+
+```bash
+cd "$TAKT_SRC"
+
+# 変更されたファイル一覧
+git diff --name-only ${OLD_VERSION}..${NEW_VERSION}
+
+# 変更の統計（追加/削除行数）
+git diff --stat ${OLD_VERSION}..${NEW_VERSION}
+
+# 変更履歴（コミットメッセージ）
+git log --oneline ${OLD_VERSION}..${NEW_VERSION}
+```
+
+#### 影響スキルの判定
+
+変更されたファイルパスから影響スキルを判定する。該当しないスキルは以降のステップをスキップする。
+
+| 変更ファイルのパスパターン | 影響スキル |
+|---------------------------|-----------|
+| `src/infra/task/taskRecordSchemas.ts`, `src/infra/task/taskExecutionSchemas.ts` | j5ik2o:takt-task-builder |
+| `builtins/**/workflows/*.yaml` | j5ik2o:takt-workflow-builder |
+| `builtins/**/facets/**` | j5ik2o:takt-facet-builder |
+| `builtins/**/*STYLE_GUIDE*.md` | j5ik2o:takt-facet-builder |
+| `builtins/skill/references/engine.md` | j5ik2o:takt-analyzer, j5ik2o:takt-workflow-builder |
+| `builtins/skill/references/yaml-schema.md` | j5ik2o:takt-workflow-builder |
+| `src/**/log*`, `src/**/trace*` | j5ik2o:takt-optimizer |
+
+### Step 3: 影響スキルの詳細チェック
+
+影響ありと判定されたスキルについて、タグ間差分の詳細を確認し、各スキルへの反映内容を特定する。
+
+```bash
+cd "$TAKT_SRC"
+
+# 影響ファイルの詳細差分を確認（例）
+git diff ${OLD_VERSION}..${NEW_VERSION} -- src/infra/task/taskRecordSchemas.ts src/infra/task/taskExecutionSchemas.ts
+git diff ${OLD_VERSION}..${NEW_VERSION} -- builtins/ja/workflows/
+git diff ${OLD_VERSION}..${NEW_VERSION} -- builtins/ja/facets/
+git diff ${OLD_VERSION}..${NEW_VERSION} -- builtins/skill/references/
+```
+
+以下の領域を、影響ありと判定されたもののみチェックする。
+
+#### a) TaskRecord スキーマ差分（→ j5ik2o:takt-task-builder）
+
+差分で `src/infra/task/taskRecordSchemas.ts` と `src/infra/task/taskExecutionSchemas.ts` の変更を確認し、以下の観点で反映内容を特定する：
+
+| 確認項目 | 参照元 | 更新先 |
+|---------|--------|--------|
+| ステータス enum 値 | `TaskStatusSchema` | `skills/j5ik2o:takt-task-builder/references/task-schema.md` |
+| TaskExecutionConfig フィールド | `TaskExecutionConfigSchema` | `skills/j5ik2o:takt-task-builder/references/task-schema.md` |
+| TaskRecord フィールド | `TaskRecordSchema` | `skills/j5ik2o:takt-task-builder/references/task-schema.md` |
+| superRefine バリデーション | `TaskRecordSchema.superRefine` | `skills/j5ik2o:takt-task-builder/references/task-schema.md` ステータス遷移表 |
+| TaskFailure 構造 | `TaskFailureSchema` | `skills/j5ik2o:takt-task-builder/references/task-schema.md` |
+
+#### b) ビルトインワークフロー差分（→ j5ik2o:takt-workflow-builder）
+
+差分で `builtins/**/workflows/*.yaml`（旧 `builtins/**/pieces/*.yaml`）の変更を確認し、以下の観点で反映内容を特定する：
+
+| 確認項目 | 更新先 |
+|---------|--------|
+| ワークフロー名のリネーム | `skills/j5ik2o:takt-workflow-builder/SKILL.md` ビルトインテーブル |
+| 新規追加ワークフロー | `skills/j5ik2o:takt-workflow-builder/SKILL.md` ビルトインテーブル |
+| 削除されたワークフロー | `skills/j5ik2o:takt-workflow-builder/SKILL.md` ビルトインテーブル |
+| ワークフローYAML新フィールド | `skills/j5ik2o:takt-workflow-builder/SKILL.md` 設計判断ガイド |
+
+#### c) ファセット構造差分（→ j5ik2o:takt-facet-builder）
+
+差分で `builtins/**/facets/**` と `*STYLE_GUIDE*.md` の変更を確認し、以下の観点で反映内容を特定する：
+
+| 確認項目 | 更新先 |
+|---------|--------|
+| スタイルガイドの内容変更 | `skills/j5ik2o:takt-facet-builder/SKILL.md` 参照資料テーブル |
+| ファセット種別の追加/変更 | `skills/j5ik2o:takt-facet-builder/SKILL.md` ファセット作成規約 |
+| 新規ビルトインファセット | `skills/j5ik2o:takt-facet-builder/SKILL.md` 参照例 |
+
+#### d) エンジン仕様差分（→ j5ik2o:takt-analyzer, j5ik2o:takt-optimizer）
+
+差分で `builtins/skill/references/` 配下の変更を確認し、以下の観点で反映内容を特定する：
+
+| 確認項目 | 更新先 |
+|---------|--------|
+| ルール評価方式の変更 | `skills/j5ik2o:takt-analyzer/SKILL.md`, `skills/j5ik2o:takt-workflow-builder/SKILL.md` |
+| 新しいステップ種別 | `skills/j5ik2o:takt-workflow-builder/SKILL.md` |
+| ログフォーマット変更 | `skills/j5ik2o:takt-optimizer/SKILL.md` |
+| テンプレート変数の追加 | `skills/j5ik2o:takt-task-builder/references/task-schema.md` |
+
+### Step 4: スキル更新の実施
+
+Step 3 で特定した反映内容をもとに、影響のあるスキルを更新する。
+
+#### 更新ルール
+
+1. **バージョン表記**: 各 SKILL.md の `> **前提 takt バージョン**:` を `NEW_VERSION` に更新
+2. **フィールド追加**: 新フィールドは既存テーブルの末尾に追加（順序を保持）
+3. **リネーム**: 旧名→新名の注意書きを添える（例: 「v0.28.1 で `expert` → `dual` にリネーム」）
+4. **削除**: テーブルから削除し、注意書きで言及
+5. **参照ドキュメント**: `skills/j5ik2o:takt-task-builder/references/task-schema.md` 等のリファレンスファイルも同時に更新
+
+#### 更新対象ファイル一覧
+
+| ファイル | 更新内容 |
+|---------|---------|
+| `skills/j5ik2o:takt-task-builder/SKILL.md` | ステータス遷移表、フィールド参照、ワークフロー名例 |
+| `skills/j5ik2o:takt-task-builder/references/task-schema.md` | フィールド一覧、ステータス遷移図、不変条件テーブル |
+| `skills/j5ik2o:takt-workflow-builder/SKILL.md` | ビルトインワークフローテーブル、YAML構造例、設計判断ガイド |
+| `skills/j5ik2o:takt-facet-builder/SKILL.md` | 参照パス、ファセット作成規約 |
+| `skills/j5ik2o:takt-analyzer/SKILL.md` | 参照パス、分析基準 |
+| `skills/j5ik2o:takt-optimizer/SKILL.md` | ログ形式、最適化パラメータ |
+
+#### j5ik2o:takt-skill-updater 自身の更新
+
+対象スキルの更新が完了したら、このスキル自身も更新する：
+
+1. 冒頭の `> **前提 takt バージョン**:` を `NEW_VERSION` に更新
+2. 末尾の「過去の更新履歴」セクションに今回の変更内容を追記
+
+### Step 5: バリデーション
+
+更新後の整合性を確認する。
+
+#### 自動検証
+
+```bash
+# order.md バリデーション（j5ik2o:takt-task-builder）
+bash skills/j5ik2o:takt-task-builder/scripts/validate-order-md.sh
+
+# ワークフロー・ファセット バリデーション（j5ik2o:takt-workflow-builder）
+bash skills/j5ik2o:takt-workflow-builder/scripts/validate-takt-files.sh --workflows
+```
+
+#### 手動検証チェックリスト
+
+- [ ] 全 SKILL.md の `前提 takt バージョン` が `NEW_VERSION` に更新されている
+- [ ] `task-schema.md` のステータス enum が `skills/j5ik2o:takt-task-builder/references/takt/src/infra/task/taskRecordSchemas.ts` の `TaskStatusSchema` と一致
+- [ ] `task-schema.md` のフィールド一覧が `TaskRecordSchema` と `TaskExecutionConfigSchema` の全フィールドを網羅
+- [ ] `task-schema.md` の不変条件テーブルが `superRefine` のバリデーションルールと一致
+- [ ] `j5ik2o:takt-workflow-builder/SKILL.md` のビルトインテーブルが `skills/j5ik2o:takt-workflow-builder/references/takt/builtins/ja/workflows/` の実態と整合
+- [ ] `j5ik2o:takt-workflow-builder/SKILL.md` で廃止・リネームされたワークフロー名が残っていない
+- [ ] `j5ik2o:takt-facet-builder/SKILL.md` の参照パスが全て実在する
+- [ ] `j5ik2o:takt-analyzer/SKILL.md` の参照パスが全て実在する
+- [ ] j5ik2o:takt-skill-updater 自身の `前提 takt バージョン` と「過去の更新履歴」が更新されている
+- [ ] 「ローカル修正の記録」の全エントリが、同期後のスナップショットに再適用されている（または上流修正を確認して記録から削除されている）
+
+### Step 6: コミットとPR
+
+更新内容をコミットする。
+
+#### ブランチ命名規約
+
+```
+chore/update-takt-skills-for-v{バージョン}
+```
+
+例: `chore/update-takt-skills-for-v031`
+
+#### コミットメッセージテンプレート
+
+```
+chore: update takt-* skills for takt v{バージョン}
+
+- Add "前提 takt バージョン: v{バージョン}" to all takt-* skills
+- j5ik2o:takt-task-builder: {変更サマリ}
+- j5ik2o:takt-workflow-builder: {変更サマリ}
+- Sync takt reference snapshots to v{バージョン}
+```
+
+## ローカル修正の記録
+
+上流ドキュメントの誤読を招く記述に対する、スナップショットへのローカル修正。
+同期（`rsync --delete`）のたびに失われるため、Step 1.5 の品質チェックで毎回再適用する。
+上流で修正がリリースされたら該当行を削除する。
+
+| 対象ファイル | 修正内容 | 追加日 | 解除条件 |
+|------------|---------|--------|---------|
+| `docs/testing/e2e.md`（同期先の各スキル `references/takt/` 配下） | Observability E2E 手順の設定例で `usage_events_phase` / `monitor` / `session_log_exporter` に `observability.` プレフィックスを付与（トップレベル設定と誤読されるため。正は `docs/configuration.md` の `observability` サブフィールド） | 2026-06-11 | 上流の同箇所が修正されたら削除 |
+
+## 過去の更新履歴
+
+今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.46.0 → v0.47.0（2026-06-18）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.47.0` に更新。`v0.47.0` タグの reference snapshot を同期 |
+| j5ik2o:takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-workflow-builder | BREAKING: `provider_options.$ref` → `extends`（bare name）への移行を YAML例・設計判断ガイド・v0.47.0 変更点の3箇所に反映。`persona_providers` 非推奨→`provider_routing`（`personas`/`tags`/`steps` 3軸）を変更点に記載。ビルトインテーブルに `takt-default-with-fc`・`peer-review-with-fc` を追加。Finding Contract（`finding_contract:` セクション）の YAML例・設計判断ガイド追加。Step tags（`tags:` フィールド）の Parallel Step 例・設計判断ガイド追加。`provider-options/` ディレクトリ移動（`builtins/{lang}/workflows/provider-options/` → `builtins/{lang}/provider-options/`）を変更点に記載。Trace discovery 強化（`WorkflowTraceTaskMetadata`）を変更点に記載 |
+| j5ik2o:takt-facet-builder | Persona に `findings-manager` を追加。Instruction に `findings-manager` を追加。Output Contract に `findings-manager`・`*-finding-contract` 系（11件）を追加。v0.47.0 変更点の注記を追加 |
+| j5ik2o:takt-analyzer | 参照資料テーブルに `traceDiscovery.ts` を追加。ワークフロー構造分析チェック項目に `provider_options.$ref` 廃止チェックと `provider_routing` 移行チェックを追加 |
+| j5ik2o:takt-optimizer | ループ制御改善セクションに `provider_options.$ref → extends` 移行と `persona_providers → provider_routing` 移行の最適化項目を追加 |
+
+### v0.45.0 → v0.46.0（2026-06-17）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.46.0` に更新。`v0.46.0` タグの reference snapshot を同期 |
+| j5ik2o:takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-workflow-builder | `requirements-reviewer` 削除・`pure-reviewer` 追加（`review-pure` instruction + `pure-review` output contract）をビルトインテーブルへ反映。`provider_options.$ref` 共通 YAML 参照・ビルトインプリセット（`provider-options/{edit,review-files,review-readonly,review-web}.yaml`）を設計判断ガイドへ追記。`provider_options.opencode.allowed_tools`・`provider_options.kiro.agent` を設計判断ガイドテーブルへ追加。`team_leader.max_parts` → `max_concurrency` + `max_total_parts` 分割を v0.46.0 追加例に記載 |
+| j5ik2o:takt-facet-builder | Persona から `requirements-reviewer` を削除し `pure-reviewer` を追加。Instruction から `review-requirements` を削除し `review-pure` を追加。Output Contract から `requirements-review` を削除し `pure-review` を追加。v0.46.0 変更点の注記を追加 |
+| j5ik2o:takt-analyzer | OTLP エクスポート（`OTEL_EXPORTER_OTLP_ENDPOINT` 設定時の span / metric 送信）、W3C trace context 伝播によるプロバイダー span のネスト、`workflow_start.<name>` span による実行中ワークフロー発見支援を observability セクションへ追記 |
+| j5ik2o:takt-optimizer | OTLP span / metric を「ログ診断結果に基づく最適化」セクションのログソーステーブルへ追記 |
+
+### v0.44.0 → v0.45.0（2026-06-11）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.45.0` に更新。`v0.45.0` タグの reference snapshot を同期 |
+| j5ik2o:takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-workflow-builder | builtins の変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-facet-builder | ファセット・スタイルガイドの変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-analyzer | `observability.usage_events_phase: true` が機能化（v0.44.0 では no-op）。新ログファイル `.takt/runs/<run>/logs/<session>-usage-events.phase.jsonl`（`PhaseUsageEventLogRecord` 型 NDJSON）をログの場所・形式へ追記。`phaseUsageEvent.ts` を参照資料テーブルへ追加。`UsageEventLogRecord.usage` に `cache_creation_input_tokens` / `cache_read_input_tokens` 追加 |
+| j5ik2o:takt-optimizer | 新ログソース `-usage-events.phase.jsonl`（phase 粒度トークン集計）を「ログ診断結果に基づく最適化」セクションのログソーステーブルへ追記 |
+
+### v0.43.0 → v0.44.0（2026-06-10）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.44.0` に更新。`v0.44.0` タグの reference snapshot を同期（タグの worktree を `TAKT_SRC` に指定して sync） |
+| j5ik2o:takt-task-builder | TaskRecord / TaskExecutionConfig schema の変更なし。バージョン表記と reference docs の同期のみ |
+| j5ik2o:takt-workflow-builder | `coding-review` 並列レビューを全ビルトイン review / review-fix / 開発系ワークフロー（backend, frontend, dual, terraform とその variants）へ拡大（`*-mini` と `compound-eye` は対象外）。新 provider `kiro`（kiro-cli、`kiro_api_key` / `kiro_cli_path` で設定）を反映 |
+| j5ik2o:takt-facet-builder | ファセット・スタイルガイドの変更なし。バージョン表記の更新のみ |
+| j5ik2o:takt-analyzer | observability opt-in 出力（`.takt/runs/<run>/monitor.json` メトリクス、OTel span 由来 shadow session log）をログの場所・形式へ追加。`span-to-ndjson-mapper.ts` を参照資料へ追加。NDJSONレコード表に `phase_judge_stage` を追記 |
+| j5ik2o:takt-optimizer | ログフォーマット自体の変更なし。バージョン表記の更新のみ |
+
+### v0.42.0 → v0.43.0（2026-06-02）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.43.0` に更新。`v0.43.0` タグの reference snapshot を同期 |
+| sync-takt-references.sh | `TAKT_SRC` 環境変数で更新元 checkout を指定できるようにし、root `references/takt` がない checkout でも同期可能にした |
+| j5ik2o:takt-task-builder | TaskRecord schema 自体の新規変更はなし。既存の `managed_pr` / `resume_point` 記述を維持し、reference docs を v0.43.0 に同期 |
+| j5ik2o:takt-workflow-builder | `frontend-maintenance` ワークフロー、peer review への `coding-review` 追加、`quality_gates.type: command` を反映 |
+| j5ik2o:takt-facet-builder | `coding-reviewer`、`existing-system-respect`、maintenance 系 instruction、`existing-system` knowledge、`coding-review` / `maintenance-scope` output contract をビルトイン例へ追加 |
+| j5ik2o:takt-analyzer | command quality gate の静的分析観点を追加 |
+| j5ik2o:takt-optimizer | command quality gate の整理観点を追加 |
+
+### v0.36.0 → v0.42.0（2026-05-21）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.42.0` に更新。`references/takt` の source of truth を `references/okite-ai/references/takt` として読む repo layout を明記 |
+| j5ik2o:takt-task-builder | `managed_pr` 制約、`source: pr_review` と `pr_number` の関係、`resume_point` 構造を `references/task-schema.md` に反映 |
+| j5ik2o:takt-workflow-builder | `default-draft` / `default-high` / `default-mini` / `default-peer-review` / `draft` / `peer-review` / `auto-improvement-loop` / `takt-default-refresh-*` / CQRS review 系のビルトイン追加を反映。`provider_options.<provider>.effort` の判断軸を追記 |
+| j5ik2o:takt-facet-builder | templates は廃止ではなく補助参照である点に修正。`ai-antipattern-*` / research / terraform / character persona など v0.42.0 時点のビルトイン一覧へ更新 |
+| j5ik2o:takt-analyzer | NDJSON レコード名を `workflow_*` に更新し、ログ型参照を `src/shared/utils/types.ts` に修正。`step_start.providerOptions*` を診断観点へ追加 |
+| j5ik2o:takt-optimizer | `前提 takt バージョン: v0.42.0` に更新 |
+| j5ik2o:takt-skill-updater | sync スクリプト不在時の `rsync` ベース同期手順を追記 |
+
+### v0.35.4 → v0.36.0（2026-04-16）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.36.0` に更新 |
+| j5ik2o:takt-task-builder | BREAKING: `piece`, `start_movement`, `exceeded_max_movements` エイリアス完全廃止。`schema.ts` を `taskRecordSchemas.ts` + `taskExecutionSchemas.ts` に分割反映。新フィールド: `resume_point`（サブワークフロー再開用）。テンプレート変数 `{max_movements}` → `{max_steps}`、`{movement_iteration}` → `{step_iteration}`。`instruction_template` 完全廃止 |
+| j5ik2o:takt-workflow-builder | BREAKING: `movements`/`initial_movement`/`max_movements`/`piece_config`/`piece_categories` エイリアス完全廃止。新ステップ種別: `call:` サブワークフロー呼び出し（`subworkflow: { callable: true }` 必須、最大ネスト深度5）、`kind: system` AIなしシステムステップ（`system_inputs:`, `effects:`）。新フィールド: `structured_output: { schema_ref: }` + `schemas:` 定義。新ルール条件: `when:` 決定論的条件（比較演算子・`context.*`/`structured.*`/`effect.*` 参照）。`instruction_template` 完全廃止 |
+| j5ik2o:takt-facet-builder | 新ビルトインポリシー `screen-api` 追加（画面専用APIポリシー、全 dual 系ワークフロー適用） |
+| j5ik2o:takt-analyzer | 参照パス更新: `src/core/piece/evaluation/RuleEvaluator.ts` → `src/core/workflow/evaluation/RuleEvaluator.ts`。`when:` 決定論的条件評価への対応追記 |
+| sync-takt-references.sh | `src/core/piece/evaluation` → `src/core/workflow/evaluation` パス更新。`schema.ts` 同期を `taskRecordSchemas.ts` + `taskExecutionSchemas.ts` に拡張 |
+
+### v0.31.0 → v0.35.4（2026-04-13）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.35.4` に更新。大規模用語リネーム: `piece` → `workflow`、`movement` → `step`、`pieces/` → `workflows/`、`initial_movement` → `initial_step`、`max_movements` → `max_steps`、`piece_config` → `workflow_config`。旧名はエイリアスとして互換あり |
+| j5ik2o:takt-task-builder | `piece` → `workflow`（エイリアス互換）、`start_movement` → `start_step`、`exceeded_max_movements` → `exceeded_max_steps`。新フィールド: `run_slug`, `should_publish_branch_to_origin`, `source`（`pr_review`/`issue`/`manual`）, `pr_number`（`source: pr_review` 時必須） |
+| j5ik2o:takt-workflow-builder | `pieces/` → `workflows/` ディレクトリ移動。ワークフローYAMLの `movements` → `steps`、`initial_movement` → `initial_step`、`max_movements` → `max_steps`。ビルトインテーブル刷新: review系分離（`review-default`, `review-backend` 等）、audit系ワークフロー新規追加（`audit-architecture`, `audit-e2e`, `audit-security`, `audit-unit` 等）。`e2e-test`/`unit-test` 削除→audit系に統合 |
+| j5ik2o:takt-facet-builder | テンプレートディレクトリ廃止（既存ファセット参照に変更）。新規ファセット大量追加: Instruction（`architecture-audit-*`, `audit-security-*`, `e2e-audit-*`, `e2e-coverage-*`, `unit-audit-*`, `write-tests-first`）、Knowledge（`e2e-testing`, `react`, `unit-testing`）、Output Contract（`architecture-audit-*`, `audit-security`, `e2e-audit-*`, `e2e-coverage-plan`, `plan-frontend`, `test-report`, `unit-audit-*`）、Policy（`design-fidelity`, `design-planning`, `task-decomposition`）、Persona（`architect-planner`, `research-*`, `conductor`, `test-planner`, `ai-antipattern-reviewer`）。`implement-e2e-test`/`plan-e2e-test` 削除 |
+| j5ik2o:takt-analyzer | `ムーブメント` → `ステップ`、`ピースYAML` → `ワークフローYAML` 用語統一。ビルトイン参照パスを `workflows/` に更新 |
+| j5ik2o:takt-optimizer | `ムーブメント統合` → `ステップ統合`。全用語を `step`/`workflow` に統一。参照パスを `workflows/` に更新 |
+
+### v0.29.0 → v0.31.0（2026-03-09）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.31.0` に更新 |
+| j5ik2o:takt-task-builder | `pr_failed` ステータス（6番目の終端状態）の遷移テーブルに追加 |
+| j5ik2o:takt-workflow-builder | ビルトインテーブルを現行ピース一覧に刷新（`expert`/`default-mini`/`review-only` → `dual`/`backend`/`frontend`/`review`/`takt-default` 等）。`allowed_tools` → `provider_options.claude.allowed_tools` 移行例を追加。Loop monitor の `instruction` をビルトインファセット参照へ統一。`takt-default-team-leader` 廃止（`takt-default` に統合） |
+| j5ik2o:takt-facet-builder | ビルトイン一覧を大幅拡充（Instruction: `dual-team-leader-implement`, `loop-monitor-reviewers-fix`, `team-leader-implement` 等追加。Knowledge: `task-decomposition` 追加。Persona: `supervisor`, `dual-supervisor` 等追加。Output Contract: 各レビュー系追加）。レビュー出力契約に `family_tag`/`reopened` セクション構造追加 |
+| j5ik2o:takt-analyzer | `provider_options` 構造チェック項目追加。`*-provider-events.jsonl`（別ファイル）と `trace.md` のログ記述追加。`observability` → `logging` リネーム反映 |
+| j5ik2o:takt-optimizer | `instruction` 参照正規化・`allowed_tools` の `provider_options` 移行の最適化項目追加 |
+
+### v0.29.0 → v0.30.0（2026-03-06、未適用 → v0.31.0 に統合）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.30.0` に更新 |
+| j5ik2o:takt-task-builder | `pr_failed` ステータス（6番目の終端状態）追加。PR作成失敗を `failed` と分離。`failure` は任意（`failed` と異なり必須ではない） |
+| j5ik2o:takt-workflow-builder | `allowed_tools` → `provider_options.claude.allowed_tools` に移動。Loop monitor の `instruction` をビルトインファセット参照（`loop-monitor-ai-fix`, `loop-monitor-reviewers-fix`）へ統一。設計判断ガイドに `provider_options` 追加 |
+| j5ik2o:takt-facet-builder | ビルトイン Instruction に `loop-monitor-ai-fix`, `loop-monitor-reviewers-fix` 追加。レビュー出力契約に `family_tag`/`new`/`persists`/`resolved`/`reopened` セクション構造追加 |
+| j5ik2o:takt-analyzer | `provider_options` 構造チェック項目追加。`*-provider-events.jsonl`（別ファイル）と `trace.md` のログ記述追加。`observability` → `logging` リネーム反映 |
+| j5ik2o:takt-optimizer | `instruction` 参照正規化の最適化項目追加 |
+
+### v0.22.0 → v0.29.0（2026-03-04）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.29.0` を追加 |
+| j5ik2o:takt-task-builder | `exceeded` ステータス（5番目の終端状態）追加。`base_branch`, `exceeded_max_movements`, `exceeded_current_iteration` フィールド追加 |
+| j5ik2o:takt-workflow-builder | `expert` → `dual` リネーム（v0.28.1）。`default-mini` 廃止。`review-fix` 系・`backend`/`frontend` 系ピース追加。`quality_gates` フィールド追加 |
+| j5ik2o:takt-facet-builder | 変更なし |
+| j5ik2o:takt-analyzer | 変更なし |
+| j5ik2o:takt-optimizer | `provider-events.jsonl` 追加（minor） |
