@@ -2,11 +2,12 @@
 
 [English](README.md)
 
-Claude Code と、Codex のようなスキルディレクトリベース CLI 向けに AI エージェントスキルを配布するマーケットプレイス用リポジトリです。
+Claude Code と Codex 向けに、AI エージェントスキルとプラグインを配布するマーケットプレイス用リポジトリです。
 
 ## Highlights
 
 - `.claude-plugin/marketplace.json` から複数の plugin を公開
+- `.agents/plugins/marketplace.json` から Codex plugin を公開
 - `marketplace.yml` と生成済み `marketplace.json` で APM marketplace manifest を提供
 - `agent-skills`, `takt`, `software-design` などのスキルコレクションを収録
 - `skills/` に直接参照用のシンボリックリンクを保持
@@ -20,6 +21,25 @@ Claude Code と、Codex のようなスキルディレクトリベース CLI 向
 /plugin install agent-skills@ai-tools
 /plugin install takt@ai-tools
 /plugin install software-design@ai-tools
+```
+
+### Codex Plugin
+
+このリポジトリを Codex plugin marketplace として登録し、必要なプラグインをインストールします。
+
+```shell
+codex plugin marketplace add j5ik2o/ai-tools --ref main
+codex plugin add git@ai-tools
+codex plugin add github@ai-tools
+codex plugin add agent-skills@ai-tools
+codex plugin add takt@ai-tools
+codex plugin add software-design@ai-tools
+```
+
+インストール結果を確認したら、新しい Codex タスクを開いてプラグインを読み込みます。
+
+```shell
+codex plugin list
 ```
 
 ### Agent Package Manager

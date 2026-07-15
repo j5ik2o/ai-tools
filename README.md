@@ -2,11 +2,12 @@
 
 [日本語](README.ja.md)
 
-A marketplace repository for distributing AI agent skills for Claude Code and skill-directory-based CLIs such as Codex.
+A marketplace repository for distributing AI agent skills and plugins for Claude Code and Codex.
 
 ## Highlights
 
 - Publishes multiple plugins through `.claude-plugin/marketplace.json`
+- Publishes Codex plugins through `.agents/plugins/marketplace.json`
 - Provides an APM marketplace manifest through `marketplace.yml` and generated `marketplace.json`
 - Includes installable skill collections such as `agent-skills`, `takt`, and `software-design`
 - Keeps `skills/`, `.agents/skills/`, and `.claude/skills/` links for tools that consume plain skill directories directly
@@ -22,6 +23,25 @@ A marketplace repository for distributing AI agent skills for Claude Code and sk
 /plugin install agent-skills@ai-tools
 /plugin install takt@ai-tools
 /plugin install software-design@ai-tools
+```
+
+### Codex Plugin
+
+Register this repository as a Codex plugin marketplace, then install the plugins you need:
+
+```shell
+codex plugin marketplace add j5ik2o/ai-tools --ref main
+codex plugin add git@ai-tools
+codex plugin add github@ai-tools
+codex plugin add agent-skills@ai-tools
+codex plugin add takt@ai-tools
+codex plugin add software-design@ai-tools
+```
+
+Verify the installation, then start a new Codex task so the installed plugins are loaded:
+
+```shell
+codex plugin list
 ```
 
 ### Agent Package Manager
