@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v8.3.2
+      - uses: astral-sh/setup-uv@v9.0.0
 
       - name: Verify skill-forge scripts
         run: bash plugins/agent-skills/skills/j5ik2o-skill-forge/scripts/ci/verify.sh
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v8.3.2
+      - uses: astral-sh/setup-uv@v9.0.0
 
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
