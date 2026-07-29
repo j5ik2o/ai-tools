@@ -1,4 +1,4 @@
-# skill-forge-source-sha256: 3dc523ff6235c43c89324fd80c18d4f0bbc35ac2e723bc2824eaae6b69d9aa73
+# skill-forge-source-sha256: 6eedf7a6c62894e79dae3a45bc8a64582c3b1db9470a31b650f9924fcfecd148
 interface:
   display_name: "GitHub PR Convergence Loop"
   short_description: "Loop until PR conflicts, feedback, and checks converge"

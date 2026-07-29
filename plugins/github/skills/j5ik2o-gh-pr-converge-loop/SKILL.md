@@ -30,8 +30,8 @@ Use `gh pr checks` as the source of truth. It includes all PR-attached checks, w
 3. Invoke the `j5ik2o-gh-pr-review-follow-up` skill to inspect unresolved review threads, implement all unambiguous actionable fixes, and obtain any approval that skill requires before replying to or resolving threads.
 4. Validate, commit, and push accepted review fixes when the request authorizes those remote writes.
 5. Inspect the complete PR check set before waiting.
-6. If checks already failed, diagnose the failures, apply the smallest scoped fixes, validate, commit, and push them.
-7. If checks are pending, watch with `gh pr checks --watch --fail-fast`.
+6. If any check has failed, do not wait for other pending checks. Immediately diagnose the failures, apply the smallest scoped fixes, validate, commit, and push them.
+7. Only when no checks have failed and at least one check is pending, watch with `gh pr checks --watch --fail-fast`.
 8. After every push, return to step 1 before checking review feedback or CI again; finish only when the PR is mergeable, a final thread-aware review read finds no unresolved actionable feedback, and the complete required check set is green.
 
 ## Commands
@@ -60,6 +60,7 @@ gh run view <run-id> --log-failed
 - Do not inspect review feedback or wait on CI while base-branch conflicts remain unresolved.
 - Treat the `j5ik2o-gh-pr-resolve-conflicts` skill as the conflict-resolution and validation workflow. Keep its no-commit, no-push, and no-tag guardrail intact.
 - Before the first remote mutation, obtain explicit approval if the request does not already authorize comment replies, thread resolution, commits, and pushes.
+- Never wait for pending CI when any failure is already visible. A visible failure is immediately actionable and takes precedence over all pending checks.
 - Keep each fix scoped to a single failure cause when possible.
 - Do not bypass hooks (`--no-verify`) to force progress.
 - If the failure is clearly unrelated to the PR and appears fixed on the base branch, merge the latest base branch instead of bloating the PR with unrelated fixes.
