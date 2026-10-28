@@ -1,6 +1,6 @@
-[日本語](./task-management.ja.md)
-
 # Task Management
+
+[English](./task-management.md) | [日本語](./task-management.ja.md) | [简体中文](./task-management.zh-CN.md)
 
 ## Overview
 
@@ -11,7 +11,7 @@ TAKT provides a task management workflow for accumulating multiple tasks and exe
 3. **`takt run`** -- Execute all pending tasks at once (sequential or parallel)
 4. **`takt list`** -- Review results, merge branches, retry failures, or add instructions
 
-Each task executes in an isolated shared clone (optional), produces reports, and creates a branch that can be merged or discarded via `takt list`.
+Each task executes in an isolated clone (optional), produces reports, and creates a branch that can be merged or discarded via `takt list`.
 
 ## Adding Tasks (`takt add`)
 
@@ -22,15 +22,18 @@ Use `takt add` to create a new task entry in `.takt/tasks.yaml`.
 takt add "Implement user authentication"
 
 # Add a task from a GitHub Issue
-takt add #28
+takt add '#28'
+takt add --issue 28
 ```
 
 When adding a task, you are prompted for:
 
 - **Workflow** -- Which workflow to use for execution
+- **Base branch** -- When the current branch is not `main`/`master`, whether to use it as the base branch
 - **Worktree path** -- Where to create the isolated clone (Enter for auto, or specify a path)
 - **Branch name** -- Custom branch name (Enter for auto-generated `takt/{timestamp}-{slug}`)
-- **Auto-PR** -- Whether to automatically create a pull request after successful execution
+- **Auto-PR** -- Whether to automatically create a pull request after successful execution (default: Yes)
+- **Draft PR** -- When Auto-PR is enabled, whether to create the PR as a draft (`Create as draft?`)
 
 ### GitHub Issue Integration
 
@@ -38,9 +41,41 @@ When you pass an issue reference (e.g., `#28`), TAKT fetches the issue title, bo
 
 **Requirement:** [GitHub CLI](https://cli.github.com/) (`gh`) must be installed and authenticated.
 
+### Automatic GitHub PR and Issue Image Attachments
+
+`takt add --pr N` and `takt add --issue N` (also `takt add '#N'`) download GitHub attachment images referenced by Markdown image syntax or HTML `<img src>` in PR descriptions, conversation comments, review summaries, review thread comments, and Issue bodies and comments. Pipeline supports both `--pr N` and `--issue N`.
+
+Successful images are saved under `.takt/tasks/<slug>/attachments/` as `image-N.png` or the corresponding format extension. Duplicate URLs share one file. Numbers follow the first appearance of successfully downloaded and saved images without gaps. The original image syntax remains intact, with `[Image #N]` added immediately after it. An existing-format `## 添付画像` list is appended to `order.md`.
+
+During execution, images are copied to the execution directory's `.takt/runs/<run-slug>/context/task/attachments/`, and the accompanying `order.md` references those paths. Pipeline removes its temporary task spec after execution while retaining the run's images and instruction file.
+
+PNG, JPEG, GIF, and WebP are supported, up to 10 MiB per image. Both Content-Type and magic bytes are checked. External images outside GitHub attachments, code examples, and HTML comments are ignored. Authentication failures, 404 responses, network errors, excessive sizes, and invalid formats produce an image-specific warning and skip; task registration and pipeline execution continue. Failed references receive no placeholder.
+
+Retrieval prioritizes authenticated `gh` credentials. Private repository attachments may be inaccessible with token authentication in some environments; successful retrieval is not guaranteed. Browser cookies are not used. GitLab attachments and ordinary text input are outside automatic retrieval.
+
 ### Saving Tasks from Interactive Mode
 
-You can also save tasks from interactive mode. After refining requirements through conversation, use `/save` (or the save action when prompted) to persist the task to `tasks.yaml` instead of executing immediately.
+You can also save tasks from interactive mode. After refining requirements through conversation, use `/go`, review the instruction preview, and select **Save as Task** to persist the task to `tasks.yaml`.
+
+Loading Issue #N provides conversation context. Each `/go` judges whether the latest task is work on that Issue. A related instruction shows `Issue: #N` immediately after its task heading; only that binding supplies N to execution, task saving, or Issue creation. Saved tasks use N in `issue`, generated branches (`takt/N/{slug}`), and PR bodies (`Closes #N`). Unrelated instructions omit the binding. Choose **Continue editing** to correct it. `/issue` replaces the context for subsequent judgments. When **Create Issue** creates M from an instruction bound to N, the saved task remains bound to N and a link to M is commented on N; without a binding, the task uses the newly created M.
+
+CLI, TUI, and MCP registration allows multiple pending or running tasks for the same Issue, PR, or branch without an extra warning or confirmation. Only workflow automatic enqueue rejects active same-target duplicates under the storage lock. Direct `takt add '#N'` still records N without requiring an instruction binding line.
+
+Automatically generated branch names are checked against local refs, remote-tracking refs, all configured remotes (including branches not yet fetched), and ownership metadata for other task clones. Collisions use checked suffixes (`-2`, `-3`, …) and create a new branch from the base. If ownership publication races with another creator, the new clone's branch is renamed and published without replacing existing metadata. A query or storage failure stops creation. Explicit branch names retain the existing fetch and reuse behavior.
+
+In ordinary interactive mode, press Escape at any worktree-settings prompt after selecting **Save as Task** to cancel that save and return to the action menu. The confirmed instruction and its attachments stay in the same conversation. Selecting **Save as Task** again starts the settings questions from the beginning without reusing answers from the cancelled attempt.
+
+### Saving Tasks from MCP Clients
+
+MCP clients can use the `takt-mcp` stdio server to save pending tasks, inspect task/run state, and send additional instructions to running worktree-clone tasks without invoking shell commands. `takt_enqueue_task` writes a pending record to `.takt/tasks.yaml`; `takt_list_tasks` returns compact summaries, `takt_get_run` reads one run's details, and `takt_tell_run` rechecks and writes only to a running clone. If saving fails after issue creation and the issue number was resolved, the issue remains open and the MCP error result returns its number for retry. If number extraction fails, the result can provide the issue URL instead. The tools require an absolute `cwd` inside the server's allowed project root; enqueue and tell also require non-empty task content. Use `takt run` to execute pending tasks or `takt watch` to monitor and execute them continuously. See [CLI Reference](./cli-reference.md#mcp-server) for setup and tool input details.
+
+`takt_cleanup_tasks` previews filtered tasks before deletion. It requires an absolute `cwd` and a `reason`. Optional inputs are `statuses` (one or more of `pending`, `completed`, `failed`, `exceeded`, and `pr_failed`; `running` is not allowed), `goalId`, `branch`, and `confirm` (default `false`). At least one of `statuses`, `goalId`, or `branch` is required.
+
+Omitting `confirm` or setting it to `false` returns only the matching list without deleting anything. Only `confirm: true` deletes tasks, with the same deletion scope as `takt list`. This tool is available only in the `all` tool set, not in `read-only` or `manager`; `manager` has the separate `takt_remove_goal_task` tool.
+
+The ordinary assistant conversation receives only the read-only task-state tools when its provider supports MCP. Use `/go` for a new task, `/tell` to select, review, and confirm an additional instruction for a running worktree clone, or `/requeue` and `/retry` to return a failed task to the queue. A provider without MCP support keeps the conversation available but cannot look up task state.
+
+After delivery succeeds, instructions sent through `takt_tell_run` or CLI `/tell` are also appended to the task's source `order.md`, with their instruction ID and receipt time, and reflected in the active run's `context/task/order.md`. When persistence succeeds, later agents and resumed runs can read these instructions. Persistence failures produce a warning on standard error without preventing delivery or making tell fail.
 
 ## Task Directory Format
 
@@ -52,7 +87,7 @@ TAKT stores task metadata in `.takt/tasks.yaml` and each task's detailed specifi
 tasks:
   - name: add-auth-feature
     status: pending
-    task_dir: .takt/tasks/20260201-015714-foptng
+    task_dir: .takt/tasks/20260201-015714-implement-user-authentication
     workflow: default
     created_at: "2026-02-01T01:57:14.000Z"
     started_at: null
@@ -64,34 +99,43 @@ Fields:
 | Field | Description |
 |-------|-------------|
 | `name` | AI-generated task slug |
-| `status` | `pending`, `running`, `completed`, `failed`, or `exceeded` |
+| `status` | `pending`, `running`, `completed`, `failed`, `exceeded`, or `pr_failed` (workflow succeeded but PR creation/push failed) |
 | `task_dir` | Path to the task directory containing `order.md` |
 | `workflow` | Workflow name to use for execution |
 | `worktree` | `true` (auto), a path string, or omitted (run in current directory) |
 | `branch` | Branch name (auto-generated if omitted) |
+| `base_branch` | Base branch for the clone and PR (set when chosen at `takt add`) |
 | `auto_pr` | Whether to auto-create a PR after execution |
-| `issue` | GitHub Issue number (if applicable) |
+| `draft_pr` | Whether the auto-created PR is opened as a draft |
+| `issue` | Issue number from the configured issue provider (if applicable) |
+| `run_slug` | Slug of the latest run directory under `.takt/runs/` |
+| `failure` | Failure details (`step`, `error`, `last_message`) recorded for failed tasks |
 | `created_at` | ISO 8601 timestamp |
 | `started_at` | ISO 8601 timestamp (set when execution begins) |
 | `completed_at` | ISO 8601 timestamp (set when execution finishes) |
+
+`tasks.yaml` may also contain additional fields (`slug`, `source_run_slug`, `resume_mode`, `owner_pid`, `auto_requeue_count`, `exceeded_*`, etc.) that TAKT manages internally.
 
 ### Task Directory Layout
 
 ```text
 .takt/
   tasks/
-    20260201-015714-foptng/
+    20260201-015714-implement-user-authentication/
       order.md          # Task specification (auto-generated, editable)
       schema.sql        # Attached reference materials (optional)
       wireframe.png     # Attached reference materials (optional)
   tasks.yaml            # Task metadata records
   runs/
-    20260201-015714-foptng/
+    20260201-020152-implement-user-authentication-x7k2pq/
       reports/           # Execution reports (auto-generated)
       logs/              # NDJSON session logs
       context/           # Snapshots (previous_responses, etc.)
+      operations/        # Operation journal (journal.json)
       meta.json          # Run metadata
 ```
+
+The run directory slug is generated separately for each execution by appending a random 6-character suffix, so it differs from the task directory slug. To locate a task's run directory, check the `run_slug` field in `tasks.yaml` or the newest directory under `.takt/runs/`.
 
 `takt add` creates `.takt/tasks/{slug}/order.md` automatically and saves the `task_dir` reference to `tasks.yaml`. You can freely edit `order.md` and add supplementary files (SQL schemas, wireframes, API specs, etc.) to the task directory before execution.
 
@@ -116,13 +160,15 @@ The `run` command claims pending tasks and executes them through the configured 
 
 When a workflow reaches `max_steps`, the default `takt run` behavior stops the task with `exceeded` status and saves retry metadata such as `exceeded_max_steps`, `exceeded_current_iteration`, and `resume_point`. Passing `--ignore-exceed` makes `takt run` ignore only that iteration limit, continue the workflow, and skip writing exceeded retry metadata.
 
+MCP clients can enqueue tasks, inspect task/run state, and send additional instructions to running clone tasks. Use `takt run` to execute pending tasks or `takt watch` for continuous monitoring and execution.
+
 ### Parallel Execution (Concurrency)
 
-By default, tasks run sequentially (`concurrency: 1`). Configure parallel execution in `~/.takt/config.yaml`:
+Both `takt run` and `takt watch` use the same worker pool and run sequentially by default (`concurrency: 1`). Configure parallel execution in `~/.takt/config.yaml`:
 
 ```yaml
-concurrency: 3              # Run up to 3 tasks in parallel (1-10)
-task_poll_interval_ms: 500   # Polling interval for new tasks (100-5000ms)
+concurrency: 3              # Concurrent tasks in takt run / takt watch (1-10)
+task_poll_interval_ms: 500   # Task polling in takt run / takt watch (100-5000ms)
 ```
 
 When concurrency is greater than 1, TAKT uses a worker pool that:
@@ -137,21 +183,30 @@ When concurrency is greater than 1, TAKT uses a worker pool that:
 
 If `takt run` is interrupted (e.g., process crash, Ctrl+C), tasks left in `running` status are automatically marked as `failed` on the next `takt run` or `takt watch` invocation. Requeue them explicitly to run them again.
 
+### Automatic Requeue
+
+When `auto_requeue_max_attempts` is set, `takt run` and `takt watch` requeue eligible failed workflow tasks once at startup and after execution failures, up to the saved attempt limit. Watch does not repeat the startup scan while resident; after SIGINT, it neither claims nor requeues tasks. Both commands pause task claims while waiting for user input. The default is `0` (manual requeue only). See the [Configuration Guide](./configuration.md) for details.
+
 ## Watching Tasks (`takt watch`)
 
 Run a resident process that monitors `.takt/tasks.yaml` and auto-executes tasks as they appear:
 
 ```bash
 takt watch
+
+# Ignore workflow max_steps and continue until another stop condition occurs
+takt watch --ignore-exceed
 ```
 
 The watch command:
 
 - Stays running until Ctrl+C (SIGINT)
 - Monitors `tasks.yaml` for new `pending` tasks
-- Executes each task as it appears
+- Executes arriving tasks up to the configured `concurrency`
+- Keeps waiting when the queue is empty, using `task_poll_interval_ms` (default: 500ms)
 - Marks interrupted `running` tasks as `failed` on startup
-- Displays a summary of total/success/failed tasks on exit
+- Stops claiming tasks on SIGINT and waits for all in-flight tasks to finish without interrupting them
+- Exits without a task summary, run notification sound, or Slack run summary
 
 This is useful for a "producer-consumer" workflow where you add tasks with `takt add` in one terminal and let `takt watch` execute them automatically in another.
 
@@ -163,7 +218,7 @@ List and manage task branches interactively:
 takt list
 ```
 
-The list view shows all tasks organized by status (pending, running, completed, failed) with creation dates and summaries. Selecting a task shows available actions depending on its status.
+The list view shows all tasks organized by status (pending, running, completed, failed, exceeded, pr_failed) with creation dates and summaries. Selecting a task shows available actions depending on its status. The bottom of the list also has an **All Delete** entry that deletes all tasks at once.
 
 ### Actions for Completed Tasks
 
@@ -171,6 +226,9 @@ The list view shows all tasks organized by status (pending, running, completed, 
 |--------|-------------|
 | **View diff** | Show full diff against the default branch in a pager |
 | **Instruct** | Open an AI conversation to craft additional instructions, then re-execute |
+| **Create PR** | Commit, push, and create a pull request from the task branch |
+| **Merge from root** | Merge the root branch HEAD into the task branch; conflicts are auto-resolved with AI |
+| **Pull from remote** | Pull the latest changes from remote origin (fast-forward only) |
 | **Try merge** | Squash merge (stages changes without committing, for manual review) |
 | **Merge & cleanup** | Squash merge and delete the branch |
 | **Delete** | Discard all changes and delete the branch |
@@ -179,14 +237,51 @@ The list view shows all tasks organized by status (pending, running, completed, 
 
 | Action | Description |
 |--------|-------------|
-| **Retry** | Open a retry conversation with failure context, then re-execute |
+| **Requeue** | Select a resume or restart position and return the task to `pending` without a conversation |
+| **Retry** | Open a retry conversation with failure context, review the revised instruction, then queue it as `pending` |
+| **Instruct** | Open an AI conversation against the run's working tree to craft additional instructions, then requeue |
+| **Create PR** | Commit, push, and create a pull request from the failed run's changes |
 | **Delete** | Remove the failed task record |
+
+In CLI/TUI assistant and grill-me conversations, `/requeue [guidance]` resolves a failed or exceeded task from the conversation, and `/retry [guidance]` resolves a failed task from the conversation. Selection uses an independent AI call with the latest conversation agreement, inline guidance, complete candidate paths, and workflow heading descriptions. Guidance is interpreted in context rather than mechanically matched to a task name. For both commands, a malformed response or a value outside the candidates triggers one correction request at each selection stage. If the correction is still invalid, a manual menu identifies the reason: JSON format mismatch, unknown task name, or unknown start position ID. An undecided response or provider failure goes directly to manual selection. TAKT then shows the task name, summary, workflow, and start position and asks for Y/n confirmation. For `/requeue`, approval returns the task to `pending` without changing its `order.md`. Cancelling selection or confirmation leaves the task unchanged and records that result in the conversation. Successful requeue results also remain in the conversation with the task name. `/retry [guidance]` resolves a failed task and shows a complete revised order with **Save task** and **Continue** choices. **Save task** archives the previous order and returns the task to `pending`; **Continue** makes no task changes and returns to the conversation. An empty candidate set returns a notice for either command. Neither command starts a worker. Both require an interactive terminal; without a TTY, neither selection nor task changes occur. Persona conversations and the Web UI treat these strings as ordinary messages. The direct-run `/retry` flow in `takt resume` remains separate.
 
 ### Actions for Pending Tasks
 
 | Action | Description |
 |--------|-------------|
 | **Delete** | Remove the pending task from `tasks.yaml` |
+
+### Actions for Running Tasks
+
+| Action | Description |
+|--------|-------------|
+| **Stop** | Request a stop for one running task; the worker interrupts itself and determines the final state |
+| **Mark as failed** | Mark a stuck `running` task as `failed`; does not stop the worker |
+
+Selecting a running task with a worktree clone opens the ordinary assistant conversation with that task as the initial `/tell` target. The conversation can inspect other tasks or discuss a new task. `/tell` rechecks the selected task after confirmation and writes only to that task; completed, missing, mismatched, and non-clone runs are not candidates or recipients.
+
+Running merge tasks started by `takt merge`, or by `takt run` / `takt watch` after requeue or retry, are also `/tell` targets when they have a worktree clone. CLI/TUI conversations, conversations opened from `takt list`, and MCP's `takt_tell_run` use the same target resolution. Merge run metadata and interventions are stored in the original project's `.takt/runs/<slug>/`. Instructions are delivered at the next agent step, including agent steps inside a child workflow; system steps do not consume them.
+
+### Actions for Exceeded Tasks
+
+| Action | Description |
+|--------|-------------|
+| **Requeue** | Return the task to `pending`, resuming from where it stopped |
+| **Delete** | Remove the task permanently |
+
+`/requeue` can also target an exceeded task. Inline guidance selects either continuing the saved execution or restarting at a specified step, including a child workflow step. Confirmation shows that operation and position. Continuing retains the saved execution information; restarting clears the old checkpoint and iteration limit information. If an explicit position is unavailable or cannot be determined by the AI, TAKT asks you to choose an available start position. Without inline guidance, the saved stopping position is preserved. The command does not revise the order or start a worker. The task-list **Requeue** action continues to use the saved stopping position.
+
+### Actions for PR-Failed Tasks
+
+Tasks with `pr_failed` status (workflow succeeded but PR creation or push failed) show the publishing error and offer the same actions as completed tasks, including **Create PR**. The workflow result, local branch, and commit are preserved. A failed push skips automatic PR creation and reports the branch, commit, and retry action.
+
+TAKT-managed remote pushes disable Git's HTTPS terminal and askpass prompts, and Git Credential Manager interaction. Configure authentication before retrying, for example with `gh auth login` and `gh auth setup-git`, or your credential helper. Custom credential helpers and SSH authentication must also be configured for unattended use.
+
+After fixing authentication or the reported push error, tasks that need a PR can use **Create PR** in `takt list`. It commits any remaining changes, pushes the branch, and reuses an existing PR for that branch or creates one without rerunning the workflow. A successful retry changes `pr_failed` to `completed`, records the PR URL, and clears the publishing error. Cancelled or failed retries preserve `pr_failed` and the local results.
+
+If saving the task state fails after publishing the PR, TAKT displays the published PR URL and the save error. Check the task in `takt list`; if it is still `pr_failed`, retry **Create PR**. The retry reuses the existing PR and saves the task state again.
+
+For tasks that only push without creating a PR, fix authentication and manually push the reported branch to `origin` from the project repository. This manual push does not update the task status.
 
 ### Instruct Mode
 
@@ -197,11 +292,14 @@ When you select **Instruct** on a completed task, TAKT opens an interactive conv
 - Workflow structure and step previews
 - Previous order content
 
-You can discuss what additional changes are needed, and the AI helps refine the instructions. When ready, choose:
+You can discuss what additional changes are needed, and the AI helps refine the instructions. When ready, use `/go`; after the instruction is generated, choose:
 
-- **Execute** -- Re-execute the task immediately with the new instructions
-- **Save task** -- Requeue the task as `pending` with the new instructions for later execution
-- **Cancel** -- Discard and return to the list
+- **Save as Task** -- Requeue the task as `pending` with the new instructions for later execution
+- **Continue editing** -- Keep refining the instructions in the conversation
+
+To re-execute immediately, use `/accept` (use the latest assistant response) or `/replay` (resubmit the previous order). Use `/cancel` to discard and return to the list.
+
+**Instruct** on a failed task uses the same conversation, targeting the run's uncommitted working tree instead of a committed branch. Its conversation is additionally pre-loaded with a summary of the final adjudication report (fulfilled requirements, unresolved findings, unverified gates) and an overview of the working-tree diff.
 
 ### Retry Mode
 
@@ -209,11 +307,17 @@ When you select **Retry** on a failed task, TAKT:
 
 1. Displays failure details (failed step, error message, last agent message)
 2. Prompts you to select a workflow
-3. Prompts you to select which step to start from (defaults to the failed step)
+3. Prompts you to choose a start position from a single tree
 4. Opens a retry conversation pre-loaded with failure context, run session data, and workflow structure
 5. Lets you refine instructions with AI assistance
 
-The retry conversation supports the same actions as Instruct mode (execute, save task, cancel). Retry notes are appended to the task record, accumulating across multiple retry attempts.
+**Requeue** uses the same workflow and start-position selection, but saves the task as `pending` without opening a conversation. The start-position prompt presents the workflow as a tree: when a valid resume position exists, the top row is **Resume failed position** (continue from the failure point, preserving execution state), and every authored step is listed below as a selectable leaf. `workflow_call` sub-workflows appear as non-selectable headings that indent their child steps, so you always confirm a leaf step — a sub-workflow itself cannot be chosen. When a valid Resume position is available, the Resume row is initially selected; otherwise the preferred selectable leaf for the failed root step is initially selected. Choosing any leaf restarts a new execution from that step.
+
+The Resume row uses a short label such as `Resume failed position: "review" (default)` with a dimmed path description directly below it. The path starts with the root workflow, groups each call as `"call step" → "child workflow"`, and ends with the failed step, for example `"takt-default" > "develop" → "development-core" > "review"`. At 80 columns or wider, the description wraps to show the full path. At 60 columns, only the description is truncated from the end, preserving the root side, while the failed step and default marker remain visible in the label. The Web UI dropdown and the `Selected start position: …` confirmation log include both the label and the full path.
+
+After a requeue, execution uses a new namespace, so its ledger is not inherited and starts empty.
+
+After `/go`, the retry conversation shows the revised instruction and offers **Save as Task** first (the default) or **Continue editing**. Saving updates the existing task and returns it to `pending`; it does not start a worker immediately. `/retry`, `/replay`, and immediate execution choices are unavailable in this Retry conversation. Use `/cancel` to abort without changing the task.
 
 ### Non-Interactive Mode (`--non-interactive`)
 
@@ -239,7 +343,22 @@ takt list --non-interactive --action delete --branch takt/my-branch --yes
 takt list --non-interactive --action try --branch takt/my-branch
 ```
 
-Available actions: `diff`, `try`, `merge`, `delete`.
+Available actions: `diff`, `sync`, `try`, `merge`, `delete`.
+
+`takt list --non-interactive --action delete` accepts `--status <status...>` to select one or more of `pending`, `completed`, `failed`, `exceeded`, and `pr_failed`. `running` is not allowed because running tasks cannot be deleted. `--goal <goalId>` selects tasks belonging to that goal. `--branch <branch>` is also available; when used alone, it targets only `completed` tasks.
+
+At least one of `--status`, `--goal`, or `--branch` is required. Without a filter, the command exits with an error without deleting anything. Without `--yes`, it lists the matching task names, statuses, branches, and goals, then exits successfully without deleting anything. Only `--yes` performs deletion. Use `--format json` to return the preview as JSON; JSON output includes `goal_id`.
+
+Deletion removes the task's working clone, worktree session files, clone metadata, branch, and record in `.takt/tasks.yaml`, matching deletion from the interactive list. Clone tasks also delete the branch with the same name in the original repository with `git branch -d` after cleanup. If Git refuses deletion because the branch is not fully merged or for another reason, the branch is retained with a warning while clone and task-record deletion succeed.
+
+```bash
+# Preview matching tasks, then delete them after checking the list
+takt list --non-interactive --action delete --status failed pr_failed
+takt list --non-interactive --action delete --status failed pr_failed --yes
+
+# Preview as JSON
+takt list --non-interactive --action delete --status failed pr_failed --format json
+```
 
 ## Task Directory Workflow
 
@@ -248,30 +367,44 @@ The recommended end-to-end workflow:
 1. **`takt add`** -- Create a task. A pending record is added to `.takt/tasks.yaml` and `order.md` is generated in `.takt/tasks/{slug}/`.
 2. **Edit `order.md`** -- Open the generated file and add detailed specifications, reference materials, or supplementary files as needed.
 3. **`takt run`** (or `takt watch`) -- Execute pending tasks from `tasks.yaml`. Each task runs through the configured workflow.
-4. **Verify outputs** -- Check execution reports in `.takt/runs/{slug}/reports/` (the slug matches the task directory).
+4. **Verify outputs** -- Check execution reports in `.takt/runs/{run_slug}/reports/`. The run slug is assigned per execution; find it via the `run_slug` field in `tasks.yaml` or the newest directory under `.takt/runs/`.
 5. **`takt list`** -- Review results, merge successful branches, retry failures, or add further instructions.
 
-## Isolated Execution (Shared Clone)
+## CodeRabbit review loop (`caccia`)
 
-Specifying `worktree` in task configuration executes each task in an isolated clone created with `git clone --shared`, keeping your main working directory clean.
+The merge builtins execute Caccia explicitly: `merge-review` runs `review → caccia → wait_ci → evaluation comment`, while `merge-review-fix` and `merge-review-fix-simple` run `review/fix → commit_and_push → caccia → wait_ci → merge_pr`. `success` and `skipped` continue to CI on the returned head. `limit` comments with the unresolved thread count and ends COMPLETE without merging. An effect error comments with `error` and ends ABORT. Worktree tasks with `auto_pr` and Pipeline with `--auto-pr` run Caccia after successful PR creation or update when `caccia.enabled: true`. Post-processing skips failed publication, missing PRs, goal-managed tasks, and non-GitHub providers. It also skips Caccia when the executed workflow or the merge workflow selected by `merge.auto_start: true` contains an explicit `caccia` system effect, including in a called workflow. Otherwise Caccia completes before the linked merge workflow starts. Step names and instruction text do not count as effects. Git push itself does not start Caccia; `takt merge` continues to use explicit effects.
+
+`merge-review-fix` and `merge-review-fix-simple` investigate every completed CI failure using failed checks, run/attempt/job references, log contents, the cumulative PR diff and related code. Repository defects (including flaky tests and failures also present on main) receive a root fix and read-only review, followed by push → Caccia → CI, for at most two rounds. Only an evidenced external cause permits one CI rerun, independently of the fix budget, including after both fix rounds. The workflow waits for the new attempt on the same HEAD and rechecks all checks and existing merge conditions. Missing evidence, a defect after both fix rounds, a rejected fix or a failed rerun stops recovery with a PR comment containing the counts, last failed checks and references, and investigation summary, then ABORT. Investigation and fix reports remain in the run. Initial success and CI timeout behavior are unchanged; `merge-review` remains comment-only. GitHub Actions log/rerun permission failures and unsupported providers are reported explicitly.
+
+Caccia waits for CodeRabbit, then processes only unresolved threads started by `coderabbitai`. Each iteration runs the configured workflow in a temporary clone, preserves its decision report under `.takt/runs/`, pushes successful fixes, resolves only the threads evaluated in that iteration, and waits for CodeRabbit to review the pushed commit. Human-started threads remain open. Caccia does not reply to reviews. Successes and iteration-limit results are logged and sent through the configured notification path.
+
+`wait_timeout_ms` bounds the initial review wait and each pushed-commit review wait, including a retry request. If a CodeRabbit rate-limit notice gives a retry time before the deadline, Caccia posts one `@coderabbitai review` request when that time arrives; a retry time at or beyond the deadline skips Caccia immediately. A review still incomplete at the deadline after a rate-limit notice also skips Caccia. Without a rate-limit notice, an initial timeout returns skipped and a pushed-commit timeout returns an effect error; standalone `takt caccia` exits non-zero on a skip or error.
+
+Effect progress, workflow output, results, and failures follow the parent task's display mode. Parallel tasks keep the same task prefix and color; silent mode produces no screen output. The workflow awaits the effect result before selecting its next step.
+
+Run the same feature manually with `takt caccia <PR-number>`. See the [CLI reference](./cli-reference.md#takt-caccia) and [configuration reference](./configuration.md#caccia-review-loop) for command results and settings.
+
+## Isolated Execution (Isolated Clone)
+
+Specifying `worktree` in task configuration executes each task in an isolated clone created with `git clone`, keeping your main working directory clean.
 
 ### Configuration Options
 
 | Setting | Description |
 |---------|-------------|
-| `worktree: true` | Auto-create shared clone in adjacent directory (or location specified by `worktree_dir` config) |
+| `worktree: true` | Auto-create clone under `{project}/../takt-worktrees` (or the location specified by `worktree_dir` config; falls back to `.takt/worktrees` inside the project when the parent directory is not writable) |
 | `worktree: "/path/to/dir"` | Create clone at the specified path |
 | `branch: "feat/xxx"` | Use specified branch (auto-generated as `takt/{timestamp}-{slug}` if omitted) |
 | *(omit `worktree`)* | Execute in current directory (default) |
 
 ### How It Works
 
-TAKT uses `git clone --shared` instead of `git worktree` to create lightweight clones with an independent `.git` directory. This is important because:
+TAKT uses `git clone --reference <main-repo> --dissociate` instead of `git worktree` to create clones with an independent `.git` directory (when the reference repository is shallow, it falls back to a plain `git clone`). This is important because:
 
-- **Independent `.git`**: Shared clones have their own `.git` directory, preventing agent tools from traversing `gitdir:` references back to the main repository.
+- **Independent `.git`**: Clones have their own `.git` directory, preventing agent tools from traversing `gitdir:` references back to the main repository.
 - **Full isolation**: Agents work entirely within the clone directory, unaware of the main repository.
 
-> **Note**: The YAML field name remains `worktree` for backward compatibility. Internally, it uses `git clone --shared` instead of `git worktree`.
+> **Note**: The YAML field name remains `worktree` for backward compatibility. Internally, it uses `git clone` instead of `git worktree`.
 
 ### Ephemeral Lifecycle
 
@@ -279,7 +412,7 @@ Clones follow an ephemeral lifecycle:
 
 1. **Create** -- Clone is created before task execution
 2. **Execute** -- Task runs inside the clone directory
-3. **Commit & Push** -- On success, changes are auto-committed and pushed to the branch
+3. **Commit & Push** -- On success, changes are auto-committed and pushed to the main repository (pushing to `origin` happens only when `auto_pr` or similar publishing options are set)
 4. **Preserve** -- Clone is preserved after execution (for instruct/retry operations)
 5. **Cleanup** -- Branches are the persistent artifacts; use `takt list` to merge or delete
 
@@ -292,7 +425,7 @@ During worktree execution, TAKT maintains two directory references:
 | `cwd` (clone path) | Where agents run, where reports are written |
 | `projectCwd` (project root) | Where logs and session data are stored |
 
-Reports are written to `cwd/.takt/runs/{slug}/reports/` (inside the clone) to prevent agents from discovering the main repository path. Session resume is skipped when `cwd !== projectCwd` to avoid cross-directory contamination.
+Reports are written to `cwd/.takt/runs/{slug}/reports/` (inside the clone) to prevent agents from discovering the main repository path. With `session: continue` and no provider fallback, steps in the same run resume a saved session for the same persona, provider, and model associated with that clone. They do not use sessions from another clone or the project root. Retry, requeue, and instruct start each persona with a fresh session in an existing clone; later steps in the new attempt resume that session.
 
 ## Session Logs
 
@@ -304,6 +437,8 @@ TAKT writes session logs in NDJSON (Newline-Delimited JSON, `.jsonl`) format. Ea
 .takt/runs/{slug}/
   logs/{sessionId}.jsonl   # NDJSON session log per workflow execution
   meta.json                # Run metadata (task, workflow, start/end, status, etc.)
+  operations/
+    journal.json           # Operation journal (internal execution records)
   context/
     previous_responses/
       latest.md            # Latest previous response (inherited automatically)

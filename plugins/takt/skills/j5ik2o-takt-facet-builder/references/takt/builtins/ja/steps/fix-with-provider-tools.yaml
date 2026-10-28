@@ -1,0 +1,25 @@
+params:
+  fix_policy:
+    type: facet_ref[]
+    facet_kind: policy
+  fix_knowledge:
+    type: facet_ref[]
+    facet_kind: knowledge
+description: 最新のレビュー指摘を確認して修正し、結果と解消できない問題を報告する
+tags:
+  - coding
+edit: true
+persona: coder
+policy:
+  - contract-change
+  - $param: fix_policy
+knowledge:
+  $param: fix_knowledge
+capabilities: edit
+required_permission_mode: edit
+pass_previous_response: false
+instruction: fix
+output_contracts:
+  report:
+    - name: fix-report.md
+      format: fix-report

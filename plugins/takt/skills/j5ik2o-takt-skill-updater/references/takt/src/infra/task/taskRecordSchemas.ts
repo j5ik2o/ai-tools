@@ -1,15 +1,21 @@
 import { z } from 'zod/v4';
+import { GoalTaskResultSchema } from '../goals/schema.js';
 import { isValidTaskDir } from '../../shared/utils/taskPaths.js';
 import { TaskExecutionConfigObjectSchema } from './taskExecutionSchemas.js';
 import { buildTaskSchema, serializeTaskConfig } from './taskConfigSerialization.js';
+import { RUN_RESUME_MODES } from '../../core/workflow/run/run-meta.js';
+import { boundPersistedFailureText } from '../../shared/utils/persistedFailureText.js';
 
 export const TaskStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'exceeded', 'pr_failed']);
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 export const TaskFailureSchema = z.object({
   step: z.string().optional(),
-  error: z.string().min(1),
+  // Bounded (not rejected) so an oversized upstream error normalizes instead of
+  // breaking existing tasks.yaml records on read. See issue #1273.
+  error: z.string().min(1).transform(boundPersistedFailureText),
   last_message: z.string().optional(),
+  retryable: z.boolean().optional(),
 }).strict();
 export type TaskFailure = z.infer<typeof TaskFailureSchema>;
 
@@ -17,8 +23,20 @@ export const TaskRecordSchema = buildTaskSchema(
   TaskExecutionConfigObjectSchema.extend({
     name: z.string().min(1),
     status: TaskStatusSchema,
+    deletion: z.object({
+      id: z.string().uuid(),
+      owner_pid: z.number().int().positive(),
+      owner_start_time: z.string().min(1).optional(),
+    }).optional(),
     slug: z.string().optional(),
     run_slug: z.string().min(1).optional(),
+    execution_id: z.string().min(1).optional(),
+    stop_request: z.object({
+      execution_id: z.string().min(1),
+      requested_at: z.iso.datetime(),
+    }).strict().optional(),
+    source_run_slug: z.string().min(1).optional(),
+    resume_mode: z.enum(RUN_RESUME_MODES).optional(),
     summary: z.string().optional(),
     worktree_path: z.string().optional(),
     pr_url: z.string().optional(),
@@ -29,7 +47,10 @@ export const TaskRecordSchema = buildTaskSchema(
     started_at: z.string().nullable(),
     completed_at: z.string().nullable(),
     owner_pid: z.number().int().positive().nullable().optional(),
+    owner_start_time: z.string().min(1).nullable().optional(),
     failure: TaskFailureSchema.optional(),
+    completion: GoalTaskResultSchema.optional(),
+    auto_requeue_count: z.number().int().min(0).optional(),
   }),
 ).superRefine((value, ctx) => {
   const sourceFields = [value.content, value.content_file, value.task_dir].filter((field) => field !== undefined);
@@ -54,9 +75,23 @@ export const TaskRecordSchema = buildTaskSchema(
       message: 'task_dir must match .takt/tasks/<slug> format.',
     });
   }
+  if (value.source_run_slug !== undefined && value.resume_mode === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['resume_mode'],
+      message: 'resume_mode is required when source_run_slug is set.',
+    });
+  }
 
   const hasFailure = value.failure !== undefined;
   const hasOwnerPid = typeof value.owner_pid === 'number';
+  if (value.owner_start_time != null && (value.status !== 'running' || !hasOwnerPid)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['owner_start_time'],
+      message: 'owner_start_time requires a running task with owner_pid.',
+    });
+  }
 
   if (value.status === 'pending') {
     if (value.started_at !== null) {
@@ -145,14 +180,18 @@ export const TaskRecordSchema = buildTaskSchema(
   }
 
   if (value.status === 'failed') {
-    if (value.started_at === null) {
+    const isUnstartedGoalFailure = value.goal_id !== undefined
+      && value.failure?.retryable === false
+      && value.started_at === null
+      && value.completed_at === null;
+    if (value.started_at === null && !isUnstartedGoalFailure) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['started_at'],
         message: 'Failed task requires started_at.',
       });
     }
-    if (value.completed_at === null) {
+    if (value.completed_at === null && !isUnstartedGoalFailure) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['completed_at'],

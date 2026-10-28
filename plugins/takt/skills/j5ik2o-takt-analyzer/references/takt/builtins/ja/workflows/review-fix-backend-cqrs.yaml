@@ -1,47 +1,37 @@
 name: review-fix-backend-cqrs
-description: CQRS+ES特化レビュー＋修正ループ（構造・モジュール化・ドメインモデル・セキュリティ・QA）
-workflow_config:
-  provider_options:
-    codex:
-      network_access: true
-    opencode:
-      network_access: true
+description: CQRS+ES特化レビュー＋修正ループ（構造・モジュール化・ドメインモデル・セキュリティ・コーディング）
+all_steps:
+  rules:
+    - ref: findings-handling
+      position: before_instruction
+    - ref: plain-terminology
+      position: before_instruction
+
 max_steps: 30
+facet_pools:
+  security-review-facets:
+    uses: security-review-facets
 initial_step: gather
 loop_monitors:
   - cycle:
       - reviewers
-      - fix
+      - final-gate
+      - remediation
     threshold: 3
     judge:
       persona: supervisor
       instruction: loop-monitor-reviewers-fix
       rules:
-        - condition: 健全（進捗あり）
+        - condition: 健全（修正進捗があり、報告内容も収束している）
           next: reviewers
-        - condition: 非生産的（同じ指摘の反復・修正未反映）
-          next: supervise
+        - condition: 修正未完了または報告未収束だが、次のレビュー・修正が実行可能である
+          next: reviewers
+        - condition: 現行ループでは収束せず、最終ゲートの判定が必要である
+          next: final-gate
 
 steps:
   - name: gather
-    tags:
-      - plan
-    edit: false
-    persona: planner
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
-          - WebSearch
-          - WebFetch
-    instruction: gather-review
-    output_contracts:
-      report:
-        - name: review-target.md
-          format: review-gather
+    uses: review-gather-to-reviewers
     rules:
       - condition: レビュー対象の情報収集完了
         next: reviewers
@@ -49,255 +39,100 @@ steps:
         next: ABORT
 
   - name: reviewers
-    tags:
-      - review
-    parallel:
-      - name: arch-review
-        tags:
-          - review
-        edit: false
-        persona: architecture-reviewer
-        policy: review
-        knowledge:
-          - architecture
-          - backend
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - WebSearch
-              - WebFetch
-        instruction: review-arch
-        output_contracts:
-          report:
-            - name: architect-review.md
-              format: architecture-review
-        rules:
-          - condition: approved
-          - condition: needs_fix
-
-      - name: cqrs-es-review
-        tags:
-          - review
-        edit: false
-        persona: cqrs-es-reviewer
-        policy: review
-        knowledge:
-          - cqrs-es
-          - backend
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - WebSearch
-              - WebFetch
-        instruction: review-cqrs-es
-        output_contracts:
-          report:
-            - name: cqrs-es-review.md
-              format: cqrs-es-review
-        rules:
-          - condition: approved
-          - condition: needs_fix
-
-      - name: security-review
-        tags:
-          - review
-        edit: false
-        persona: security-reviewer
-        policy: review
-        knowledge: security
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - WebSearch
-              - WebFetch
-        instruction: review-security
-        output_contracts:
-          report:
-            - name: security-review.md
-              format: security-review
-        rules:
-          - condition: approved
-          - condition: needs_fix
-
-      - name: qa-review
-        tags:
-          - review
-        edit: false
-        persona: qa-reviewer
-        policy:
-          - review
-          - qa
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - WebSearch
-              - WebFetch
-        instruction: review-qa
-        output_contracts:
-          report:
-            - name: qa-review.md
-              format: qa-review
-        rules:
-          - condition: approved
-          - condition: needs_fix
-
-      - name: pure-review
-        tags:
-          - review
-        edit: false
-        persona: pure-reviewer
-        policy: review
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - Bash
-              - WebSearch
-              - WebFetch
-        rules:
-          - condition: approved
-          - condition: needs_fix
-        instruction: review-pure
-        output_contracts:
-          report:
-            - name: pure-review.md
-              format: pure-review
-      - name: coding-review
-        tags:
-          - review
-        edit: false
-        persona: coding-reviewer
-        policy:
-          - review
-          - coding
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - Bash
-              - WebSearch
-              - WebFetch
-        instruction: review-coding
-        output_contracts:
-          report:
-            - name: coding-review.md
-              format: coding-review
-        rules:
-          - condition: approved
-          - condition: needs_fix
-
+    input_reports:
+      from_step: remediation
+      reports:
+        - fix-plan.md
+        - fix-report.md
+        - fix-verification.md
+      optional_if_unrun: true
+    uses: review-fix-backend-cqrs-reviewers
+    with:
+      architecture_review_instruction: review-arch
+      coding_review_instruction: review-coding
+      security_review_instruction: review-security
+      cqrs_es_review_instruction: review-cqrs-es
     rules:
-      - condition: all("approved")
-        next: supervise
-      - condition: any("needs_fix")
-        next: fix
+      self:
+        - condition: any("error")
+          next: reviewers
+        - condition: all("approved")
+          next: final-gate
+        - condition: any("needs_fix")
+          next: remediation
+      parallel:
+        arch-review:
+          - condition: approved
+          - condition: needs_fix
+        cqrs-es-review:
+          - condition: approved
+          - condition: needs_fix
+        coding-review:
+          - condition: approved
+          - condition: needs_fix
+        security-review:
+          - condition: approved
+          - condition: needs_fix
 
-  - name: fix
-    tags:
-      - coding
-    edit: true
-    persona: coder
-    policy:
-      - coding
-      - testing
-    knowledge:
-      - backend
-      - cqrs-es
-      - security
-      - architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Edit
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    required_permission_mode: edit
-    pass_previous_response: false
-    instruction: fix
+  - name: final-gate
+    description: 現在のコードと前段の報告から要件充足と指摘の解消を確認し、完了・修正・再計画を判定する
+    input_reports:
+      from_step: remediation
+      reports:
+        - review-resolution.md
+      optional_if_unrun: true
+    kind: workflow_call
+    call: final-gate
+    args:
+      supervise_knowledge:
+        - backend
+        - cqrs-es
+        - security
+        - architecture
+      supervise_policy:
+        - contract-change
+        - cqrs-es
+        - backend
+        - architecture
     rules:
-      - condition: 修正が完了した
-        next: reviewers
-      - condition: 修正を進行できない
-        next: supervise
-
-  - name: supervise
-    tags:
-      - review
-    edit: false
-    persona: dual-supervisor
-    policy: review
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - WebSearch
-          - WebFetch
-    instruction: supervise
-    pass_previous_response: false
-    rules:
-      - condition: すべての検証が完了し、マージ可能な状態である
+      - condition: COMPLETE
         next: COMPLETE
-      - condition: 問題が検出された
-        next: fix_supervisor
-    output_contracts:
-      report:
-        - name: supervisor-validation.md
-          format: supervisor-validation
-        - name: summary.md
-          format: summary
-          use_judge: false
-
-  - name: fix_supervisor
-    tags:
-      - coding
-    edit: true
-    persona: coder
-    policy:
-      - coding
-      - testing
-    knowledge:
-      - backend
-      - cqrs-es
-      - security
-      - architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Edit
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    instruction: fix-supervisor
-    pass_previous_response: false
+      - condition: needs_fix
+        next: remediation
+      - condition: need_replan
+        next: ABORT
+      - condition: ABORT
+        next: ABORT
+  - name: remediation
+    uses: review-remediation
+    with:
+      plan_policy:
+        - coding
+        - testing
+        - review
+        - cqrs-es
+      fix_policy:
+        - coding
+        - testing
+        - cqrs-es
+        - architecture
+        - backend
+      verification_policy:
+        - coding
+        - testing
+        - review
+        - cqrs-es
+      fix_knowledge:
+        - backend
+        - cqrs-es
+        - security
+        - architecture
     rules:
-      - condition: 監督者の指摘に対する修正が完了した
-        next: supervise
-      - condition: 修正を進行できない
-        next: supervise
+      - condition: COMPLETE
+        next: reviewers
+      - condition: no_fix
+        next: final-gate
+      - condition: need_replan
+        next: final-gate
+      - condition: ABORT
+        next: ABORT

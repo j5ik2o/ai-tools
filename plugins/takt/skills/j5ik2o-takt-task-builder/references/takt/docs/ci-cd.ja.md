@@ -2,7 +2,7 @@
 
 # CI/CD 連携
 
-TAKT は CI/CD パイプラインに統合して、タスク実行、PR レビュー、コード生成を自動化できます。このガイドでは GitHub Actions のセットアップ、pipeline モードのオプション、その他の CI システムでの設定について説明します。
+TAKT を CI/CD パイプラインから実行する方法を説明します。GitHub Actions の例、非対話モードのオプション、その他の CI システムでの設定を扱います。
 
 ## GitHub Actions
 
@@ -49,9 +49,11 @@ jobs:
 
 ## Pipeline モード
 
-`--pipeline` を指定すると、非インタラクティブな pipeline モードが有効になります。ブランチの作成、workflow の実行、コミット、プッシュを自動的に行います。このモードは人的操作が不可能な CI/CD 自動化向けに設計されています。
+`--pipeline` を指定すると、ブランチの作成、workflow の実行、コミット、プッシュを非対話で行います。
 
-Pipeline モードでは、`--auto-pr` を明示的に指定しない限り PR は作成**されません**。
+Pipeline モードにはタスクソースが必須です。`--task`、`--issue`、`--pr` のいずれかを指定してください。いずれも指定しない場合、TAKT は exit code `2` で終了します。
+
+Pipeline モードで PR を作成するには `--auto-pr` を指定します。`--skip-git` と併用すると PR は作成されず、警告が出ます。ワークフローが成功した場合の終了コードは `0` です。
 
 ### Pipeline の全オプション
 
@@ -60,14 +62,17 @@ Pipeline モードでは、`--auto-pr` を明示的に指定しない限り PR �
 | `--pipeline` | **pipeline（非インタラクティブ）モードを有効化** -- CI/自動化に必要 |
 | `-t, --task <text>` | タスク内容（GitHub Issue の代替） |
 | `-i, --issue <N>` | GitHub Issue 番号（インタラクティブモードでの `#N` と同等） |
+| `--pr <number>` | PR 番号（レビューコメントを取得して修正） |
 | `-w, --workflow <name or path>` | Workflow 名または workflow YAML ファイルのパス |
 | `-b, --branch <name>` | ブランチ名を指定（省略時は自動生成） |
 | `--auto-pr` | PR を作成（インタラクティブ: 確認スキップ、pipeline: PR 有効化） |
+| `--draft` | PR を draft として作成（`--auto-pr` または `auto_pr` 設定が必要） |
 | `--skip-git` | ブランチ作成、コミット、プッシュをスキップ（pipeline モード、workflow のみ実行） |
 | `--repo <owner/repo>` | リポジトリを指定（PR 作成用） |
 | `-q, --quiet` | 最小出力モード: AI 出力を抑制（CI 向け） |
-| `--provider <name>` | エージェント provider を上書き（claude\|claude-sdk\|claude-terminal\|codex\|opencode\|cursor\|copilot\|kiro\|mock） |
+| `--provider <name>` | エージェント provider を上書き（claude\|claude-sdk\|claude-headless\|claude-terminal\|codex\|opencode\|deepseek-harness\|cursor\|copilot\|kiro\|pi\|mock） |
 | `--model <name>` | エージェントモデルを上書き |
+| `--auto-strategy <strategy>` | 自動ルーティング戦略（cost\|balanced\|performance） |
 
 ### コマンド例
 
@@ -107,15 +112,31 @@ takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
 takt --pipeline --task "Fix bug" --skip-git
 ```
 
+`--skip-git` 指定時はプッシュされないため、`--auto-pr` は無視されて警告が出ます。
+
 **最小出力モード（CI ログ向けに AI 出力を抑制）**
 
 ```bash
 takt --pipeline --task "Fix bug" --quiet
 ```
 
+## 終了コード
+
+Pipeline モードは CI スクリプトで失敗の種類を判別できるよう、次の終了コードを返します。
+
+| Code | 意味 |
+|------|------|
+| `0` | 成功 |
+| `1` | 一般エラー |
+| `2` | Issue/PR の取得失敗、または `--issue` / `--pr` / `--task` の未指定 |
+| `3` | Workflow の実行失敗 |
+| `4` | Git 操作の失敗（環境準備、コミット、プッシュ） |
+| `5` | PR 作成の失敗 |
+| `130` | SIGINT（Ctrl+C）による中断 |
+
 ## Pipeline テンプレート変数
 
-`~/.takt/config.yaml` の pipeline 設定では、コミットメッセージと PR 本文をカスタマイズするためのテンプレート変数をサポートしています。
+`~/.takt/config.yaml` の pipeline 設定ではコミットメッセージと PR 本文をカスタマイズするためのテンプレート変数をサポートしています。
 
 ```yaml
 pipeline:
@@ -129,18 +150,21 @@ pipeline:
 
 | 変数 | 使用可能な場所 | 説明 |
 |------|--------------|------|
-| `{title}` | コミットメッセージ | Issue タイトル |
+| `{title}` | コミットメッセージ、PR 本文 | Issue タイトル |
 | `{issue}` | コミットメッセージ、PR 本文 | Issue 番号 |
 | `{issue_body}` | PR 本文 | Issue 本文 |
-| `{report}` | PR 本文 | Workflow 実行レポート |
+| `{report}` | PR 本文 | 固定文字列: ``Workflow `{workflow}` completed successfully.`` |
+
+`commit_message_template` は Issue が紐付いている場合にのみ適用されます。`--task` 単独の場合、コミットメッセージは `takt: {task}` になります。
 
 ## その他の CI システム
 
-GitHub Actions 以外の CI システムでは、TAKT をグローバルにインストールして pipeline モードを直接使用します。
+GitHub Actions 以外の CI システムではTAKT をグローバルにインストールして pipeline モードを直接使用します。
 
 ```bash
 # takt のインストール
 npm install -g takt
+takt install claude-sdk
 
 # pipeline モードで実行
 takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
@@ -150,7 +174,7 @@ takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
 
 ## 環境変数
 
-CI 環境での認証には、適切な API キー環境変数を設定してください。これらは他のツールとの衝突を避けるため TAKT 固有のプレフィックスを使用しています。
+CI では使用するプロバイダの認証情報をシークレットに登録し、ジョブの環境変数へ渡してください。DeepSeek Harness は SDK 指定の `DEEPSEEK_API_KEY` と `DEEPSEEK_BASE_URL` を使用します。
 
 ```bash
 # Claude（Anthropic）用
@@ -161,6 +185,13 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 # OpenCode 用
 export TAKT_OPENCODE_API_KEY=...
+
+# Pi 用
+# Pi SDK の credential store または provider-native 環境変数を使用
+
+# DeepSeek Harness 用
+export DEEPSEEK_API_KEY=...
+# 任意: export DEEPSEEK_BASE_URL=https://...
 
 # Cursor Agent 用（cursor-agent login 済みなら省略可）
 export TAKT_CURSOR_API_KEY=...
@@ -174,7 +205,7 @@ export TAKT_KIRO_API_KEY=...
 
 優先順位: 環境変数は `config.yaml` の設定よりも優先されます。
 
-> **注意**: 環境変数で API キーを設定すれば、SDK provider（Claude SDK、Codex、OpenCode）用の CLI インストールは不要です。TAKT が対応する API を直接呼び出します。Cursor、Copilot、Kiro は CLI のインストールが必要です。
+DeepSeek Harness を使うジョブでは先に `takt install deepseek-harness` を実行します。対応環境は glibc 2.28 以上の Linux x64/arm64 と macOS arm64 14.0 以上です。Cursor、Copilot、Kiro では各 CLI もインストールしてください。
 
 ## コストに関する注意
 
@@ -185,3 +216,19 @@ TAKT は AI API（Anthropic、OpenAI など）を使用するため、特に CI/
 - **適切な workflow の選択**: シンプルな workflow はマルチステージの workflow（例: 並列レビュー付きの `default`）よりも API 呼び出しが少なくなります。
 - **CI トリガーの制限**: 意図しない実行を防ぐため、条件付きトリガー（例: `if: contains(github.event.comment.body, '@takt')`）を使用してください。
 - **`--provider mock` でのテスト**: CI パイプラインの開発中は mock provider を使用して、実際の API コストを回避してください。
+
+## 管理 SDK の導入と更新
+
+Claude SDK、Codex、OpenCode、Pi、DeepSeek Harness を使うジョブでは、実行前に必要なプロバイダを導入します。npm レジストリへの接続が必要です。
+
+```sh
+takt install claude-sdk
+takt install codex
+takt install opencode
+takt install pi
+takt install deepseek-harness
+takt update           # 導入済みで固定版と異なる対象だけを更新
+takt update codex     # 指定対象だけを更新
+```
+
+OpenCode の外部 CLI は別途導入してください。導入先に問題がある場合は `takt install <provider> --force` で入れ直せます。各ジョブで導入にかかる時間を抑えたい場合は、必要なプロバイダを含む実行イメージを用意してください。
