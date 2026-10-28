@@ -1,6 +1,6 @@
 # CLI リファレンス
 
-[English](./cli-reference.md)
+[English](./cli-reference.md) | [日本語](./cli-reference.ja.md) | [简体中文](./cli-reference.zh-CN.md)
 
 このドキュメントは TAKT CLI の全コマンドとオプションの完全なリファレンスです。
 
@@ -19,15 +19,92 @@
 | `--skip-git` | ブランチ作成、コミット、プッシュをスキップ（pipeline モード、workflow のみ実行） |
 | `--repo <owner/repo>` | リポジトリを指定（PR 作成用） |
 | `-q, --quiet` | 最小出力モード: AI 出力を抑制（CI 向け） |
-| `--provider <name>` | エージェント provider を上書き（claude\|claude-sdk\|claude-terminal\|codex\|opencode\|cursor\|copilot\|kiro\|mock） |
+| `--provider <name>` | エージェント provider を上書き（claude\|claude-sdk\|claude-headless\|claude-terminal\|codex\|opencode\|deepseek-harness\|cursor\|copilot\|kiro\|pi\|mock） |
+| `--auto-strategy <strategy>` | auto routing の strategy を上書き（`cost`\|`balanced`\|`performance`）。実行時に effective `auto_routing` を持つ現在の workflow または workflow_call child へ到達した場合に適用し、それ以外では warning を出して無視します。 |
 | `--model <name>` | エージェントモデルを上書き |
-| `--config <path>` | グローバル設定ファイルのパス（デフォルト: `~/.takt/config.yaml`） |
+| `--runtime-assignment <name>` | 合成後の runtime `provider.assignments` を起動単位で選択。`provider.directories` より優先 |
+| `-c, --continue` | 現在のプロジェクトディレクトリ・プロバイダの直近アシスタントセッションから継続 |
+| `--tui` | 端末ではこれが既定の姿で、stdin と stdout が TTY ならフラグの有無にかかわらずタスク会話は Ink が描画し、パイプ入力では従来のリーダーが使われる。このフラグはその前提を明示するだけで、TTY がない場合はフォールバックせず `--tui requires an interactive terminal` で失敗する。ワークフロー選択・モード選択・要約後のアクション選択は従来のセレクタのままで、会話だけを TUI が描画する。Enter で送信、Shift+Enter / Option+Enter で改行、Ctrl+K で行末まで削除、Esc で応答を中断し、キューの行があれば次のターンとして送信する。中断した発言は送信順に引用し、キューから出た行でも後から入力した行でも次の通常メッセージに前置する。再び中断した場合は今回の発言も保持し、応答が完了するまで次の通常送信へ引き継ぐ。コマンドには前置せず、その後も保持する。/go は未送達の発言も含む原文履歴を要約する。表示と履歴には各原文を一度だけ残し、次の通常送信なしに終了しても追加送信しない。応答中の Enter はキューに積まれ、完了後に送信される（中断前なら ↑ で取り消して編集）。タスク実行後もセッションは続き、/cancel で終了する。別の実行（たとえば他の端末で完了した `takt run`）が保存した結果は TUI 起動時には表示せずに破棄し、従来のリーダーだけが起動時に一度表示する。TUI セッション内で開始したワークフローの完了通知は従来どおり表示される |
+
+端末のリサイズ中は描画を短時間待ち、サイズが落ち着いてから入力欄と状態表示だけを再描画します。
+既存のスクロールバックは消去せず、シェルの出力や過去の会話は端末の通常のスクロール操作で
+引き続き読み返せます。リサイズ時やセレクタ・タスクからの復帰時に、確定済みの会話を
+再出力しません。ユーザー発言と AI 回答の本文は端末側で折り返すため、確定済みの段落も
+幅を広げると再び広い行に戻ります。本文に明示された改行は保持します。
+旧方式ですでに出力した履歴の固定改行は、そのまま残ります。
+入力中の下書き・送信待ちの入力・実行中のリクエストも保持されます。
+タスク会話では入力位置の行を入力欄の枠内の先頭行に表示します。
+状態・通知・待機キューは入力欄の下に表示します。入力位置より前の表示行は折り畳まれ、
+`↑ N` がその行数を示します。上下キーで編集でき、折り畳みやリサイズで送信内容は変わりません。
 
 正式オプションは `--workflow` です。
+
+グローバル設定ディレクトリ（デフォルト: `~/.takt/`）は環境変数 `TAKT_CONFIG_DIR` で変更できます。
+
+`--runtime-assignment` はインタラクティブ起動、直接実行、pipeline、`run`、`watch`、その他のサブコマンドで使えます。
+選択により変わるのは defaults/targets だけで、共通 section と既存 provider/model/auto-strategy override の優先順位は維持します。
+未定義名や有効な runtime provider section がない場合は agent 起動前に停止し、指定名と候補一覧（または定義なし）を表示します。
+選択は設定やタスクレコードへ保存せず、requeue/retry/instruct で過去の指定を復元しません。
+未指定時は従来の directories 選択を使います。
+
+```sh
+takt --runtime-assignment cost "#123"
+takt run --runtime-assignment quality
+takt --pipeline --runtime-assignment cost "#123"
+```
+
+共有するコスト重視・品質重視のプリセットと、個人の `~/.takt/runtime.yaml` に別名を追加する手順は
+[名前付き assignment](./configuration.ja.md#名前付き-assignment) を参照してください。
+
+## 管理SDKの導入と更新
+
+Claude SDK、Codex、OpenCode、Pi、DeepSeek HarnessのSDKは通常のTAKTインストールには含まれません。TAKTリリースごとに固定したmanifestとlockを配布し、`npm ci --omit=dev --ignore-scripts`で管理ディレクトリへ導入します。npmとレジストリへの接続が必要です。
+
+```sh
+takt install claude-sdk
+takt install codex
+takt install opencode
+takt install pi
+takt install deepseek-harness
+takt update           # 導入済みで固定版と異なる対象だけを更新
+takt update codex     # 指定対象だけを更新
+```
+
+端末では実行前に必要なプロバイダと容量の目安を示して確認します。未導入の導入を拒否すると実行は開始しません。会話ではinstall案内を表示して入力へ戻ります。正常な旧版の更新を拒否した場合は警告して続行し、その版で失敗した場合にupdate案内を添えます。実行中は導入・更新・確認を行いません。CI、pipeline、watcherでは実行前に必要な対象を明示的に導入してください。
+
+容量の目安はClaude SDKが約250 MB、Codexが約340 MB、OpenCodeが約60 MB、Piが約52 MB、DeepSeek Harnessが約510 MBです。DeepSeekはmacOS arm64で依存込みの導入先を測定しました。OSとアーキテクチャによって変わります。ClaudeとCodexはCLIバイナリも管理します。`TAKT_CLAUDE_CLI_PATH`と`TAKT_CODEX_CLI_PATH`の明示上書きは保持し、PATH上の同名CLIは自動で流用しません。OpenCodeの外部CLIは別途導入してください。`takt install <provider> --force`で再導入できます。更新失敗時は以前の正常な世代を保持します。
+
+## DeepSeek Harness
+
+`takt install deepseek-harness` は必要な公式 SDK を導入します。npm レジストリへの接続が必要です。導入後も動作しない場合は `takt install deepseek-harness --force` で入れ直してください。認証情報と `provider: deepseek-harness` の設定は[設定ガイド](./configuration.ja.md#deepseek-harness-deepseek-harness)を参照してください。
+
+## manager（実験的）
+
+manager の TUI では、`Ctrl+R` で問い合わせ、`Ctrl+G` で進行中のゴールを開きます。この2つのキーは manager が処理中でも使えます。入力欄に `/make-goal` と打って `Enter` を押すと、現在の会話からゴールの登録案を作ります。案が表示済みでも作り直すだけで、登録はしません。案は `↑` 承認 / `↓` 続行 / `Enter` 決定で操作し、承認を選んで `Enter` で登録します。材料不足の場合はその旨を表示し、会話を続けられます。入力欄で `/` を打つと `/make-goal` が補完候補に出て、`Tab` で確定できます。`/make-goal` 以外の `/` で始まる入力は普通の発言として manager に送ります。メニューの操作は[ゴール管理ガイド](./goal-management.ja.md)を参照してください。
+
+manager を開くと、必要なら daemon を起動し、準備が整うまで待ちます。TUI は会話の要求を daemon に送り、結果を表示します。受け付けたターンは TUI を閉じても続きます。同じリポジトリや workspace を担当先として開き直す場合も、同じ担当先で2つ目の TUI を開く場合も、同じ会話につながり、承認待ちの要約があれば再表示されます。前の画面の発言や返事は再表示されません。処理中の発言の拒否、保存する情報、daemon 再起動後の中断は[ゴール管理ガイド](./goal-management.ja.md)を参照してください。
+
+`takt daemon stop` で manager 用のバックグラウンド daemon を明示的に停止できます。自動終了するのは、対象プロジェクトに未完了のゴール、処理待ちのイベント、待機中・実行中のタスクがなく、プロジェクトの確認処理もなく、TUI の接続と会話の操作（初期化・実行・後片付け）がすべてなくなったときだけです。保存された承認待ちの要約だけでは daemon は起動し続けません。
+
+`takt manager` は対話端末でゴール相談の TUI を起動します。manager は実験的機能です。動作・設定・保存するデータの形式は予告なく変わることがあります。自動でタスクを投入・実行するため、provider の API の費用がかかります。
+
+## Web UI の実行境界
+
+`takt ui` は実験的なローカル Web UI を `http://127.0.0.1:20525` で起動し、`--port` でポートを変更できます。起動時には、予告なく仕様が変更される可能性があることを表示します。同じ `TAKT_CONFIG_DIR` のインスタンスがすでに動いている場合は二重起動せず、実際の URL と PID を表示します。グレースフルに停止するには `takt ui stop`、停止後に起動し直すには `takt ui restart [--port <number>]` を使用します。
+
+Web UI の実行記録は `TAKT_CONFIG_DIR` 配下に保存されます。同じプロジェクトを CLI と Web UI から同時に操作することはサポートしていません。実行中は一方から操作してください。
+
+Viewer では実行状況、ライブログ、レポートを確認できます。「タスクを作成」から会話を始め、Chat の `/setup` で Worktree、作業ブランチ、ベースブランチ、自動 PR、Draft PR を設定できます。`/go` で作成された実行指示はその時点の設定を保持します。ヘッダーで表示言語を切り替えられます。自動 PR を有効にした実行は workflow 成功後に commit、push、PR 作成まで行います。失敗したタスクと実行上限に達したタスクは run 詳細の `Requeue` から同じ設定で再投入できます。
+
+Chat では会話履歴を確認できます。
+
+Web UI の MCP 設定で認証情報を使う場合は、値を `${ENV_VAR}` 形式の環境変数参照にしてください。設定と操作の詳細は [Web UI ガイド](../web-ui/README.md) を参照してください。
 
 ## インタラクティブモード
 
 AI との会話を通じてタスク内容を精緻化してから実行するモードです。タスクの要件が曖昧な場合や、AI と相談しながら内容を詰めたい場合に便利です。
+
+通常の assistant 会話では、読み取り専用 MCP tool を通じてタスクと run の要約も確認できます。タスクは名前または要約で指定し、詳細なログやレポートは特定した run に必要な場合だけ読み取ります。新しいタスクには `/go`、実行中の worktree clone への追加指示には `/tell`、失敗タスクの再投入には `/requeue` または `/retry` を使用します。
 
 ```bash
 # インタラクティブモードを開始（引数なし）
@@ -39,24 +116,56 @@ takt hello
 
 **注意:** `--task` オプションを指定するとインタラクティブモードをスキップして直接実行します。Issue 参照（`#6`、`--issue`）はインタラクティブモードの初期入力として使用されます。
 
+TUI の会話履歴では、送信済みのユーザー発言を、出力時の表示幅いっぱいの背景帯、本文の上下各1行の余白、`❯` マーカーとそれに続く半角スペースで表示します。端末から背景色を取得できる場合は背景帯と文字色を端末に合わせ、取得できない場合は暗いグレーの背景と白い文字を使用します。過去の背景帯の余白自体はリサイズ時に塗り直しません。入力欄にある送信前の下書きには、この表示を適用しません。回答の生成中も過去の発言を閲覧でき、マウスホイールや端末のスクロール操作を使います。
+
 ### フロー
 
 1. workflow を選択
-2. インタラクティブモードを選択（assistant / persona / quiet / passthrough）
+2. インタラクティブモードを選択（assistant / grill-me / persona）
 3. AI との会話でタスク内容を精緻化
-4. `/go` でタスク指示を確定（`/go 追加の指示` のように追記も可能）、または `/play <task>` でタスクを即座に実行
+4. `/go` でタスク指示を確定（`/go 追加の指示` のように追記も可能）
 5. 実行（workflow 実行、PR 作成）
+
+`/go` は最新のタスクの話題を指示書にします。以前の話題を含めるのは、同じタスクにすると明示した場合だけです。
+
+Issueを読み込んでいる場合は、最新のタスクが現在のIssueの作業かを `/go` ごとに判断します。関連する指示書はタスク見出し直後に `Issue: #N` を表示し、既存の行動選択前にプレビューで確認できます。「実行する」「タスクにつむ」「Issueを建てる」へNを渡すのは、この行が現在のIssue番号と一致するときだけです。無関係なタスクはIssueを読み込んでいない場合と同じ流れになります。紐付けの修正には「会話を続ける」を使い、追加の確認は行いません。`/issue` 後の指示書は差し替えた文脈で判断し直し、以前の紐付けを引き継ぎません。
 
 ### インタラクティブモードの種類
 
 | モード | 説明 |
 |--------|------|
 | `assistant` | デフォルト。AI がタスク指示を生成する前に明確化のための質問を行う。 |
+| `grill-me` | 推奨案付きの質問を1問ずつ行い、重要な判断分岐を解決する。要件が固まると `/go` を案内する。 |
 | `persona` | 最初の step の persona と会話（そのシステムプロンプトとツールを使用）。 |
-| `quiet` | 質問なしでタスク指示を生成（ベストエフォート）。 |
-| `passthrough` | AI 処理なしでユーザー入力をそのままタスクテキストとして使用。 |
 
-Workflow は YAML の `interactive_mode` フィールドでデフォルトモードを設定できます。
+### 会話設定コマンド
+
+| コマンド | 効果 |
+|----------|------|
+| `/workflow` | 別の workflow を選択する。 |
+| `/interaction` | 別の interactive mode を選択する。 |
+| `/provider` | 別の provider を選択する。 |
+| `/model <value>` | この会話で使う任意の model 名を指定する。 |
+| `/effort <value>` | この会話で使う任意の推論強度を指定する。 |
+| `/tell [指示]` | 実行中の worktree clone タスクを選び、追加指示を確認してから送る。指示を省略すると、そのタスクに関する最新の話題から単独で理解できる追加指示本文を生成する。対話端末が必要で、確認できない場合は送信しない。 |
+| `/requeue [補足]` | assistant / grill-me 会話で failed または exceeded タスクを再投入する。会話の要点と補足から独立した AI 呼び出しで選択する。形式外・候補外の応答には1回再質問し、それでも選べなければ手動選択へ進む。対象情報を表示して Y/n で確認する。補足なしの exceeded は保存位置を引き継ぐ。 |
+| `/retry [補足]` | assistant / grill-me 会話で、失敗タスクと開始位置を選ぶ。形式外・候補外の応答には1回再質問し、それでも選べなければ手動選択へ進む。改訂後の order 全文を作成して「タスクにつむ」または「会話を続ける」で確認する。 |
+
+`/tell` は通常の CLI/TUI の `assistant`、`grill-me`、`persona` 会話で利用でき、これらのモード間を切り替えた後も利用できます。送信先を選ぶには、有効な TAKT 管理の worktree clone で実行中のタスクが必要です。Web UI はローカルの `/tell` handoff を実行せず、`/tell このタスクを確認` のような入力も通常のメッセージとして assistant に送ります。Retry と Instruct の専用会話では `/tell` を公開せず、それぞれのタスク操作を使用します。
+
+通常の CLI/TUI の `assistant`、`grill-me`、`persona` 会話では `/issue <番号>` または `/issue <番号> <番号> ...` を使い、設定済み VCS provider から Issue を取得して現在の Source Context を置き換えられます。番号は裸の数字と `#` 付きの両方を指定できます。会話履歴と AI session は維持され、次の発言と `/go` には置換後の内容が使われます。指定した Issue の取得に失敗した場合は現在の context を維持します。このコマンドは `takt exec` では利用できません。
+
+`/requeue` と `/retry` は CLI/TUI の `assistant` と `grill-me` 会話で使います。`/requeue` は失敗または実行上限に達したタスクを確認して再投入し、`/retry` は失敗タスクの指示書を改訂してから再投入します。両コマンドは直近の合意を含む会話の要点、補足指示、候補の完全な経路と見出しの説明を独立した AI 呼び出しへ渡します。各選択段階で形式外・候補外の応答に1回だけ再質問し、それでも無効なら手動選択へ進みます。メニューには形式不一致、候補にないタスク名、候補にない開始位置 ID を区別して表示します。判断不能や provider の失敗時は直接手動選択へ進みます。選択や確認を取りやめた場合は変更せず、その結果を会話に残します。どちらも確認後にタスクを `pending` に戻し、その場では実行しません。対話端末がなければ選択も変更も行いません。実行上限に達したタスクで再開位置を変えたい場合は `/requeue` に補足を添えてください。Web UI からの再投入は各タスクの操作を使います。
+
+選択内容は一時的で永続化されません。workflow、mode、provider、model の変更は、次の通常メッセージまたは `/go` で新しい AI session を作り、以前の会話履歴を参照情報として1回だけ渡します。effort だけの変更は現在の session の次回呼び出しへ適用されます。provider を変更すると、一時的な model と effort は消去されます。次の入力までに同じ設定コマンドを複数回実行した場合は、各設定で最後に選択した値だけが適用されます。これらの会話用 override は workflow 実行には影響しません。
+
+/go 後の保存・Issue 作成・即時実行と /tell・/retry・/requeue の結果は、画面通知と同じ内容で会話履歴に記録されます。次の発言や /go で保存したタスク名、Issue 番号、未保存・キャンセル・失敗の理由を参照できます。保存や Issue 作成に失敗しても理由を通知して同じ会話へ戻ります。設定入力で保存をキャンセルした場合も会話へ戻り、再選択は強制されません。Issue 作成後に保存が失敗した場合は作成済みの Issue と未保存のタスクを区別します。/issue と会話設定の切り替え通知は、この操作結果の記録対象に含まれません。
+
+### 形式仕様の検証
+
+現在のインタラクティブセッションで形式仕様モードを有効にしている場合、`/verify` を実行すると、現在の合意内容を 1 回の操作で検証できます。TAKT はアシスタントに合意内容を Quint と Alloy の仕様として出力するよう依頼し、取り出したコードブロックに対して検証器を実行し、結果を同じセッションに戻してアシスタントに解釈させます。Quint の基本段階は追加インストールなしで動作し、`quint verify` と Alloy Analyzer によるモデル検査には Java 17 以上が必要です。
+
+必要なもの、初回のダウンロード、段階と検証対象の選ばれ方、結果の読み方は [形式仕様の検証](./formal-verification.ja.md) を参照してください。
 
 ### 実行例
 
@@ -69,7 +178,7 @@ Select workflow:
     Research/
     Cancel
 
-Interactive mode - Enter task content. Commands: /go (execute), /cancel (exit)
+対話モード - タスク内容を入力してください。準備ができたら /go で指示書を作成・実行します。
 
 > I want to add user authentication feature
 
@@ -105,7 +214,149 @@ takt --task "Fix bug"
 takt --task "Add authentication" --workflow dual
 ```
 
-**注意:** 引数として文字列を渡す場合（例: `takt "Add login feature"`）は、初期メッセージとしてインタラクティブモードに入ります。
+**注意:** 引数として文字列を渡す場合（例: `takt "Add login feature"`）は初期メッセージとしてインタラクティブモードに入ります。
+
+## Workflow Maker
+
+`takt make` は TTY 専用の Workflow Maker を起動します。会話の前に New workflow、project、global、builtin、repertoire のいずれから base workflow を選びます。既存 workflow は参考入力としてだけ使用され、選択元のファイルは編集されません。
+
+会話中は `/workflow` で base を変更し、`/go` で完全な実装指示を準備します。承認画面には `.takt/make/YYYYMMDD-HHmmss-SSS/` 形式の生成予定パスと、Execute、Continue editing、Cancel の3選択肢が表示されます。Execute を選ぶまで Maker 成果物は書き込まれません。
+
+承認後は、静的に到達可能な依存関係を `workflows/`、`steps/`、`facet-pools/`、`facets/` で構成される分離ディレクトリへ複製し、参照を複製先へ書き換えます。そのディレクトリを作業ディレクトリとして builtin `workflow-maker` を直接実行し、task、worktree、commit、push、PR は作成しません。動的または未解決の依存関係は実行前に失敗します。成功・失敗のどちらでも、作成済みの成果物と生成された doctor レポートは表示パスに保存されます。
+
+```bash
+takt make
+```
+
+## ACP Agent
+
+`takt-acp` は TAKT を Agent Client Protocol agent として stdio JSON-RPC で起動します。ACP 対応クライアントから agent コマンドとして起動してください。
+
+```bash
+takt-acp
+```
+
+ACP session の `cwd` は絶対パスである必要があります。TAKT はこのディレクトリを会話の基点かつ workflow project root として扱います。既定の `session/prompt` は enqueue-first の会話入口です。「タスクに積んで」「pending task にして」のような依頼は`worktree: true` の pending タスクとして `.takt/tasks.yaml` に追加され、後で `takt run` で実行できます。direct workflow execution は「そのまま実行して」「今すぐ実行して」のように明示された場合だけ行います。曖昧な依頼は会話として扱われます。ACP の主 UX は `/go` に依存しません。`/go` は session の `defaultAction` に従い、既定では enqueue されます。
+
+ACP prompt がタスクを作成または直接実行する場合、会話結果が workflow を明示しない限り `default` workflow を使います。
+
+`session/new` は `mcpServers` を省略できます。省略または空の `mcpServers: []` は MCP server なしとして扱われます。stdio MCP server は workflow 実行へ渡されますが、step の実効 provider が MCP server に非対応の場合、TAKT は実行前に fail fast します。stdio 以外の MCP transport、重複した MCP server 名、trim 後に重複する MCP env 名は session 作成時に拒否されます。
+
+現在対応しているのは `initialize`、`session/new`、`session/prompt`、`session/cancel`、`session/update` 通知です。`additionalDirectories` capability は宣言しておらず、非空の `additionalDirectories` を含むリクエストは拒否されます。
+
+## MCP Server
+
+`takt-mcp` は TAKT を stdio Model Context Protocol server として起動します。MCP client から shell 経由で TAKT command を直接呼ばずにタスクの enqueue、task/run 状態の確認、実行中 worktree clone への追加指示を行いたい場合に登録します。
+
+```bash
+takt-mcp
+```
+
+Codex では`~/.codex/config.toml`、または trusted project の project-scoped `.codex/config.toml` に stdio MCP server を追加します。
+
+```toml
+[mcp_servers.takt]
+command = "takt-mcp"
+```
+
+Codex の MCP CLI から追加することもできます。
+
+```bash
+codex mcp add takt -- takt-mcp
+```
+
+この server は次の tool を公開します。
+
+| Tool | 説明 |
+|------|------|
+| `takt_enqueue_task` | pending タスクを `.takt/tasks.yaml` に保存し、既存 Issue の紐付けまたは新規 Issue 作成を任意で行う。 |
+| `takt_list_tasks` | ログ・レポート本文を読み込まず、タスクと run の要約を取得する。 |
+| `takt_get_run` | 1つの run の現在 step、phase、ログ、レポート、追加指示の配信状況を取得する。 |
+| `takt_tell_run` | 対象を再確認して、実行中の worktree clone タスクへ追加指示を送る。 |
+| `takt_cleanup_tasks` | 絞り込んだ対象を一覧表示し、`confirm: true` の場合だけ削除します（`all` 限定）。 |
+
+`takt_cleanup_tasks` は絞り込んだタスクの一覧を確認してから削除するツールです。絶対パスの `cwd` と `reason` が必須です。任意入力は `statuses`（`pending`、`completed`、`failed`、`exceeded`、`pr_failed` を複数指定でき、`running` は指定できません）、`goalId`、`branch`、`confirm`（既定値は `false`）です。`statuses`、`goalId`、`branch` のいずれか1つ以上が必要です。
+
+`confirm` の省略時または `false` の場合は対象一覧だけを返し、何も削除しません。`confirm: true` の場合だけ、`takt list` と同じ範囲を削除します。このツールは `all` のツール一覧だけで利用でき、`read-only` と `manager` には含まれません。`manager` には別のツール `takt_remove_goal_task` があります。
+
+`takt_stop_goal_task` は `manager` と `all` のツール一覧で利用できます。絶対パスの `cwd` を渡します。`takt_list_tasks` が返す同じタスク項目の `name` の値を `taskName` に設定し、`goalId`・`executionId` もその項目の値を使います。所有PIDの生存を確認します。開始時刻が保存されている場合は、現在の開始時刻を取得して一致を確認します。保存済み開始時刻がない場合は、goalId・taskName・executionIdの一致、実行中の状態、所有PIDの生存を確認して受理します。識別情報の不一致、実行中でないタスク、所有プロセスの終了は、停止依頼を保存せず理由付きで拒否します。開始時刻が保存されているのに現在値を取得できない場合も拒否します。ツールは依頼だけを保存し、workerが500ms間隔で検知して自身を中断する間は `running` を維持します。処理と後片付けの終了後に `failed` とタスク停止理由を保存するため、ゴール中止とは区別できます。他のタスクとゴールは継続します。重複依頼の評価時点で、同じ実行が引き続き `running` で、所有者を検証できる場合に限り保存済みの依頼を返し、再実行には新しい実行IDを使います。
+
+daemon は各プロジェクトのイベント処理前に、中断タスクを `failed` に回復し、ゴールタスクの完了イベントを作成します。pendingタスクがなくても回復します。回復対象は、所有PIDがない場合、生存していない場合、または保存済み開始時刻と現在の開始時刻の既知の不一致がある場合です。生存するPIDの保存済みまたは現在の開始時刻が不明なだけでは、回復せず `running` を維持します。
+
+各 tool の `cwd` は `realpath` で解決され、MCP server の許可 project root 内にある必要があります。既定の許可 root は `takt-mcp` を起動したディレクトリです。
+
+task 状態の参照だけを許可する client には `--tool-set read-only` を指定します。この場合は `takt_list_tasks` と `takt_get_run` だけが公開され、`takt_enqueue_task` と `takt_tell_run` は公開されません。通常の assistant 会話にはこの read-only tool set が自動で渡されます。MCP 非対応 provider でも会話は継続し、task 状態の参照が使えない旨を通知します。
+
+### `takt_enqueue_task`
+
+必須入力:
+
+| フィールド | 型 | 説明 |
+|-----------|----|------|
+| `cwd` | 絶対パス文字列 | `.takt/tasks.yaml` を書き込む project root。 |
+| `task` | string | タスク指示書本文。 |
+| `workflow` | string | Workflow 名またはパス。MCP caller はタスク投入前に使用する workflow を確認する必要があります。 |
+| `autoPr` | boolean | 自動 PR を有効にしたタスクとして保存するかどうか。MCP caller はタスク投入前に確認する必要があります。 |
+
+任意入力:
+
+| フィールド | 型 | 説明 |
+|-----------|----|------|
+| `worktree` | boolean | `true` は自動の隔離 worktree を作成する。省略時は `true`。MCP 入力では任意の worktree パスを受け取りません。 |
+| `draftPr` | boolean | 明示した `true` / `false` を `draft_pr` に保存し、実行時はプロジェクト・グローバル設定より優先する。省略時は保存せず、設定を継承する。 |
+| `issue.number` | 正の safe integer | issue provider を呼ばずに既存 Issue を紐付ける。 |
+| `issue.create` | `true` | enqueue 前に設定済み issue provider で Issue を作成する。 |
+| `issue.title` | string | 新規 Issue 用の任意の非空 title。上限は 255 文字。 |
+| `issue.labels` | string array | 新規 Issue 用の任意の非空 label。 |
+| `taskContext.branch` | string | タスクに保存するローカルブランチ名。 |
+| `taskContext.baseBranch` | string | タスクに保存するベースブランチ名。 |
+| `taskContext.prNumber` | 正の safe integer | タスクに保存する Pull Request 番号。`Number.MAX_SAFE_INTEGER` を超える値は拒否されます。 |
+
+入力上限: `task` は 128 KiB、`workflow` は 128 文字、Issue title は 255 文字、Issue label は 1 件 100 文字、最大 20 件までです。
+
+投入成功時は既存の `taskName`、`tasksFile`、`workflow`、Issue 関連フィールドに加え、保存した `worktree`、`autoPr`、`draftPr` を返します。`worktree` の省略は保存値の `true`、`draftPr` の省略は `null` で返し、設定から解決した実効値へ置き換えません。通常投入、既存 Issue の紐付け、新規 Issue 作成のすべてで同じ扱いです。`autoPr: false` と `draftPr: true` の組合せもそのまま保存します。自動 PR の作成は `autoPr` に従います。
+
+`issue` object は `{ "number": 123 }` または `{ "create": true, "title"?: "...", "labels"?: ["..."] }` のいずれかだけを指定します。混在 key、空の title・label、unknown key は拒否されます。Issue 付き enqueue の成功結果には `issueNumber` を含みます。Issue 番号の解決後にタスク保存が失敗またはキャンセルされた場合も Issue は open のまま残り、MCP error result は `issueCreated`、`issueNumber`、任意の `issueUrl`、`taskEnqueued`、`stage`、sanitize 済みの `error` を返します。`{ "issue": { "number": issueNumber } }` で再試行すれば、新しい Issue は作成されません。`stage` が `issue_number_parsing` の場合は `issueNumber` を返せないため、任意の `issueUrl` で作成済み Issue を特定し、番号を確認してから再試行してください。
+
+MCP はタスクの enqueue、task/run 状態の確認、実行中 clone への追加指示を行えます。pending タスクの実行には `takt run`、継続監視と実行には `takt watch` を使用してください。
+
+### `takt_list_tasks`、`takt_get_run`、`takt_tell_run`
+
+3つの tool は絶対パスの project `cwd` を必須とし、server が許可した project root 内に制限されます。`takt_list_tasks` は名前、要約、状態、workflow、run slug、取得できる現在 step を返しますが、ログ・レポート本文は返しません。`takt_get_run` は一覧の `runSlug` を指定し、その run の step log、レポート、追加指示の配信状況を返します。`takt_tell_run` は空でない `content` を受け取り、書き込み直前に指定 slug が実行中の worktree clone タスクを指すことを再確認します。完了、削除、slug 不一致、clone でない run には書き込まず、理由を返します。
+
+`takt_list_tasks` は個別タスクの worktree 検証や run メタデータ取得に失敗しても全件を返します。問題の項目には取得できた基本情報と sanitize 済みの `error` 文字列を付け、ほかの項目は従来どおり返します。検証に失敗した worktree から run 情報は読みません。キュー自体を読めない場合や `cwd` が許可範囲外の場合はツール全体のエラーとなり、タスク配列は返しません。
+
+`takt_tell_run` と CLI の `/tell` は、配送が成立した追加指示をタスクの正本 `order.md` に追記し、実行中 run の `context/task/order.md` も更新します。保存に成功した場合は、指示 ID と受信時刻を含む追記を後続の役や再開後の run も参照できます。保存に失敗した場合は標準エラーへ警告しますが、受け付けた指示の配送は妨げず、tell は成功します。
+
+## Instant Exec モード
+
+`takt exec` はworkflow YAML を手で書かずに TAKT の対話型タスク入力モードを開始します。アシスタントエージェントが依頼を明確化し、`/go` で会話を生成 workflow に変換し、ワーカーエージェントが実装し、レビューエージェントが結果をレビューし、必要な場合だけ再計画エージェントがユーザーに方向性を確認し、ループ検知が不毛な反復を防ぎます。
+
+```bash
+takt exec          # 前回設定を使用（初回はデフォルト）
+takt exec backend  # 名前付きプリセットで開始
+takt exec --list   # 利用可能な exec プリセットを表示
+```
+
+プリセットの探索順は project `.takt/exec/presets/`、global `$TAKT_CONFIG_DIR/exec/presets/`（未設定時は `~/.takt/exec/presets/`）、builtin `builtins/exec/presets/` です。builtin/default プリセットはエージェントの役割、facet、ループ検知しきい値だけを定義します。provider と model は exec モード開始時に通常の TAKT 設定から解決され、assistant 対話と `/setup` 表示で使われます。生成 workflow は tool / skill の要求に capabilities を使い、provider/model/options は `runtime.yaml`（または既存の legacy config）に残します。`effort` は明示設定された場合だけ出力されます。Codex の repository Skill と user Skill は scope ごとに設定省略時に継承され、解決した capability が生成 workflow に出力されます。`/setup` で変更した設定は次回起動用の設定として `$TAKT_CONFIG_DIR/exec.yaml`（未設定時は `~/.takt/exec.yaml`）に保存されます。
+
+exec モード内の主なコマンド:
+
+| コマンド | 説明 |
+|----------|------|
+| `/setup` | エージェント、replan facet、ループ検知しきい値、project/global preset を編集 |
+| `/go` | 最新のタスクの話題を実行用タスク指示に要約し、生成 workflow を実行 |
+| `/go <note>` | 会話要約に追加メモを付けて実行 |
+| `/paste-image` | 現在の入力行を編集中に、クリップボード画像のプレースホルダーへ置換 |
+| `/cancel` | 実行せず終了 |
+
+`/setup` では project/global プリセットの保存・削除ができます。Instruction、Knowledge、Policy は通常の facet 参照で、作成した facet は `.takt/facets/{instructions,knowledge,policies}/` または `$TAKT_CONFIG_DIR/facets/{instructions,knowledge,policies}/`（未設定時は `~/.takt/facets/{instructions,knowledge,policies}/`）に保存されます。
+
+`/go` 実行時、TAKT は `.takt/exec/workflow.yaml` を生成し、既存の workflow engine で実行します。事前の会話もインラインのタスク本文もない `/go` はworkflow を作成する前に拒否されます。完了後は review result report を読み戻し、exec assistant セッションへ注入して最終サマリを返します。
+
+exec 入力の編集中に画像を添付できます。macOS では `/paste-image` または `Ctrl+V` でクリップボード画像を添付でき、対応ターミナルでは OSC 1337 のインライン画像ペーストも使えます。TAKT は `[Image #N]` プレースホルダーを挿入します。画像は現在の Assistant メッセージまたは `/go <note>` がそのプレースホルダーを参照した場合だけ Assistant 依頼に送信されます。同じセッションで添付されていないプレースホルダーは通常テキストとして扱われます。`/go` 実行時は参照された保存済み画像だけが生成タスク仕様へコピーされ、添付セクションに列挙されます。対応形式は PNG、JPEG、GIF、WebP です。インライン画像とクリップボード画像は 10 MiB までです。未対応形式、インライン画像のファイル名拡張子と実データの不一致、上限超過、保存済み添付の一時パス消失、symlink、通常ファイルではない添付元はエラーになります。ネイティブ画像入力に対応しない provider にはプロンプト内のローカルパス参照として渡されます。
+
+生成される exec workflow は `session_key` でワーカーエージェント、レビューエージェント、再計画エージェントのセッションを分離します。ループ検知 judge は常に新しいセッションを使います。ユーザー定義 workflow では通常の agent step と parallel sub-step にだけ `session_key` を指定できます。system step、workflow_call step、loop-monitor judge、parallel parent step では指定できません。実際のセッションキーは解決済み provider を付けた形になります。
 
 ## GitHub Issue タスク
 
@@ -113,11 +364,11 @@ GitHub Issue を直接タスクとして実行できます。Issue のタイト�
 
 ```bash
 # Issue 番号を指定して実行
-takt #6
+takt '#6'
 takt --issue 6
 
 # Issue + workflow 指定
-takt #6 --workflow dual
+takt '#6' --workflow dual
 ```
 
 **要件:** [GitHub CLI](https://cli.github.com/)（`gh`）がインストールされ、認証済みである必要があります。
@@ -135,8 +386,28 @@ AI との会話でタスク要件を精緻化し、`.takt/tasks.yaml` にタス�
 takt add
 
 # GitHub Issue からタスクを追加（Issue 番号がブランチ名に反映される）
-takt add #28
+takt add '#28'
+takt add --issue 28
+
+# 積むタスクの workflow を指定
+takt add -w default
+
+# PR レビューコメントからタスクを作成
+takt add --pr 123
 ```
+
+`-w, --workflow <name or path>` はタスクに保存する workflow を指定し、`--pr <number>` は PR のレビューコメントからタスクを作成します。
+
+GitHubのPR・Issue本文と各種コメントにあるMarkdown画像とHTMLの`<img src>`は自動でタスク添付になります。PR本文にGitHub添付画像があれば、レビューコメントがなくても登録できます。成功画像は元構文の直後に`[Image #N]`が補足され、`order.md`の`## 添付画像`一覧から参照できます。
+
+```bash
+takt add --pr 123 -w default
+takt add --issue 28 -w default
+takt --pipeline --pr 123 -w default
+takt --pipeline --issue 28 -w default
+```
+
+GitHub添付URLだけを取得し、PNG、JPEG、GIF、WebPのContent-Typeとmagic bytesを検証します。上限は画像ごとに10 MiBです。取得・検証・一時保存の失敗は警告して該当画像だけをスキップし、登録・実行を続行します。task specへのコピー失敗はこの続行保証に含まれません。認証済み`gh`の資格情報を優先しますが、private添付はトークン認証では取得できない環境があり、成功は保証されません。保存先と実行時の参照先は[タスク管理](./task-management.ja.md#githubのprissue画像の自動添付)を参照してください。
 
 ### takt run
 
@@ -166,6 +437,22 @@ takt watch --ignore-exceed
 
 `takt watch --ignore-exceed` の意味は `takt run --ignore-exceed` と同じです。workflow の `max_steps` を無視し、`.takt/tasks.yaml` に exceeded 用の再実行メタデータを書きません。
 
+### takt caccia
+
+既存の GitHub PR で CodeRabbit の投稿を待ち、未解決レビュースレッドに対応します。反復ごとに一時クローンで設定済みの Caccia workflow を実行し、`.takt/runs/` に判断レポートを残して修正を Push し、対象の CodeRabbit スレッドを Resolve した後、Push したコミットへのレビューを待ちます。人が開始したレビュースレッドには触れません。レビュー制限通知で再試行可能な時刻が分かり、その時刻が元の待機期限より前なら、時刻の到来後に `@coderabbitai review` コメントで一度だけレビューを依頼します。レビューへの返信は投稿しません。
+
+```bash
+takt caccia 123
+```
+
+実行中はレビュー待ちと待機継続、未解決スレッド数、一時クローン作成、Push したコミット、Resolve したスレッド、反復番号と上限、各反復後の再レビュー待ちを表示します。ワークフローのヘッダー、ステップ、ストリーム、状態は通常の `takt run` と同じ形式で表示します。
+
+PR 番号は必須です。CodeRabbit の未解決スレッドがなくなった場合は終了コード `0`、GitHub 以外、待機上限内に CodeRabbit が投稿しない場合、反復上限到達、実行失敗の場合は非ゼロで終了します。反復上限では残ったスレッド数を表示します。認証済みの GitHub CLI（`gh`）が必要です。
+
+`takt merge` と `takt caccia` の一時クローンで行う Git fetch・push は、利用者の通常の Git 設定と認証を使用します。
+
+`wait_timeout_ms` は初回レビューと Push 後の各レビューの待機期限で、再依頼もこの期限に含みます。レビュー制限通知の再試行時刻が期限より前なら到来時に一度だけレビューを依頼し、期限以降なら直ちにスキップします。制限通知を受けた後、レビューが期限までに完了しなければスキップします。制限通知を受けずに期限に達した場合は初回待機をスキップし、Push 後の待機をエラーとします。このコマンドはスキップ・エラー時に非ゼロで終了します。
+
 ### takt list
 
 タスクブランチの一覧表示と操作（マージ、削除、ルートとの同期など）を行います。
@@ -181,7 +468,34 @@ takt list --non-interactive --action delete --branch takt/my-branch --yes
 takt list --non-interactive --format json
 ```
 
+`--action` に指定できるのは `diff`、`sync`、`try`、`merge`、`delete` の5種です。非インタラクティブモードの `delete` 以外のアクションには `--branch` が必須です。`sync` が失敗した場合は終了コード `1` で終了します。
+
+`takt list --non-interactive --action delete` の `--status <status...>` には、`pending`、`completed`、`failed`、`exceeded`、`pr_failed` を複数指定できます。実行中のタスクは削除できないため、`running` は指定できません。`--goal <goalId>` は指定ゴールに属するタスクに絞ります。既存の `--branch <branch>` も使用でき、単独指定では `completed` のタスクだけが対象です。
+
+`--status`、`--goal`、`--branch` のいずれか1つ以上が必須です。無指定では何も削除せず、エラーで終了します。`--yes` を省略すると対象のタスク名・状態・ブランチ・ゴールの一覧を表示し、削除せず正常終了します。削除は `--yes` を指定した場合だけ行います。`--format json` を併せると対象一覧を JSON で取得でき、JSON 出力には `goal_id` が含まれます。
+
+削除する範囲は対話の一覧からの削除と同じで、タスクの作業場所の clone、worktree セッションのファイル、clone のメタ情報、ブランチ、`.takt/tasks.yaml` の記録です。
+
+```bash
+# 対象一覧を確認してから削除します
+takt list --non-interactive --action delete --status failed pr_failed
+takt list --non-interactive --action delete --status failed pr_failed --yes
+
+# 対象一覧を JSON で確認します
+takt list --non-interactive --action delete --status failed pr_failed --format json
+```
+
 インタラクティブモードでは **Merge from root** を選択でき、ルートリポジトリの HEAD をワークツリーブランチにマージします。コンフリクト発生時は AI が自動解決を試みます。
+
+インタラクティブモードの **Delete selected…** では実行中でないタスクをチェック式の一覧から複数選択できます。Space でチェックを切り替え、Enter で選択を確定すると、選択件数を示す確認が1回だけ表示されます。空選択・キャンセル・確認拒否では何も削除せずメニューへ戻ります。各タスクは個別の **Delete** と同じ処理で削除され、ブランチや merge タスクのクローンも後始末されます。1件が失敗しても残りを続行し、最後に成功件数と選択件数を `Deleted M of N tasks.` と表示します。**All Delete** と個別の **Delete** は従来どおり使用できます。
+
+#### 実行中タスクへの相談
+
+`takt list` の **Stop** は、確認後に実行中のタスク1件へ停止を依頼します。worker が自分で中断し、終端状態を決めます。**Mark as failed** は状態を付け直すだけで、worker を停止しません。
+
+`takt list` でタスクを選ぶと、状態に応じたアクションメニューが開きます。Instruct、Requeue などの既存アクションは、それぞれ対応する状態で引き続き使用できます。ワークツリークローンを持つ実行中タスクでは、**Interactive** を選ぶと、そのタスクを `/tell` の初期対象にした通常の assistant 会話が開きます。会話中に別のタスクを確認したり、新しいタスクを相談したりでき、`/go` で実行・保存できます。`/tell` は確定画面でタスク名、workflow、現在 step、指示内容を表示し、確定時に選ばれたタスクにだけ書き込みます。対話端末で確認できない場合は送信せず、理由を通知します。`/cancel` で会話または保留中の操作を取り消します。**Mark as failed** もアクションメニューから引き続き使用できます。
+
+`/tell` の候補は、TAKT が管理する有効な worktree clone で実行中のタスクだけです。選択画面の表示後にも対象を再確認するため、その間に終了したタスクには指示を書き込みません。
 
 ### タスクディレクトリワークフロー（作成 / 実行 / 確認）
 
@@ -217,7 +531,7 @@ takt --pipeline --task "Fix bug" --skip-git
 takt --pipeline --task "Fix bug" --quiet
 ```
 
-Pipeline モードでは、`--auto-pr` を指定しない限り PR は作成されません。
+Pipeline モードでは`--auto-pr` を指定しない限り PR は作成されません。
 
 **GitHub 連携:** GitHub Actions で TAKT を使用する場合は [takt-action](https://github.com/nrslib/takt-action) を参照してください。PR レビューやタスク実行を自動化できます。
 
@@ -247,6 +561,8 @@ takt eject persona coder
 takt eject instruction plan --global
 ```
 
+`eject` のファセット型は単数形（`persona`、`policy`、`knowledge`、`instruction`、`output-contract`）です（`takt catalog` は複数形を使います）。
+
 workflow の正式ディレクトリ名は `workflows/` です。
 
 ### takt workflow
@@ -263,15 +579,13 @@ takt workflow init review-flow --template faceted --global
 # workflow 名または YAML パスを検証
 takt workflow doctor sample-flow
 takt workflow doctor .takt/workflows/sample-flow.yaml
+
+# workflow の設定と解決ソースを検査
+takt workflow inspect sample-flow
+takt workflow inspect .takt/workflows/sample-flow.yaml
 ```
 
-### takt resume
-
-直近の失敗・中断したダイレクト（ワンショット）run を再開します。完了しなかった最新のダイレクト run を探し、最初からやり直すのではなく既存の run ディレクトリを再利用して止まったところから続行します。
-
-```bash
-takt resume
-```
+`takt workflow inspect` は workflow の設定と各解決値の由来を、実行時と同じ解決（`--auto-strategy` を含む）で報告します。
 
 ### takt clear
 
@@ -307,12 +621,15 @@ takt catalog
 takt catalog personas
 ```
 
+`catalog` のファセット型引数は複数形（`personas`、`policies`、`knowledge`、`instructions`、`output-contracts`）です（`takt eject` は単数形を使います）。
+
 ### takt prompt
 
 各 step とフェーズの組み立て済みプロンプトをプレビューします。
 
 ```bash
-takt prompt [workflow]
+takt prompt
+takt prompt default
 ```
 
 ### takt reset
@@ -359,7 +676,30 @@ takt repertoire remove @{owner}/{repo}
 
 インストールされたパッケージは `~/.takt/repertoire/` に保存され、workflow 選択やファセット解決で利用可能になります。
 
-同名 workflow が複数箇所にある場合の探索順は `.takt/workflows/` → `~/.takt/workflows/` → builtin です。
+同名 workflow が複数箇所にある場合の探索順は `.takt/workflows/` → `~/.takt/workflows/` → builtin です。この名前解決の対象は project・user・builtin の 3 層だけで、repertoire の workflow は `@{owner}/{repo}/{workflow-name}` で明示的に参照します。
+
+### takt telemetry
+
+effective `auto_routing` が設定されているときに使うローカルのルーティングイベント記録を管理します。決定は `.takt/events/` に NDJSON としてローカル書き込みされ、TAKT がアップロードすることはありません。
+
+```bash
+# ローカルのルーティングイベント記録の状態を表示
+takt telemetry status
+
+# ローカルのルーティングイベント記録を有効化
+takt telemetry enable
+
+# ローカルのルーティングイベント記録を無効化
+takt telemetry disable
+```
+
+### takt resume
+
+現在のプロジェクトディレクトリで直近に中断（aborted）・失敗（failed）したダイレクト（ワンショット）run を対象に対話メニュー（Requeue / Retry / Instruct / View reports / Cancel）を表示します。worktree/クローン実行は対象外で、再実行のレポートは新しい run ディレクトリに出力します。
+
+```bash
+takt resume
+```
 
 ### takt purge
 
@@ -372,3 +712,43 @@ takt purge
 # 保持期間を指定
 takt purge --retention-days 14
 ```
+
+### takt merge
+
+`merge-review-fix` と `merge-review-fix-simple` はCI待ち後に `CONFLICTING` を検出すると、ベースブランチを取り込み直して必要な競合解消を行います。初回のレビューは繰り返さず、push → Caccia → 新しいHEADのCI待ち → マージ判定へ進みます。`BEHIND` だけなら取り込み直さず、レビューなどの既存条件を確認してマージを試みます。取り込み直しは `max(2, 実行時並列数 - 1)` 回までです。並列数2・3では2回、4では3回となり、初回の同期は数えません。CLIの `--concurrency` を含む実行時並列数をタスクへ保存し、Requeue・Retryでも使います。上限に達しても競合が続く場合は理由をPRへコメントしてCOMPLETEで終了し、マージしません。CI修正・再実行の使用済み回数は取り込み直し後も保持します。
+
+対象 PR の workflow を起動します。番号指定時は選定条件を無視し、その PR だけを処理します。番号省略時は open PR の番号を作成順で全ページ取得してから各 PR の詳細を読み、条件に合う PR を処理して終了します。詳細取得までに close された PR は除外します。
+
+```bash
+takt merge 123
+takt merge 123 --workflow merge-review-fix
+takt merge 123 --workflow merge-review
+takt merge --author alice --label ready --label automation --base main --head 'takt/*'
+takt merge --managed-by-takt --include-forks --include-draft
+takt merge --concurrency 4
+takt merge "プロンプト変更以外"
+```
+
+位置引数は一つです。数字列ならPR番号、それ以外ならAIによる選別テキストとして扱います。番号指定では選定条件とAI選別を適用しません。テキスト指定ではCLI条件または `merge.where` 設定とdraft・forkの除外を先に適用し、残った候補をAIが判定します。判断材料はタイトル、本文、ラベル、head・baseブランチ名、変更ファイルの全パスです。差分本文とレビューコメントは選別材料に含めません。テキストだけの指定では設定条件を保持します。
+
+全候補の有効な構造化判定がそろった後、選択したPRの番号と理由、除外したPRの番号を表示し、確認なしで選択PRだけを実行します。判定の欠落・不正、プロバイダーエラー、選別材料の取得失敗や不完全なファイル一覧では、どのPRのworkflowも起動せず非ゼロで終了します。候補または選択結果がゼロ件なら処理0件・マージ0件・終了コード0です。処理件数と実際のマージ件数の表示は従来どおりです。
+
+`--author`、繰り返し指定可能な `--label`（すべて一致）、`--base`、`--head`（`*` ワイルドカード）、`--managed-by-takt`、`--include-draft`、`--include-forks` を使用できます。既定では draft と fork を除外します。`--include-draft` は draft を、`--include-forks` は fork を含めます。CLI 条件が一つでもあれば設定の条件全体を置き換えます。`--workflow` だけの指定では設定条件を保持します。
+
+workflow は CLI、`merge.workflow`、`merge-review-fix-simple` の順に選びます。既定では gather の後に1体の読み取り専用レビュアーが動的ファセットで確認し、別ステップで指摘の裁定・修正・完了検証・再レビューを行います。`merge-review-fix` と同様に同期、必要なコンフリクト解消、明示的な Caccia 効果と返された head の CI 待機、CHANGES_REQUESTED の確認、マージを行います。並列レビューを使う場合は `--workflow merge-review-fix` を指定します。
+
+PR ごとに隔離クローンを作り、一括処理では既定で2件を同時実行します。`merge.concurrency` で変更でき、CLI の `--concurrency` が優先します。番号指定時は1件だけを処理します。
+
+GitLab でも MR の番号指定・一括選定から実行し、Caccia の `github_unavailable` による `skipped` 後に返された head の CI を待てます。マージ方式の指定と head 一致制約には未対応なので、これらを使うマージ操作は失敗します。CI 待機だけではマージ成功になりません。
+
+マージ用ビルトインは Caccia を明示的に実行します。`merge-review` は `review → caccia → wait_ci → 評価コメント`、`merge-review-fix` と `merge-review-fix-simple` は `review/fix → commit_and_push → caccia → wait_ci → merge_pr` の順です。`success` と `skipped` は返された head の CI 待ちへ進みます。`limit` は未解決件数をコメントして COMPLETE で終了し、マージしません。効果の失敗は `error` をコメントして ABORT で終了します。push、タスク後処理、Pipeline からの暗黙の Caccia は廃止しました。`merge.auto_start: true` では PR 公開後にマージ用 workflow が起動し、その明示効果が Caccia を実行します。各 PR の失敗で他の PR を中止しません。レポートは元リポジトリの `.takt/runs` に残ります。
+
+`merge-review-fix` と `merge-review-fix-simple` はCI失敗が確定するたびに失敗チェック、run・attempt・jobの参照先、ログ本文、PRの累積差分、関連コードを調査します。フレークやmainでも失敗する欠陥はPRの作業ツリーで根本修正し、読み取り専用レビューを経てpush → Caccia → CI待ちへ戻ります。修正は最大2周です。外部要因を証拠で判断した場合だけ、修正回数とは独立してCIを1回再実行します。修正2周後も未使用なら再実行できます。同じHEADの新しいattemptを待ち、すべてのチェックと既存のマージ条件を再確認します。証拠不足、修正2周後も残る欠陥、修正レビューのREJECT、再実行後の失敗では回数・最後の失敗チェックと参照先・調査要点をPRへコメントしてABORTします。調査・修正レポートはrunに残ります。初回成功とCIのtimeoutの扱いは変わらず、`merge-review` はコメント専用のままです。GitHub Actionsのログ取得・再実行の権限不足や未対応Providerは明示します。
+
+マージ処理は `takt list` にタスクとして記録します。隔離クローンの配置には通常タスクと同じ `worktree_dir` を使います。既定は `../takt-worktrees` で、親ディレクトリに書き込めない場合は既存の代替先 `.takt/worktrees` を使います。失敗や競合で停止した場合はクローンと Git のマージ状態を残します。`takt merge` を再実行すると新しいタスクと隔離クローンを作り、失敗したタスクとクローンは保持します。既存のタスクを再開するには `takt list` の **Requeue** を使い、指示を直して再開するには **Retry** を使います。再開時には保存した PR の識別情報と fork の脅威を再確認します。同じ PR のマージタスクが実行中または保留中なら、新しい起動と失敗タスクの再開を拒否します。PR のマージ完了を確認した後にクローンを削除します。AI が競合に関連するソース、テスト、lockfile を変更した場合も TAKT がその差分を stage し、作業開始前からある未stageや未追跡の利用者の変更を保持します。
+
+対象の fork は、番号指定・一括処理・自動起動のいずれでも本体 workflow の前に脅威検査を行います。同一リポジトリの PR は検査を省略します。まず clone の危険な Git 設定キーと、累積差分に含まれる指示ファイル・CI 定義の追加や変更を検出します。通過した差分は元リポジトリの project root で AI が一回評価し、構造化判定を返します。差分と変更ファイル一覧は信頼できないデータとして渡します。
+
+危険な設定・変更、AI が疑わしいと判断した変更は、検出内容または変更箇所と理由を PR にコメントして停止します。差分が `merge.threat_check_max_diff_bytes`（既定200,000 UTF-8バイト）を超える場合や有効な構造化判定を取得できない場合は、自動判定をせず人間による確認を求めるコメントを残します。一括処理中も対話入力は待ちません。
+
+処理件数と実際のマージ件数を表示します。未マージ PR があれば終了コードは 1、全件マージ済みまたは対象ゼロなら 0 です。コメント専用 workflow の正常完了も、未マージなら終了コード 1 になります。

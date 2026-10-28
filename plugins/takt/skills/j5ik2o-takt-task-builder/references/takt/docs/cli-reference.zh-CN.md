@@ -1,0 +1,656 @@
+# CLI 参考
+
+[English](./cli-reference.md) | [日本語](./cli-reference.ja.md) | [简体中文](./cli-reference.zh-CN.md)
+
+本文是 TAKT CLI 命令和选项的参考。
+
+## 全局选项
+
+| 选项 | 说明 |
+|------|------|
+| `--pipeline` | 启用 pipeline（非交互）模式；CI/自动化必需 |
+| `-t, --task <text>` | 任务内容（GitHub Issue 的替代方式） |
+| `-i, --issue <N>` | GitHub Issue 编号（等同于交互模式中的 `#N`） |
+| `-w, --workflow <name or path>` | workflow 名称或 workflow YAML 文件路径 |
+| `-b, --branch <name>` | 指定分支名（省略时自动生成） |
+| `--pr <number>` | 获取审查评论并修复指定 PR |
+| `--auto-pr` | 执行后创建 PR（仅 pipeline 模式） |
+| `--draft` | 创建 draft PR（需要 `--auto-pr` 或 `auto_pr` 配置） |
+| `--skip-git` | 跳过创建分支、commit 和 push（pipeline 模式，仅执行 workflow） |
+| `--repo <owner/repo>` | 指定仓库（创建 PR 时使用） |
+| `-q, --quiet` | 最小输出模式：抑制 AI 输出（用于 CI） |
+| `--provider <name>` | 覆盖 agent provider（claude\|claude-sdk\|claude-headless\|claude-terminal\|codex\|opencode\|deepseek-harness\|cursor\|copilot\|kiro\|pi\|mock） |
+| `--auto-strategy <strategy>` | 覆盖自动路由策略（`cost`\|`balanced`\|`performance`）。只有执行进入当前 workflow 或具有有效 `auto_routing` 的 workflow-call 子流程时才应用；否则 TAKT 会警告并忽略。 |
+| `--model <name>` | 覆盖 agent model |
+| `--runtime-assignment <name>` | 为本次启动选择合并后的 runtime `provider.assignments` entry，优先于 `provider.directories` |
+| `-c, --continue` | 从当前项目目录和 provider 的上一次 assistant session 继续 |
+| `--tui` | 终端下这本就是默认形态：stdin 与 stdout 均为 TTY 时，无论是否指定该选项，任务对话都由 Ink 绘制；管道输入则继续使用原有读取器。该选项只是把这一前提写明——没有 TTY 时不会回退，而是以 `--tui requires an interactive terminal` 失败。工作流选择、模式选择和总结后的操作选择仍使用原有选择器，TUI 只负责对话本身。Enter 发送，Shift+Enter / Option+Enter 换行，Ctrl+K 删除到行尾，Esc 中断正在生成的回答，队列中的内容会作为下一轮立即发送。中断的用户消息会按发送顺序引用并放在下一条普通消息之前，无论该消息来自队列还是之后手动输入。再次中断时也保留本次消息，直到回答完成。命令不会附加或消耗这些消息；/go 仍从原始历史生成总结。界面和历史只保留每条原始发言一次，结束会话不会自动重发。回答期间提交的行会进入队列并在完成后发送（队列开始发送前可用 ↑ 取回编辑）；回答生成时可通过鼠标滚轮或终端的滚动操作查看较早的发言。任务执行后会话继续保持，直到 /cancel |
+
+调整终端大小时，TUI 会短暂暂停实时绘制，待尺寸稳定后只重绘输入区和状态行。
+既有滚动历史不会被清除，包括 shell 输出和此前的对话；仍可通过终端的常规滚动操作查看。
+调整大小或从选择器、任务返回时，不会重复输出已确定的对话。
+用户发言和 AI 回答的段落由终端自动折行，扩大宽度后已输出的段落也能重新展开；正文中明确的换行保留。
+旧绘制方式已经输出的固定换行不会改变。已绘制背景带的空白区域不会在调整大小时重新填色。
+草稿、排队输入和正在执行的请求仍然保留。
+任务会话将输入光标行显示为输入框内的第一行；状态、通知和队列显示在输入框下方。
+光标之前的显示行被折叠，`↑ N` 表示其行数。上下键仍可编辑这些行，折叠或调整大小不会改变提交内容。
+
+`--workflow` 是规范选项。
+
+全局配置目录默认为 `~/.takt/`，可通过 `TAKT_CONFIG_DIR` 环境变量修改。
+
+`--runtime-assignment` 适用于交互式启动、直接执行、pipeline、`run`、`watch` 和其他子命令。
+选择只改变 defaults/targets；共享 section 和现有 provider/model/auto-strategy override 优先级保持不变。
+名称未定义或没有有效 runtime provider section 时，在 agent 启动前停止，并显示指定名称和候选列表（或没有定义）。
+选择不会写入配置或任务记录，requeue/retry/instruct 不会恢复过去的选择。未指定时仍使用原有 directories 选择。
+
+```sh
+takt --runtime-assignment cost "#123"
+takt run --runtime-assignment quality
+takt --pipeline --runtime-assignment cost "#123"
+```
+
+共享成本/质量预设以及在个人 `~/.takt/runtime.yaml` 中添加不同名称的步骤，参见
+[命名 assignment](./configuration.zh-CN.md#命名-assignment)。
+
+## 托管SDK的安装与更新
+
+Claude SDK、Codex、OpenCode、Pi和DeepSeek Harness SDK不包含在TAKT的普通安装中。每个TAKT版本提供固定版本的manifest和lock，通过`npm ci --omit=dev --ignore-scripts`安装到托管目录，需要npm及注册表网络连接。
+
+```sh
+takt install claude-sdk
+takt install codex
+takt install opencode
+takt install pi
+takt install deepseek-harness
+takt update           # 仅更新已安装且版本不匹配的提供者
+takt update codex     # 仅更新指定提供者
+```
+
+交互入口在执行前显示所需安装和容量估算。拒绝安装缺失的SDK会阻止执行；对话显示安装提示后返回输入。拒绝更新时会警告并使用完整的旧版本，失败时提供update提示。执行过程中不确认、不安装、不更新。CI、pipeline及watcher必须预先安装所需提供者。
+
+容量约为Claude SDK 250 MB、Codex 340 MB、OpenCode 60 MB、Pi 52 MB、DeepSeek Harness 510 MB（macOS arm64实测），因操作系统和架构而异。Claude和Codex也托管CLI二进制文件。保留`TAKT_CLAUDE_CLI_PATH`及`TAKT_CODEX_CLI_PATH`显式覆盖，不自动使用PATH上的同名CLI。OpenCode外部CLI需要单独安装。可使用`takt install <provider> --force`重新安装；更新失败时保留原有完整版本。
+
+## DeepSeek Harness
+
+`takt install deepseek-harness` 将固定版本的官方 SDK/runtime 安装到 TAKT 管理目录。安装需要连接 npm 注册表，并沿用现有的 npm 注册表和代理设置。优先使用运行 TAKT 的 Node 随附的 npm；如果没有，则使用 `PATH` 中的 npm。通过完整性检查且与当前固定版本一致的安装在重复运行时保持不变；完整的旧版本会更新到固定版本，检测到的损坏可修复。如果检查通过但 provider 仍运行异常，可用 `takt install deepseek-harness --force` 重新安装。单独运行 `takt install` 仍将 `install` 作为任务处理。旧命令 `takt deepseek-harness install` 已移除。`provider: deepseek-harness` 和认证来源请参阅[配置指南](./configuration.zh-CN.md#deepseek-harness-deepseek-harness)。
+
+## 交互模式
+
+交互模式会先与 AI 对话来完善任务内容，然后再执行。当需求不明确，或希望在咨询 AI 的同时明确内容时，这种模式很有用。
+
+```bash
+# 不带参数启动交互模式
+takt
+
+# 指定初始消息（仅短单词）
+takt hello
+```
+
+**注意：** `--task` 会跳过交互模式并直接执行任务。Issue 引用（`#6`、`--issue`）会作为交互模式的初始输入。
+
+普通 assistant 对话也可以通过只读 MCP 工具读取任务和 run 的摘要。请用任务名称或摘要指代任务；只有在明确某个 run 后，才读取所需的详细日志或 report。新任务准备好后使用 `/go`，向正在 worktree clone 中运行的任务发送追加指令时使用 `/tell`，重新排队失败任务时使用 `/requeue` 或 `/retry`。
+
+### 流程
+
+1. 选择 workflow
+2. 选择交互模式（assistant / grill-me / persona）
+3. 通过与 AI 对话完善任务内容
+4. 使用 `/go` 完成任务指令（也可以使用 `/go additional instructions` 添加额外指令）
+5. 执行 workflow，并按需要创建 PR
+
+`/go` 只将最新的任务话题写入指令；只有明确表示要合并为同一任务时，才包含之前的话题。
+
+加载 Issue 后，每次 `/go` 都判断最新任务是否属于当前 Issue。相关指令在任务标题后显示 `Issue: #N`，可在现有操作菜单之前的预览中确认。Execute、Save as Task 和 Create Issue 仅在该行与当前编号一致时使用 N；无关任务采用未加载 Issue 时的流程。选择 Continue editing 可修正绑定，不增加确认。`/issue` 替换上下文后重新判断，不继承旧指令的绑定。
+
+### 交互模式变体
+
+| 模式 | 说明 |
+|------|------|
+| `assistant` | 默认模式。AI 会提出澄清问题，然后生成任务指令。 |
+| `grill-me` | 一次处理一个推荐问题，解决重要决策分支；需求准备好后建议使用 `/go`。 |
+| `persona` | 与第一个 step 的 persona 对话（使用其 system prompt 和工具）。 |
+
+### 会话设置命令
+
+| 命令 | 效果 |
+|------|------|
+| `/workflow` | 选择另一个 workflow。 |
+| `/interaction` | 选择另一个交互模式。 |
+| `/provider` | 选择另一个 provider。 |
+| `/model <value>` | 为当前会话指定任意 model 名称。 |
+| `/effort <value>` | 为当前会话指定任意推理强度。 |
+| `/tell [指令]` | 选择一个正在运行的 worktree clone 任务，确认追加指令后发送。省略指令时只根据与该任务相关的最新话题生成可独立理解的追加指令正文。需要交互式终端；无法确认时不会发送指令。 |
+| `/requeue [补充说明]` | 在 assistant 或 grill-me 对话中重新排队 failed 或 exceeded 任务。独立 AI 调用使用对话要点和补充说明。格式错误或候选外响应会重新询问一次，仍无效时切换到手动选择。显示任务信息后请求 Y/n 确认。没有补充说明的 exceeded 任务保留已保存的停止位置。 |
+| `/retry [补充说明]` | 在 assistant 或 grill-me 对话中，选择 failed 任务和起点；格式错误或候选外响应会重新询问一次，仍无效时切换到手动选择。生成完整的修订 order，并通过 Save task / Continue 确认。 |
+
+`/requeue` 和 assistant 对话中的 `/retry` 仅在 CLI/TUI 的 `assistant` 与 `grill-me` 模式可用。`/requeue` 可处理 failed 和 exceeded；`/retry` 只处理 failed。两种命令都使用独立 AI 调用，传入最近达成的一致意见、补充说明、候选的完整路径和子 workflow 标题说明。每个选择阶段对格式错误或候选外响应重新询问一次，仍无效时切换到手动菜单，并区分 JSON 格式错误、未知任务名称和未知起点 ID。无法判断或 provider 失败时直接进入手动选择。对于 exceeded 任务，附加说明用于选择继续已保存的执行或从指定步骤（包括子 workflow 的步骤）重新执行；没有附加说明时保留已保存的停止位置。两种命令都在没有候选时返回提示。`/requeue` 显示任务名称、摘要、workflow 和起点，经 Y/n 批准后将任务置为 `pending`，不修改 `order.md`。取消选择或确认不会修改任务，结果会记录在对话中。`/retry` 显示同样的任务信息和完整修订 order；选择 **Save task** 会归档旧版并将任务置为 `pending`，选择 **Continue** 则不修改任务并返回对话。两种操作都不会立即启动 workflow，且需要交互式终端；没有 TTY 时不会显示选择或修改任务。在 persona 对话和 Web UI 中，这些命令文本作为普通消息处理。`takt resume` 专用 retry 对话中的现有 `/retry` 属于独立路径。在 Workflow Maker（`takt make`）中，这些字符串不会执行任务操作，而是作为普通对话消息发送给 provider。
+
+这些选择只在当前会话中有效，不会持久化。workflow、mode、provider 或 model 的更改会在下一条普通消息或 `/go` 时创建新的 AI session，并只将之前的对话作为参考上下文传递一次。仅更改 effort 时，会应用到当前 session 的下一次调用。更改 provider 会清除临时 model 和 effort。在下一次输入前执行多个设置命令时，每项设置只应用最后一次选择的值。会话 override 不影响 workflow 执行。
+
+### 形式规范验证
+
+在当前交互会话中启用形式规范模式后，运行 `/verify` 可以一次性验证当前达成共识的内容。TAKT 会要求 Assistant 将共识输出为 Quint 和 Alloy 规范，对提取出的代码块运行验证器，并把结果返回同一会话由 Assistant 解释。Quint 的基础阶段无需额外安装即可运行；使用 `quint verify` 和 Alloy Analyzer 进行模型检查需要 Java 17 或更高版本。
+
+关于要求、首次运行时的下载、阶段与验证目标的选择方式以及结果解读，请参阅[形式规范验证](./formal-verification.zh-CN.md)。
+
+### 执行示例
+
+```text
+$ takt
+
+Select workflow:
+  > default (current)
+    Development/
+    Research/
+    Cancel
+
+交互模式 - 请描述任务。准备好后，使用 /go 创建指令并运行。
+
+> I want to add user authentication feature
+
+[AI confirms and organizes requirements]
+
+> /go
+
+Proposed task instructions:
+---
+Implement user authentication feature.
+
+Requirements:
+- Login with email address and password
+- JWT token-based authentication
+- Password hashing (bcrypt)
+- Login/logout API endpoints
+---
+
+Proceed with these task instructions? (Y/n) y
+
+[Workflow execution starts...]
+```
+
+## 直接执行任务
+
+使用 `--task` 跳过交互模式并直接执行：
+
+```bash
+# 使用 --task 指定任务内容
+takt --task "Fix bug"
+
+# 指定 workflow
+takt --task "Add authentication" --workflow dual
+```
+
+**注意：** 直接传入字符串（例如 `takt "Add login feature"`）仍然会进入交互模式，只是将该字符串作为初始消息。
+
+<a id="acp-agent"></a>
+
+## ACP Agent
+
+`takt-acp` 通过 stdio JSON-RPC 以 Agent Client Protocol agent 的形式启动 TAKT。请在支持 ACP 的客户端中将它作为 agent 命令启动：
+
+```bash
+takt-acp
+```
+
+ACP session 的 `cwd` 必须是绝对路径。TAKT 将该目录同时作为对话基目录和 workflow 项目根目录。默认情况下，`session/prompt` 是“先加入队列”的对话入口：诸如“enqueue this task”或“make it a pending task”的 prompt 会将待处理任务写入 `.takt/tasks.yaml`，之后可以用 `takt run` 执行。只有明确要求“run it now”或“execute now”时才直接执行 workflow；含义不明确的 prompt 会留在对话中。
+
+主 ACP UX 不依赖 `/go`：它遵循 session 的 `defaultAction`，默认加入队列。
+
+如果 ACP prompt 创建或直接执行任务，TAKT 使用 `default` workflow，除非对话结果明确给出其他 workflow。
+
+`session/new` 可以省略 `mcpServers`；省略或使用空数组 `mcpServers: []` 都表示没有 MCP server。stdio MCP server 会传给 workflow 执行，但如果某个 step 的有效 provider 不支持 MCP server，TAKT 会在运行前快速失败。非 stdio MCP transport、重复的 MCP server 名称和重复的去空格 MCP 环境变量名会在创建 session 时被拒绝。
+
+TAKT 当前支持 `initialize`、`session/new`、`session/prompt`、`session/cancel` 和 `session/update` 通知。不公布 `additionalDirectories`；非空的 `additionalDirectories` 请求会被拒绝。
+
+<a id="mcp-server"></a>
+
+## MCP Server
+
+`takt-mcp` 通过 stdio 启动 TAKT 的 Model Context Protocol server。若希望 MCP 客户端无需直接调用 TAKT shell 命令就能加入任务队列、读取 task/run 状态，或向正在运行的 worktree clone 任务发送追加指令，请在客户端中注册它。
+
+```bash
+takt-mcp
+```
+
+对于 Codex，可以将 stdio MCP server 添加到 `~/.codex/config.toml`，或添加到可信项目的 `.codex/config.toml`：
+
+```toml
+[mcp_servers.takt]
+command = "takt-mcp"
+```
+
+也可以使用 Codex MCP CLI 添加：
+
+```bash
+codex mcp add takt -- takt-mcp
+```
+
+server 暴露以下工具：
+
+| 工具 | 说明 |
+|------|------|
+| `takt_enqueue_task` | 将待处理任务保存到 `.takt/tasks.yaml`，可选关联或创建 Issue。 |
+| `takt_list_tasks` | 不读取日志或 report 正文，返回任务和 run 的紧凑摘要。 |
+| `takt_get_run` | 返回一个 run 的当前 step、phase、日志、report 和追加指令投递状态。 |
+| `takt_tell_run` | 重新确认目标后，向一个正在运行的 worktree clone 任务发送追加指令。 |
+| `takt_cleanup_tasks` | 预览筛选后的任务，仅在 `confirm: true` 时删除（仅限 `all`）。 |
+
+`takt_cleanup_tasks` 用于先查看筛选后的任务，再执行删除。必需输入为绝对路径的 `cwd` 和 `reason`。可选输入为 `statuses`（可指定一个或多个 `pending`、`completed`、`failed`、`exceeded`、`pr_failed`，不能指定 `running`）、`goalId`、`branch` 和 `confirm`（默认 `false`）。必须至少指定 `statuses`、`goalId` 或 `branch` 中的一个。
+
+省略 `confirm` 或设为 `false` 时，只返回匹配列表，不删除任何内容。只有 `confirm: true` 才会删除，删除范围与 `takt list` 相同。此工具仅在 `all` 工具集中提供，不包含在 `read-only` 或 `manager` 中；`manager` 另有 `takt_remove_goal_task` 工具。
+
+`takt_stop_goal_task` 可在 `manager` 和 `all` 工具集中使用。传入绝对路径的 `cwd`。从 `takt_list_tasks` 返回的同一个任务条目中，将 `name` 的值作为 `taskName`，并使用该条目的 `goalId` 和 `executionId`。所属PID必须仍存活。已保存启动时间时，必须获取当前启动时间并确认一致。未保存启动时间时，只要 goalId、taskName、executionId 一致、任务仍在运行且所属PID存活，就接受请求。标识不匹配、任务未运行或所属进程已结束时，返回原因且不保存停止请求。已保存启动时间但无法获取当前值时，也会拒绝请求。工具只保存请求；worker 每500毫秒检查一次并自行中断，执行和清理结束前任务保持 `running`。结束后保存 `failed` 和任务停止原因，可与整个 goal 的中止区分。其他任务和 goal 继续运行。只有在评估重复请求时，同一执行仍为 `running` 且能够验证所属进程，才返回已保存的请求；重试使用新的执行ID。
+
+daemon 在处理每个项目的事件前，将中断的任务恢复为 `failed` 并创建 goal 任务完成事件，即使没有 pending 任务也会执行恢复。仅当所属PID缺失、已死亡，或已知保存的启动时间与当前启动时间不一致时，才进行恢复。如果PID仍存活，仅凭保存的或当前的启动时间不可用，不会恢复任务，而是保留 `running` 状态。
+
+每个工具的 `cwd` 都会通过 `realpath` 解析，且必须位于 MCP server 允许的项目根目录内。默认允许的根目录是启动 `takt-mcp` 的目录。
+
+如果客户端只应读取 task 状态，请使用 `--tool-set read-only`。此模式只公开 `takt_list_tasks` 和 `takt_get_run`，不会公开 `takt_enqueue_task` 或 `takt_tell_run`。普通 assistant 对话会自动使用这个只读工具集。不支持 MCP 的 provider 仍会继续对话，并提示 task 状态查询不可用。
+
+### `takt_enqueue_task`
+
+必需输入：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cwd` | 绝对路径字符串 | 写入 `.takt/tasks.yaml` 的项目根目录。 |
+| `task` | 字符串 | 任务指令正文。 |
+| `workflow` | 字符串 | workflow 名称或路径。MCP 调用方必须在加入队列前询问使用哪个 workflow。 |
+| `autoPr` | 布尔值 | 是否以启用 auto-PR 的方式保存任务。MCP 调用方必须在加入队列前询问。 |
+
+可选输入：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `worktree` | 布尔值 | `true` 创建自动隔离的 worktree，默认是 `true`。MCP 输入不接受自定义 worktree 路径。 |
+| `draftPr` | 布尔值 | 将显式的 `true` / `false` 保存为 `draft_pr`，执行时优先于项目和全局设置。省略时不保存该值，继续继承配置。 |
+| `issue.number` | 正的安全整数 | 关联已有 Issue，不调用 Issue provider。 |
+| `issue.create` | `true` | 在加入队列前通过配置的 Issue provider 创建 Issue。 |
+| `issue.title` | 字符串 | 新 Issue 的可选非空标题，最多 255 个字符。 |
+| `issue.labels` | 字符串数组 | 新 Issue 的可选非空标签。 |
+| `taskContext.branch` | 字符串 | 保存到任务中的本地分支名。 |
+| `taskContext.baseBranch` | 字符串 | 保存到任务中的基分支名。 |
+| `taskContext.prNumber` | 正的安全整数 | 保存到任务中的 PR 编号；大于 `Number.MAX_SAFE_INTEGER` 的值会被拒绝。 |
+
+输入限制：`task` 最多 128 KiB，`workflow` 最多 128 个字符，Issue 标题最多 255 个字符，每个 Issue 标签最多 100 个字符，标签最多 20 个。
+
+加入队列成功时，除现有的 `taskName`、`tasksFile`、`workflow` 和 Issue 相关字段外，还返回保存的 `worktree`、`autoPr` 和 `draftPr`。省略 `worktree` 时返回保存值 `true`；省略 `draftPr` 时返回 `null`，不会替换为配置的实际生效值。普通加入队列、关联已有 Issue 和创建新 Issue 都使用相同规则。`autoPr: false` 与 `draftPr: true` 的组合按原值保存；是否自动创建 PR 仍由 `autoPr` 决定。
+
+`issue` 对象必须严格是 `{ "number": 123 }` 或 `{ "create": true, "title"?: "...", "labels"?: ["..."] }` 之一；混合 key、空标题、空标签和未知 key 都会被拒绝。Issue 关联的加入队列成功后会返回 `issueNumber`。如果创建 Issue 成功，但保存任务失败或在解析 Issue 编号后被取消，Issue 会保持打开状态；MCP 错误结果包含 `issueCreated`、`issueNumber`、可选的 `issueUrl`、`taskEnqueued`、`stage` 和已清理的 `error`。使用 `{ "issue": { "number": issueNumber } }` 重试可避免重复创建 Issue。如果 `stage` 是 `issue_number_parsing`，则无法得到 `issueNumber`；可以使用可选的 `issueUrl` 找到 Issue 并取得编号后再重试。
+
+MCP 可以加入任务队列、读取 task/run 状态，并向正在运行的 clone 任务发送追加指令。请使用 `takt run` 执行待处理任务，使用 `takt watch` 持续监视并执行任务。
+
+### `takt_list_tasks`、`takt_get_run` 和 `takt_tell_run`
+
+这三个工具都要求绝对路径的项目 `cwd`，并限制在 server 允许的项目根目录内。`takt_list_tasks` 返回名称、摘要、状态、workflow、run slug 和可用的当前 step，但不返回日志或 report 正文。`takt_get_run` 接收列表中的 `runSlug`，返回该 run 的 step 日志、report 和追加指令投递状态。`takt_tell_run` 接收非空 `content`，在写入前重新确认指定 slug 仍对应正在运行的 worktree clone 任务；已完成、已删除、slug 不匹配或非 clone 的 run 会被拒绝且不会写入，并返回原因。
+
+`takt_list_tasks` 在单个任务的 worktree 验证或 run 元数据读取失败时仍返回全部任务。仅有问题的条目会在已取得的基本信息旁增加已清理的 `error` 字符串，其他条目的内容保持不变。不会读取验证失败的 worktree 中的 run 信息。队列本身无法读取或 `cwd` 超出允许范围时，仍返回整个工具的错误，不返回任务数组。
+
+`takt_tell_run` 和 CLI 的 `/tell` 会在投递成功后将追加指令写入任务的源 `order.md`，并更新正在运行的 run 的 `context/task/order.md`。保存成功时，每次追加都会保留指令 ID 和接收时间，供后续 agent 和恢复后的 run 读取。如果保存失败，会向标准错误输出警告；已投递的指令不受影响，tell 仍然成功。
+
+## 即时 Exec 模式
+
+`takt exec` 启动无需手写 workflow YAML 的交互式任务录入模式。Assistant agent 澄清需求，`/go` 将对话转换成生成的 workflow，Worker agent 实现任务，Review agent 审查结果，Replanning agent 在需要时询问用户方向，循环检测防止无效循环。
+
+```bash
+takt exec          # 使用上一次配置；首次使用时采用默认配置
+takt exec backend  # 从指定名称的 preset 开始
+takt exec --list   # 列出可用 exec preset
+```
+
+preset 查找顺序为项目 `.takt/exec/presets/`、全局 `$TAKT_CONFIG_DIR/exec/presets/`（未设置时为 `~/.takt/exec/presets/`），最后是 builtin `builtins/exec/presets/`。builtin/default preset 只定义 agent 角色、facet 和循环阈值。exec 启动时从普通 TAKT 配置解析 provider 和 model，Assistant 对话与 `/setup` 显示使用同一解析结果。生成的 workflow 使用 capability 表达工具/skill 需求；provider/model/options 留在 `runtime.yaml`（或旧版 config）中。
+
+exec 模式中的命令：
+
+| 命令 | 说明 |
+|------|------|
+| `/setup` | 编辑 agent、replan facet、循环检测阈值以及项目/全局 preset |
+| `/go` | 将最新任务话题总结为可执行任务指令，并运行生成的 workflow |
+| `/go <note>` | 运行时将额外备注追加到对话总结 |
+| `/paste-image` | 编辑当前输入行时，将剪贴板图片替换为图片占位符 |
+| `/cancel` | 不执行任务直接退出 |
+
+`/setup` 可以保存或删除项目/全局 preset。instruction、knowledge 和 policy 字段引用普通 facet；新 facet 保存在 `.takt/facets/{instructions,knowledge,policies}/` 或 `$TAKT_CONFIG_DIR/facets/{instructions,knowledge,policies}/`（未设置时为 `~/.takt/facets/{instructions,knowledge,policies}/`）。
+
+执行 `/go` 时，TAKT 写入 `.takt/exec/workflow.yaml`，并通过现有 workflow engine 执行。没有此前对话且没有内联任务文本时，`/go` 会在创建 workflow 前被拒绝。exec workflow 使用 `session_key` 将 Worker、Review 和 Replanning agent 的 session 分开；loop detection judge 始终使用新 session。
+
+exec 输入支持图片附件。使用 `/paste-image` 或 macOS 上的 `Ctrl+V` 附加图片；TAKT 插入 `[Image #N]` 占位符。只有当前消息或 `/go <note>` 引用了占位符时，图片才会发送给 Assistant。支持 PNG、JPEG、GIF 和 WebP，内联及剪贴板图片限制为 10 MiB。没有原生图片输入的 provider 会在 prompt 中收到本地路径引用。
+
+## GitHub Issue 任务
+
+可以直接将 GitHub Issue 作为任务执行。Issue 的标题、正文、标签和评论会自动加入任务内容。
+
+```bash
+# 指定 Issue 编号执行
+takt '#6'
+takt --issue 6
+
+# 指定 Issue 和 workflow
+takt '#6' --workflow dual
+```
+
+**要求：** [GitHub CLI](https://cli.github.com/)（`gh`）必须已安装并完成认证。
+
+## 任务管理命令
+
+任务管理使用 `.takt/tasks.yaml` 批量处理任务，并在 `.takt/tasks/{slug}/` 中保存任务目录。完整说明请参阅[任务管理](./task-management.zh-CN.md)。
+
+### `takt add`
+
+通过 AI 对话完善要求，然后将任务加入 `.takt/tasks.yaml`：
+
+```bash
+# 通过 AI 对话完善要求，然后加入任务
+takt add
+
+# 从 GitHub Issue 添加任务（Issue 编号会反映在分支名中）
+takt add '#28'
+
+# 指定排队任务使用的 workflow
+takt add -w default
+
+# 根据 PR 审查评论创建任务
+takt add --pr 123
+```
+
+`-w, --workflow <name or path>` 设置任务保存的 workflow；`--pr <number>` 根据 PR 审查评论创建任务。
+
+### `takt run`
+
+执行 `.takt/tasks.yaml` 中所有待处理任务：
+
+```bash
+takt run
+
+# 忽略 workflow max_steps，直到其他停止条件出现
+takt run --ignore-exceed
+```
+
+不使用 `--ignore-exceed` 时，达到 workflow `max_steps` 的任务会以 `exceeded` 状态停止，并在 `.takt/tasks.yaml` 中保存重试元数据。使用该选项只忽略迭代限制，不写入 exceeded 重试元数据。
+
+### `takt watch`
+
+监视 `.takt/tasks.yaml`，作为常驻进程自动执行新任务：
+
+```bash
+takt watch
+
+# 忽略 workflow max_steps，不将任务标记为 exceeded
+takt watch --ignore-exceed
+```
+
+它会持续运行直到 Ctrl+C，监视新的 `pending` 任务并逐个执行；启动时会将中断的 `running` 任务标记为 `failed`，退出时显示任务总数、成功数和失败数。
+
+### `takt list`
+
+列出任务分支并执行操作：
+
+```bash
+# 交互式查看任务分支
+takt list
+
+# CI/脚本使用非交互模式
+takt list --non-interactive
+takt list --non-interactive --action diff --branch takt/my-branch
+takt list --non-interactive --action delete --branch takt/my-branch --yes
+takt list --non-interactive --format json
+```
+
+`--action` 接受 `diff`、`sync`、`try`、`merge` 或 `delete`。非交互模式下，除 `delete` 外的操作仍需要 `--branch`。交互模式中的 **Merge from root** 会将根仓库 HEAD 合并到任务分支，并使用 AI 辅助解决冲突。
+
+`takt list --non-interactive --action delete` 的 `--status <status...>` 可指定一个或多个状态，允许值为 `pending`、`completed`、`failed`、`exceeded` 和 `pr_failed`。不能指定 `running`，因为运行中的任务不能删除。`--goal <goalId>` 只选择属于指定目标的任务。仍可使用 `--branch <branch>`，单独指定时只选择 `completed` 任务。
+
+必须至少指定 `--status`、`--goal` 或 `--branch` 中的一个。不指定筛选条件时，命令报错退出且不删除任何内容。省略 `--yes` 时，显示匹配任务的名称、状态、分支和目标列表，然后正常退出，不执行删除。只有指定 `--yes` 才会删除。配合 `--format json` 可返回 JSON 格式的预览列表，JSON 输出包含 `goal_id`。
+
+删除范围与交互列表中的删除相同，包括任务的工作 clone、worktree 会话文件、clone 元数据、分支和 `.takt/tasks.yaml` 中的记录。
+
+```bash
+# 先确认匹配列表，再执行删除
+takt list --non-interactive --action delete --status failed pr_failed
+takt list --non-interactive --action delete --status failed pr_failed --yes
+
+# 以 JSON 查看预览列表
+takt list --non-interactive --action delete --status failed pr_failed --format json
+```
+
+在交互模式中，**Delete selected…** 会打开复选列表，只显示非运行中的任务。按 Space 切换选择，按 Enter 确定，然后只需进行一次显示所选数量的删除确认。未选择任务、取消选择或拒绝确认时不会删除任何任务，并返回菜单。每个任务使用与单独 **Delete** 相同的清理流程，包括分支和 merge 任务的克隆。某个任务删除失败后仍会继续处理其余任务，最后以 `Deleted M of N tasks.` 显示成功数和所选总数。**All Delete** 和单独 **Delete** 保持原有行为。
+
+#### 咨询运行中的任务
+
+在 `takt list` 中，**Stop** 经确认后请求停止一个运行中的任务。worker 自行中断并决定最终状态。**Mark as failed** 只修改任务状态，不会停止 worker。
+
+在 `takt list` 中选择带有 worktree clone 的运行中任务后，会打开普通 assistant 对话，并将该任务作为 `/tell` 的初始目标。对话中可以查看其他任务、讨论新任务，并使用 `/go` 执行或保存。`/tell` 会显示任务名称、workflow、当前 step 和指令，确认后只向确认时选中的任务写入。没有交互式终端或无法取得确认时不会发送指令，并会显示原因；`/cancel` 会关闭对话或取消待处理操作。
+
+`/tell` 只列出 TAKT 管理的有效 worktree clone 中运行的任务。打开选择界面后还会再次确认目标，因此在此期间结束的任务不会收到指令。
+
+### 任务目录工作流（创建 / 运行 / 验证）
+
+1. 运行 `takt add`，确认 `.takt/tasks.yaml` 中出现待处理记录。
+2. 打开生成的 `.takt/tasks/{slug}/order.md`，按需补充详细规格和引用。
+3. 运行 `takt run` 或 `takt watch`，执行 `tasks.yaml` 中的待处理任务。
+4. 在 `.takt/runs/{run}/reports/` 中检查输出；实际 run slug 以 `tasks.yaml` 的 `run_slug` 为准。
+
+## Pipeline 模式
+
+指定 `--pipeline` 会启用非交互 pipeline 模式：自动创建分支、执行 workflow、commit 并 push，适合 CI/CD 自动化。
+
+```bash
+# pipeline 模式执行任务
+takt --pipeline --task "Fix bug"
+
+# 执行并自动创建 PR
+takt --pipeline --task "Fix bug" --auto-pr
+
+# 关联 Issue
+takt --pipeline --issue 99 --auto-pr
+
+# 指定 workflow 和分支
+takt --pipeline --task "Fix bug" -w magi -b feat/fix-bug
+
+# 指定创建 PR 的仓库
+takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
+
+# 只执行 workflow，跳过创建分支、commit 和 push
+takt --pipeline --task "Fix bug" --skip-git
+
+# CI 最小输出
+takt --pipeline --task "Fix bug" --quiet
+```
+
+pipeline 模式不会自动创建 PR，除非指定 `--auto-pr`。在 GitHub Actions 中使用 TAKT 时，请参阅 [takt-action](https://github.com/nrslib/takt-action)。
+
+## 工具命令
+
+### 交互式选择 workflow
+
+不带任务参数运行 `takt` 可交互选择 workflow：
+
+```bash
+takt
+```
+
+### `takt eject`
+
+将 builtin workflow/persona 复制到本地以便定制：
+
+```bash
+# 复制到项目 .takt/ 以定制
+takt eject
+
+# 复制到 ~/.takt/（全局）
+takt eject --global
+
+# 复制指定 facet
+takt eject persona coder
+takt eject instruction plan --global
+```
+
+`eject` 的 facet 类型使用单数：`persona`、`policy`、`knowledge`、`instruction`、`output-contract`；`takt catalog` 使用复数形式。
+
+### `takt workflow`
+
+初始化和验证自定义 workflow：
+
+```bash
+# 在项目 .takt/workflows/ 创建最小 scaffold
+takt workflow init sample-flow
+
+# 在 ~/.takt/ 创建 faceted scaffold
+takt workflow init review-flow --template faceted --global
+
+# 按名称或路径验证 workflow
+takt workflow doctor sample-flow
+takt workflow doctor .takt/workflows/sample-flow.yaml
+
+# 检查 workflow 的配置与解析来源
+takt workflow inspect sample-flow
+takt workflow inspect .takt/workflows/sample-flow.yaml
+```
+
+`takt workflow inspect` 按运行时相同的解析（包括 `--auto-strategy`）报告 workflow 的配置以及每个解析值的来源。
+
+### `takt clear`
+
+清除 agent 对话 session（重置状态）：
+
+```bash
+takt clear
+```
+
+### `takt export-cc`
+
+将 builtin workflow/persona 部署为 Claude Code Skill：
+
+```bash
+takt export-cc
+```
+
+### `takt export-codex`
+
+将 TAKT skill 文件部署为 Codex Skill（`~/.agents/skills/takt/`）：
+
+```bash
+takt export-codex
+```
+
+该命令部署 `SKILL.md`、`references/`、`agents/`、`workflows/` 和 `facets/`。
+
+### `takt catalog`
+
+列出各层可用 facet：
+
+```bash
+takt catalog
+takt catalog personas
+```
+
+`catalog` 的 facet 类型参数使用复数：`personas`、`policies`、`knowledge`、`instructions`、`output-contracts`；`takt eject` 使用单数形式。
+
+### `takt prompt`
+
+预览每个 step 和阶段组装后的 prompt：
+
+```bash
+takt prompt
+takt prompt default
+```
+
+### `takt reset`
+
+重置设置：
+
+```bash
+# 重置全局配置为 builtin 模板（会备份原文件）
+takt reset config
+
+# 重置 workflow 分类为 builtin 默认值
+takt reset categories
+```
+
+### `takt metrics`
+
+显示分析指标：
+
+```bash
+# 显示审查质量指标（默认最近 30 天）
+takt metrics review
+
+# 指定时间范围
+takt metrics review --since 7d
+```
+
+### `takt repertoire`
+
+管理来自 GitHub 的外部 TAKT repertoire package：
+
+```bash
+# 从 GitHub 安装 package
+takt repertoire add github:{owner}/{repo}@{ref}
+
+# 从默认分支安装
+takt repertoire add github:{owner}/{repo}
+
+# 列出已安装 package
+takt repertoire list
+
+# 删除 package
+takt repertoire remove @{owner}/{repo}
+```
+
+已安装的 package 保存在 `~/.takt/repertoire/`，其 workflow/facet 会出现在 workflow 选择和 facet 解析中。同名 workflow 的解析顺序为 `.takt/workflows/` → `~/.takt/workflows/` → builtins；repertoire workflow 通过 `@{owner}/{repo}/{workflow-name}` 显式引用。
+
+### `takt telemetry`
+
+管理有效 `auto_routing` 下使用的本地路由事件记录。决策以 NDJSON 写入 `.takt/events/`，TAKT 不会上传这些记录。
+
+```bash
+# 查看本地路由记录状态
+takt telemetry status
+
+# 启用本地路由记录
+takt telemetry enable
+
+# 禁用本地路由记录
+takt telemetry disable
+```
+
+### `takt resume`
+
+为当前项目目录中最近一次中止或失败的直接（one-shot）运行显示交互菜单（Requeue / Retry / Instruct / View reports / Cancel）。worktree/clone 运行不符合条件；恢复执行会将报告写入新的 run 目录。
+
+```bash
+takt resume
+```
+
+### `takt purge`
+
+清理旧的分析事件文件：
+
+```bash
+# 清理超过 30 天的文件（默认）
+takt purge
+
+# 指定保留天数
+takt purge --retention-days 14
+```
+
+### `takt merge`
+
+只接受一个位置参数：纯十进制数字作为 PR 编号，其他文本作为 AI 筛选条件。指定编号时忽略筛选条件和 AI 判断，只处理该 PR。指定文本时，先应用现有 CLI 条件或 `merge.where` 配置以及 draft/fork 排除规则，再由 AI 判断剩余候选。判断材料包括标题、正文、标签、head/base 分支名称和全部变更文件路径，不包括差异正文或审查评论。只指定文本时保留配置中的筛选条件。
+
+所有候选均返回有效的结构化判断后，显示选中的 PR 编号及理由和排除的 PR 编号，无需确认即可执行选中的 PR workflow。判断缺失或无效、提供商错误、材料获取失败或文件列表不完整时，不启动任何 PR workflow，并以非零退出码结束。候选或选中结果为空时，处理数和合并数均为 0，退出码为 0。处理数和实际合并数的显示保持原有含义。
+
+默认使用 `merge-review-fix-simple` workflow：由一个只读审查代理进行审查，再由独立步骤裁定问题、规划和实施修复、验证并重新审查。需要并行审查时，可指定 `--workflow merge-review-fix`。不指定 PR 编号时，默认同时处理 2 个 PR；`merge.concurrency` 可更改默认值，`--concurrency` 可覆盖本次运行。指定编号时只处理该 PR。合并 builtin 明确执行 Caccia：`merge-review` 按 `review → caccia → wait_ci → 评价评论` 执行，`merge-review-fix` 和 `merge-review-fix-simple` 按 `review/fix → commit_and_push → caccia → wait_ci → merge_pr` 执行。`success` 与 `skipped` 继续等待返回 head 的 CI。`limit` 评论未解决线程数后以 COMPLETE 结束，不合并；执行错误评论 `error` 后以 ABORT 结束。push、任务后处理和 Pipeline 不再隐式启动 Caccia。设置 `merge.auto_start: true` 时，PR 发布后启动合并 workflow，由其明确的 effect 执行 Caccia。
+
+`merge-review-fix` 和 `merge-review-fix-simple` 在每次 CI 确定失败后，使用失败检查、run/attempt/job 引用、日志内容、PR 累计差异及相关代码进行调查。仓库缺陷（包括不稳定测试及 main 上也存在的失败）在当前 PR 工作树中根本修复，经只读审查后执行 push → Caccia → CI，最多两轮。只有证据证明是外部原因时才允许重跑一次；该预算独立于修复轮数，两轮修复后仍可使用。重跑后等待同一 HEAD 的新 attempt，并重新检查所有检查及既有合并条件。证据不足、两轮修复后仍有缺陷、修复审查 REJECT 或重跑失败时，将次数、最后失败的检查及引用、调查要点评论到 PR，然后 ABORT。调查和修复报告保留在 run 中。初次成功和 CI timeout 行为不变，`merge-review` 仍只发表评论。GitHub Actions 日志及重跑权限不足、Provider 不支持时会明确报告。
+
+GitLab 支持指定 MR 编号和批量选择。Caccia 返回原因是 `github_unavailable` 的 `skipped`，然后 workflow 等待返回 head 的 CI。合并方式和 head 限制仍不受支持，使用这些参数的合并操作会失败。仅完成 CI 等待不计为合并成功。
+
+每个 PR 的合并任务都会显示在 `takt list`。隔离克隆与普通任务使用相同的 `worktree_dir`：默认位于 `../takt-worktrees`，父目录不可写时使用现有的 `.takt/worktrees` 后备位置。失败或冲突时会保留克隆及 Git 合并状态，以便检查。再次运行 `takt merge` 会创建新任务和隔离克隆，并保留失败的任务及克隆。要继续原有任务，请在 `takt list` 中使用 **Requeue**；要修改指令后继续，请使用 **Retry**。继续执行时会重新核对 PR 身份和 fork 风险。同一 PR 的合并任务正在运行或等待执行时，会阻止新任务启动及失败任务继续执行。确认 PR 已合并后才删除克隆。AI 可修改与冲突相关的源码、测试和 lockfile；TAKT 暂存本次修改，并保留此前未暂存或未跟踪的用户改动。
+
+```bash
+takt merge --concurrency 4
+takt merge 123
+takt merge "仅文档变更"
+```

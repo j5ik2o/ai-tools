@@ -33,10 +33,26 @@
 | `exceeded_max_steps` | int | - | - | exceeded時のmax_steps値（自動設定） |
 | `exceeded_current_iteration` | int | - | - | exceeded時のイテレーション数（自動設定） |
 | `run_slug` | string | - | - | 実行スラグ（タスク実行ごとの一意ID） |
+| `execution_id` | string | - | - | 実行 ID（自動設定） |
+| `stop_request` | object | - | - | 停止要求（自動設定） |
+| `source_run_slug` | string | - | - | 再開元の run_slug（`resume_mode` と同時に必須） |
+| `resume_mode` | enum | - | - | 再開モード（`source_run_slug` 設定時に必須） |
+| `owner_start_time` | string/null | - | null | オーナープロセス開始時刻（`running` 状態かつ `owner_pid` 設定時のみ有効） |
+| `deletion` | object | - | - | 削除マーカー（自動設定） |
+| `auto_requeue_count` | int | - | 0 | 自動再キュー回数（自動設定） |
+| `completion` | object | - | - | Goal タスク完了情報（自動設定） |
 | `resume_point` | object | - | - | サブワークフロー再開ポイント（自動設定） |
 | `should_publish_branch_to_origin` | boolean | - | - | ブランチをoriginにpushするか |
 | `source` | enum | - | - | タスクソース: `pr_review` / `issue` / `manual` |
 | `pr_number` | int | - | - | PR番号（`source: pr_review` 時は必須） |
+| `context_pr_number` | int | - | - | コンテキスト用 PR 番号 |
+| `goal_id` | UUID | - | - | Goal ID |
+| `goal_purpose` | string | - | - | Goal の目的 |
+| `goal_work_key` | string | - | - | Goal のワークキー |
+| `caccia_execution_source` | string | - | - | Caccia 実行ソース（`from_pr` のみ） |
+| `merge_task` | boolean | - | false | マージタスクフラグ |
+| `merge_method` | enum | - | - | マージ方法（`squash` / `merge` / `rebase`） |
+| `restart_point` | object | - | - | ワークフロー再起動ポイント（自動設定。`resume_point` と同時指定不可、`start_step` と同時指定不可） |
 
 **※ `content`, `content_file`, `task_dir` のいずれか正確に1つが必須。**
 
@@ -49,6 +65,7 @@ failure:
   step: plan             # 失敗が発生したstep名（任意）
   error: "エラーメッセージ"  # エラー本体（必須）
   last_message: "..."    # 最後の出力（任意）
+  retryable: false       # 再試行可否（任意。false かつ goal_id 設定時は未開始失敗を許容）
 ```
 
 ## TaskExecutionConfig の追加制約
@@ -56,6 +73,12 @@ failure:
 - `source: pr_review` のときは `pr_number` が必須
 - `managed_pr: true` のときは `auto_pr: true` が必須
 - `managed_pr: true` のときは `worktree` を有効化する必要がある
+- `resume_point` と `restart_point` は同時指定不可
+- `start_step` と `restart_point` は同時指定不可
+- `source_run_slug` 設定時は `resume_mode` が必須
+- `owner_start_time` は `running` 状態かつ `owner_pid` 設定時のみ有効
+- `exceeded_current_iteration` と `restart_point` は同時指定不可
+- `exceeded_max_steps` と `restart_point` は同時指定不可
 
 ## resume_point オブジェクト
 

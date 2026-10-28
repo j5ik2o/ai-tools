@@ -2,7 +2,7 @@
 
 # CI/CD Integration
 
-TAKT can be integrated into CI/CD pipelines to automate task execution, PR reviews, and code generation. This guide covers GitHub Actions setup, pipeline mode options, and configuration for other CI systems.
+This guide explains how to run TAKT from CI/CD pipelines. It covers a GitHub Actions example, non-interactive mode, and setup for other CI systems.
 
 ## GitHub Actions
 
@@ -49,9 +49,11 @@ The following permissions are required for `takt-action` to function correctly:
 
 ## Pipeline Mode
 
-Specifying `--pipeline` enables non-interactive pipeline mode. It automatically creates a branch, runs the workflow, commits, and pushes. This mode is designed for CI/CD automation where no human interaction is available.
+With `--pipeline`, TAKT creates a branch, runs the workflow, commits, and pushes without interaction.
 
-In pipeline mode, PRs are **not** created unless `--auto-pr` is explicitly specified.
+Pipeline mode requires a task source: one of `--task`, `--issue`, or `--pr`. If none is given, TAKT exits with code `2`.
+
+Add `--auto-pr` to create a PR in pipeline mode. When combined with `--skip-git`, no PR is created and TAKT prints a warning. A successful workflow exits with code `0`.
 
 ### All Pipeline Options
 
@@ -60,14 +62,17 @@ In pipeline mode, PRs are **not** created unless `--auto-pr` is explicitly speci
 | `--pipeline` | **Enable pipeline (non-interactive) mode** -- Required for CI/automation |
 | `-t, --task <text>` | Task content (alternative to GitHub Issue) |
 | `-i, --issue <N>` | GitHub issue number (same as `#N` in interactive mode) |
+| `--pr <number>` | PR number to fetch review comments and fix |
 | `-w, --workflow <name or path>` | Workflow name or path to workflow YAML file |
 | `-b, --branch <name>` | Specify branch name (auto-generated if omitted) |
 | `--auto-pr` | Create PR (interactive: skip confirmation, pipeline: enable PR) |
+| `--draft` | Create the PR as a draft (requires `--auto-pr` or `auto_pr` config) |
 | `--skip-git` | Skip branch creation, commit, and push (pipeline mode, workflow-only) |
 | `--repo <owner/repo>` | Specify repository (for PR creation) |
 | `-q, --quiet` | Minimal output mode: suppress AI output (for CI) |
-| `--provider <name>` | Override agent provider (claude\|claude-sdk\|claude-terminal\|codex\|opencode\|cursor\|copilot\|kiro\|mock) |
+| `--provider <name>` | Override agent provider (claude\|claude-sdk\|claude-headless\|claude-terminal\|codex\|opencode\|deepseek-harness\|cursor\|copilot\|kiro\|pi\|mock) |
 | `--model <name>` | Override agent model |
+| `--auto-strategy <strategy>` | Auto routing strategy (cost\|balanced\|performance) |
 
 ### Command Examples
 
@@ -107,11 +112,27 @@ takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
 takt --pipeline --task "Fix bug" --skip-git
 ```
 
+With `--skip-git`, nothing is pushed, so TAKT ignores `--auto-pr` and prints a warning.
+
 **Minimal output mode (suppress AI output for CI logs):**
 
 ```bash
 takt --pipeline --task "Fix bug" --quiet
 ```
+
+## Exit Codes
+
+Pipeline mode returns these codes so CI scripts can identify the failure:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | General error |
+| `2` | Issue/PR fetch failed, or none of `--issue` / `--pr` / `--task` was specified |
+| `3` | Workflow execution failed |
+| `4` | Git operation failed (environment preparation, commit, or push) |
+| `5` | PR creation failed |
+| `130` | Interrupted by SIGINT (Ctrl+C) |
 
 ## Pipeline Template Variables
 
@@ -129,10 +150,12 @@ pipeline:
 
 | Variable | Available In | Description |
 |----------|-------------|-------------|
-| `{title}` | Commit message | Issue title |
+| `{title}` | Commit message, PR body | Issue title |
 | `{issue}` | Commit message, PR body | Issue number |
 | `{issue_body}` | PR body | Issue body |
-| `{report}` | PR body | Workflow execution report |
+| `{report}` | PR body | Fixed string: ``Workflow `{workflow}` completed successfully.`` |
+
+`commit_message_template` is applied only when an issue is linked. With `--task` alone, the commit message is `takt: {task}`.
 
 ## Other CI Systems
 
@@ -141,6 +164,7 @@ For CI systems other than GitHub Actions, install TAKT globally and use pipeline
 ```bash
 # Install takt
 npm install -g takt
+takt install claude-sdk
 
 # Run in pipeline mode
 takt --pipeline --task "Fix bug" --auto-pr --repo owner/repo
@@ -150,7 +174,7 @@ This approach works with any CI system that supports Node.js, including GitLab C
 
 ## Environment Variables
 
-For authentication in CI environments, set the appropriate API key environment variable. These use TAKT-specific prefixes to avoid conflicts with other tools.
+Store credentials for the selected provider as CI secrets and pass them to the job as environment variables. DeepSeek Harness uses the SDK's `DEEPSEEK_API_KEY` and `DEEPSEEK_BASE_URL` variables.
 
 ```bash
 # For Claude (Anthropic)
@@ -161,6 +185,13 @@ export TAKT_OPENAI_API_KEY=sk-...
 
 # For OpenCode
 export TAKT_OPENCODE_API_KEY=...
+
+# For Pi
+# Use the Pi SDK credential store or provider-native environment variables
+
+# For DeepSeek Harness
+export DEEPSEEK_API_KEY=...
+# Optional: export DEEPSEEK_BASE_URL=https://...
 
 # For Cursor Agent (optional if cursor-agent login session exists)
 export TAKT_CURSOR_API_KEY=...
@@ -174,7 +205,7 @@ export TAKT_KIRO_API_KEY=...
 
 Priority: Environment variables take precedence over `config.yaml` settings.
 
-> **Note**: If you set an API key via environment variable, installing the corresponding CLI for SDK providers (Claude SDK, Codex, OpenCode) is not necessary. TAKT directly calls the respective API. Cursor, Copilot, and Kiro require their CLIs to be installed.
+Run `takt install deepseek-harness` before a DeepSeek Harness job. It supports Linux x64/arm64 with glibc 2.28 or later and macOS arm64 14.0 or later. Install the respective CLIs for Cursor, Copilot, and Kiro.
 
 ## Cost Considerations
 
@@ -185,3 +216,19 @@ TAKT uses AI APIs (Anthropic, OpenAI, etc.), which can incur significant costs, 
 - **Choose an appropriate workflow**: Simpler workflows use fewer API calls than multi-stage workflows (e.g., `default` with parallel reviews).
 - **Limit CI triggers**: Use conditional triggers (e.g., `if: contains(github.event.comment.body, '@takt')`) to prevent unintended executions.
 - **Test with `--provider mock`**: Use mock provider during CI pipeline development to avoid real API costs.
+
+## Managed SDK installation and updates
+
+For jobs using Claude SDK, Codex, OpenCode, Pi, or DeepSeek Harness, install the required provider before running TAKT. The job needs access to the npm registry.
+
+```sh
+takt install claude-sdk
+takt install codex
+takt install opencode
+takt install pi
+takt install deepseek-harness
+takt update           # Update installed providers with version drift only
+takt update codex     # Update the selected provider only
+```
+
+Install the external OpenCode CLI separately. If an installation is damaged, run `takt install <provider> --force`. To save installation time in each job, prepare an image with the required providers.
