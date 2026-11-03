@@ -1,0 +1,35 @@
+params:
+  plan_policy:
+    type: facet_ref[]
+    facet_kind: policy
+  fix_knowledge:
+    type: facet_ref[]
+    facet_kind: knowledge
+  plan_instruction:
+    type: facet_ref
+    facet_kind: instruction
+  plan_report_format:
+    type: facet_ref
+    facet_kind: report_format
+name: fix-plan
+description: 採用された修正対象と現在のコードを照合し、実行できる修正計画を作成する
+capabilities: readonly
+tags:
+  - plan
+edit: false
+persona: planner
+policy:
+  - process-deviation
+  - contract-change
+  - $param: plan_policy
+knowledge:
+  $param: fix_knowledge
+pass_previous_response: false
+instruction:
+  - $param: plan_instruction
+  - review-remediation-problem-tracking
+output_contracts:
+  report:
+    - name: fix-plan.md
+      format:
+        $param: plan_report_format

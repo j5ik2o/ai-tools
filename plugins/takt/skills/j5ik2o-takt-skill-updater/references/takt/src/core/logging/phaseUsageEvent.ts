@@ -1,11 +1,8 @@
 import type { SpanSnapshot } from './span-to-ndjson-mapper.js';
-import {
-  USAGE_MISSING_REASONS,
-  type UsageMissingReason,
-} from './contracts.js';
-import { buildUsageEventPayload } from './providerEvent.js';
-import type { ProviderUsageSnapshot } from '../models/response.js';
+import type { UsageMissingReason } from './contracts.js';
+import { buildUsageEventPayload } from './usageEvent.js';
 import { isProviderType, type ProviderType } from '../../shared/types/provider.js';
+import { getNumber, usageSnapshotFromSpanAttributes } from './spanUsageAttributes.js';
 
 export type PhaseUsageType =
   | 'phase1_execute'
@@ -26,6 +23,8 @@ export interface PhaseUsageEventLogRecord {
   provider_model: string;
   step: string;
   step_type: PhaseUsageStepType;
+  persona?: string;
+  tags?: string[];
   phase: PhaseUsageType;
   phase_name: PhaseName;
   phase_execution_id?: string;
@@ -55,6 +54,8 @@ interface PhaseUsageMeta {
   providerModel: string;
   step: string;
   stepType: PhaseUsageStepType;
+  persona?: string;
+  tags?: string[];
   phase: PhaseUsageType;
   phaseName: PhaseName;
   phaseExecutionId?: string;
@@ -84,6 +85,9 @@ function mapPhaseSpan(
   const phaseName = getPhaseName(span.attributes, 'takt.phase.name');
   const phase = phaseLabelForPhaseSpan(phaseNumber, phaseName);
   if (!phase || !phaseName) {
+    return undefined;
+  }
+  if (getString(span.attributes, 'takt.phase.status') === 'cancelled') {
     return undefined;
   }
 
@@ -128,7 +132,9 @@ function mapJudgeStageSpan(
   });
 }
 
-function buildCommonMeta(span: SpanSnapshot): Pick<PhaseUsageMeta, 'provider' | 'providerModel' | 'step' | 'stepType'> | undefined {
+function buildCommonMeta(
+  span: SpanSnapshot,
+): Pick<PhaseUsageMeta, 'provider' | 'providerModel' | 'step' | 'stepType' | 'persona' | 'tags'> | undefined {
   const provider = getProvider(span.attributes, 'takt.provider.name');
   const step = getString(span.attributes, 'takt.step.name');
   const stepType = getStepType(span.attributes, 'takt.step.type');
@@ -141,6 +147,8 @@ function buildCommonMeta(span: SpanSnapshot): Pick<PhaseUsageMeta, 'provider' | 
     providerModel: getString(span.attributes, 'takt.model.name') ?? '(default)',
     step,
     stepType,
+    persona: getString(span.attributes, 'takt.step.persona'),
+    tags: getStringArray(span.attributes, 'takt.step.tags'),
   };
 }
 
@@ -157,6 +165,8 @@ function buildRecord(
     provider_model: meta.providerModel,
     step: meta.step,
     step_type: meta.stepType,
+    ...(meta.persona ? { persona: meta.persona } : {}),
+    ...(meta.tags ? { tags: meta.tags } : {}),
     phase: meta.phase,
     phase_name: meta.phaseName,
     ...(meta.phaseExecutionId ? { phase_execution_id: meta.phaseExecutionId } : {}),
@@ -173,49 +183,12 @@ function buildRecord(
 function extractUsage(attributes: Record<string, unknown>): Pick<PhaseUsageEventLogRecord, 'usage_missing' | 'reason' | 'usage'> & {
   missing: boolean;
 } {
-  const snapshot = usageSnapshotFromAttributes(attributes);
+  const snapshot = usageSnapshotFromSpanAttributes(attributes);
   const payload = buildUsageEventPayload(snapshot);
   return {
     missing: payload.usage_missing,
     ...payload,
   };
-}
-
-function usageSnapshotFromAttributes(attributes: Record<string, unknown>): ProviderUsageSnapshot {
-  if (attributes['takt.usage.missing'] === true) {
-    return {
-      usageMissing: true,
-      reason: getUsageMissingReason(attributes['takt.usage.missing_reason']),
-    };
-  }
-
-  const inputTokens = getNumber(attributes, 'gen_ai.usage.input_tokens');
-  const outputTokens = getNumber(attributes, 'gen_ai.usage.output_tokens');
-  const totalTokens = getNumber(attributes, 'gen_ai.usage.total_tokens')
-    ?? (inputTokens !== undefined && outputTokens !== undefined ? inputTokens + outputTokens : undefined);
-
-  if (inputTokens === undefined || outputTokens === undefined || totalTokens === undefined) {
-    return {
-      usageMissing: true,
-      reason: hasAnyUsageAttribute(attributes)
-        ? USAGE_MISSING_REASONS.TOKENS_MISSING
-        : USAGE_MISSING_REASONS.NOT_AVAILABLE,
-    };
-  }
-
-  return {
-    usageMissing: false,
-    inputTokens,
-    outputTokens,
-    totalTokens,
-    cachedInputTokens: getNumber(attributes, 'gen_ai.usage.cached_input_tokens'),
-    cacheCreationInputTokens: getNumber(attributes, 'gen_ai.usage.cache_creation_input_tokens'),
-    cacheReadInputTokens: getNumber(attributes, 'gen_ai.usage.cache_read_input_tokens'),
-  };
-}
-
-function hasAnyUsageAttribute(attributes: Record<string, unknown>): boolean {
-  return Object.keys(attributes).some((key) => key.startsWith('gen_ai.usage.'));
 }
 
 function phaseLabelForPhaseSpan(
@@ -249,9 +222,15 @@ function getString(attributes: Record<string, unknown>, key: string): string | u
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function getNumber(attributes: Record<string, unknown>, key: string): number | undefined {
+function getStringArray(attributes: Record<string, unknown>, key: string): string[] | undefined {
   const value = attributes[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
+  }
+  if (!value.every((item): item is string => typeof item === 'string' && item.length > 0)) {
+    return undefined;
+  }
+  return [...value];
 }
 
 function getProvider(attributes: Record<string, unknown>, key: string): ProviderType | undefined {
@@ -281,14 +260,6 @@ function getJudgeStage(attributes: Record<string, unknown>, key: string): JudgeS
 function getJudgeMethod(attributes: Record<string, unknown>, key: string): JudgeMethod | undefined {
   const value = getString(attributes, key);
   return value === 'structured_output' || value === 'phase3_tag' || value === 'ai_judge' ? value : undefined;
-}
-
-function getUsageMissingReason(value: unknown): UsageMissingReason {
-  return value === USAGE_MISSING_REASONS.NOT_AVAILABLE
-    || value === USAGE_MISSING_REASONS.TOKENS_MISSING
-    || value === USAGE_MISSING_REASONS.NOT_SUPPORTED_BY_PROVIDER
-    ? value
-    : USAGE_MISSING_REASONS.NOT_AVAILABLE;
 }
 
 function hrTimeToIso(time: readonly [number, number] | undefined): string {
