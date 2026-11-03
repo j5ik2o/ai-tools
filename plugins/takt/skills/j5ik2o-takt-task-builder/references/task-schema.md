@@ -21,13 +21,14 @@
 | `auto_pr` | boolean | - | false | 実行後にPR自動作成 |
 | `draft_pr` | boolean | - | false | PRをドラフト状態で作成 |
 | `managed_pr` | boolean | - | false | TAKT管理下のPRフローを使う。`auto_pr: true` かつ `worktree` 有効が前提 |
-| `issue` | int | - | - | GitHub Issue番号 |
+| `issue` | positiveSafeInt | - | - | GitHub Issue番号 |
 | `start_step` | string | - | - | 開始step名 |
 | `retry_note` | string | - | - | リトライ時のメモ |
 | `worktree_path` | string | - | - | 実行時worktree絶対パス（自動設定） |
 | `pr_url` | string | - | - | 生成PR URL（自動設定） |
 | `summary` | string | - | - | 実行結果サマリ（自動設定） |
 | `owner_pid` | int/null | - | null | 実行中プロセスPID（自動設定） |
+| `owner_start_time` | string/null | - | null | 実行プロセスの開始時刻（自動設定）。`running` + `owner_pid` がある場合のみ有効 |
 | `failure` | object | - | - | 失敗情報（自動設定） |
 | `base_branch` | string | - | - | クローン元ブランチ（省略時: デフォルトブランチ） |
 | `exceeded_max_steps` | int | - | - | exceeded時のmax_steps値（自動設定） |
@@ -36,7 +37,14 @@
 | `resume_point` | object | - | - | サブワークフロー再開ポイント（自動設定） |
 | `should_publish_branch_to_origin` | boolean | - | - | ブランチをoriginにpushするか |
 | `source` | enum | - | - | タスクソース: `pr_review` / `issue` / `manual` |
-| `pr_number` | int | - | - | PR番号（`source: pr_review` 時は必須） |
+| `pr_number` | positiveSafeInt | - | - | PR番号（`source: pr_review` 時は必須） |
+| `deletion` | object | - | - | 削除マーカー（自動設定）。`id`（uuid）、`owner_pid`（int）、`owner_start_time`（string, 任意）を含む |
+| `execution_id` | string | - | - | 実行ID（自動設定） |
+| `stop_request` | object | - | - | 停止要求（自動設定）。`execution_id`、`requested_at`（ISO datetime）を含む |
+| `source_run_slug` | string | - | - | 再開元の実行スラグ（`resume_mode` が必須になる） |
+| `resume_mode` | enum | - | - | 再開モード（`source_run_slug` が設定されている場合に必須） |
+| `completion` | object | - | - | ゴールタスク完了情報（GoalTaskResultSchema、自動設定） |
+| `auto_requeue_count` | int≥0 | - | - | 自動再キュー回数（自動設定） |
 
 **※ `content`, `content_file`, `task_dir` のいずれか正確に1つが必須。**
 
@@ -47,31 +55,64 @@
 ```yaml
 failure:
   step: plan             # 失敗が発生したstep名（任意）
-  error: "エラーメッセージ"  # エラー本体（必須）
+  error: "エラーメッセージ"  # エラー本体（必須、長大テキストは自動切り詰め）
   last_message: "..."    # 最後の出力（任意）
+  retryable: true        # リトライ可能フラグ（任意、boolean）
 ```
+
+**注意**: `error` フィールドは `boundPersistedFailureText` により過大なテキストが自動的に正規化（切り詰め）される（v0.74.0〜）。
 
 ## TaskExecutionConfig の追加制約
 
+基本制約:
 - `source: pr_review` のときは `pr_number` が必須
+- `source: pr_review` のときは `branch` が必須（かつ有効なローカルブランチ名）
 - `managed_pr: true` のときは `auto_pr: true` が必須
 - `managed_pr: true` のときは `worktree` を有効化する必要がある
 
-## resume_point オブジェクト
+`restart_point` の排他制約（v0.74.0〜）:
+- `restart_point` と `resume_point` は同時指定不可
+- `restart_point` と `start_step` は同時指定不可
+- `restart_point` と `exceeded_current_iteration` は同時指定不可
+- `restart_point` と `exceeded_max_steps` は同時指定不可
 
-```yaml
-resume_point:
-  version: 1
-  stack:
-    - workflow: child-workflow
-      workflow_ref: references/takt/builtins/ja/workflows/default.yaml   # 任意
-      step: review
-      kind: workflow_call   # agent / system / workflow_call
-  iteration: 12
-  elapsed_ms: 38124
-```
+Caccia 制約（v0.74.0〜）:
+- `caccia_execution_source` は `source: pr_review` が必要
+- `caccia_pushed_head` は `caccia_execution_source: from_pr` かつ `merge_task` でない場合のみ有効
 
-サブワークフロー再開用の内部状態。手動作成対象ではなく、自動設定値として扱う。
+`merge_task: true` の制約（v0.74.0〜）:
+- `source: pr_review`、`pr_number`、`branch`、`base_branch`、`worktree: true`、`merge_method`、`merge_head_repository_url`、`merge_head_repository_push_urls`、`merge_initial_head_sha`、`merge_threat_check_max_diff_bytes`、`merge_clone_prepared` の全てが必要
+
+## TaskExecutionConfig の追加フィールド（v0.74.0〜）
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `goal_id` | UUID | ゴールID |
+| `goal_purpose` | string | ゴール目的 |
+| `goal_work_key` | string | ゴール作業キー |
+| `context_pr_number` | positiveSafeInt | コンテキストPR番号 |
+| `caccia_execution_source` | `"from_pr"` | Caccia実行元（from_pr のみ） |
+| `caccia_pushed_head` | object | Cacciaがプッシュしたhead情報（headSha, baseBranch, headRepositoryUrl, headRepositoryPushUrls） |
+| `merge_task` | boolean | マージタスクフラグ |
+| `merge_method` | enum | マージ手法: `squash` / `merge` / `rebase` |
+| `merge_concurrency` | positiveSafeInt | マージ並行数 |
+| `merge_threat_check_max_diff_bytes` | int≥0 | マージ脅威チェックの最大diff バイト数 |
+| `merge_head_repository_url` | string | マージ元リポジトリURL |
+| `merge_head_repository_push_urls` | string[] | マージ元リポジトリpush URLs |
+| `merge_initial_head_sha` | sha（40文字hex） | マージ時の初期headコミットSHA |
+| `merge_clone_prepared` | boolean | マージ用クローン準備済みフラグ |
+| `merge_known_remote_head_sha` | sha | 既知のリモートhead SHA |
+| `merge_pushed_head_sha` | sha | プッシュ済みhead SHA |
+| `merge_push_base_head_sha` | sha | プッシュベースのhead SHA（`merge_pushed_head_sha` が必要） |
+| `merge_push_source` | enum | プッシュ元: `caccia` / `manual` |
+| `source_resume_point` | object | ソース再開ポイント（WorkflowResumePointCodecSchema） |
+| `restart_point` | object | 再起動ポイント（WorkflowRestartPointSchema、`resume_point` / `start_step` / `exceeded_*` と排他） |
+
+## resume_point / restart_point オブジェクト
+
+`resume_point` と `source_resume_point` はいずれも `WorkflowResumePointCodecSchema` でパースされる内部状態オブジェクト。手動作成対象ではなく、自動設定値として扱う。
+
+`restart_point` は `WorkflowRestartPointSchema` に基づく再起動ポイント。`resume_point`、`start_step`、`exceeded_*` と相互排他。
 
 ## ステータス遷移と不変条件
 
@@ -84,14 +125,16 @@ pending ──→ running ──→ completed
 
 | フィールド | pending | running | completed | failed | exceeded | pr_failed |
 |----------|---------|---------|-----------|--------|----------|-----------|
-| started_at | **null** | 必須 | 必須 | 必須 | 必須 | 必須 |
-| completed_at | **null** | **null** | 必須 | 必須 | 必須 | 必須 |
+| started_at | **null** | 必須 | 必須 | 必須※ | 必須 | 必須 |
+| completed_at | **null** | **null** | 必須 | 必須※ | 必須 | 必須 |
 | owner_pid | **null** | 任意 | **null** | **null** | **null** | **null** |
 | failure | **null** | **null** | **null** | 必須 | **null** | 任意 |
 | exceeded_max_steps | - | - | - | - | 必須※ | - |
 | exceeded_current_iteration | - | - | - | - | 必須※ | - |
 
 **※ `exceeded_max_steps` と `exceeded_current_iteration` は両方同時に設定するか、両方省略する。**
+
+**※ `failed` の例外（v0.74.0〜）**: `goal_id` があり、`failure.retryable === false` で、`started_at` / `completed_at` が null の場合（未開始ゴール失敗）は、`started_at` / `completed_at` が null のまま `failed` 状態になれる。
 
 ## task_dir パス形式
 
