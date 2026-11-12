@@ -1,5 +1,7 @@
 # Faceted Prompting: AIプロンプトへの関心の分離
 
+[English](./faceted-prompting.md)
+
 ## 問題
 
 マルチエージェントシステムが複雑になるにつれ、プロンプトはモノリシックになる。1つのプロンプトファイルにエージェントの役割、行動規範、タスク固有の指示、ドメイン知識、出力形式がすべて混在する。これは3つの問題を生む。
@@ -29,17 +31,23 @@ Faceted Promptingはプロンプトを5つの直交する関心に分解する�
 各関心はそれぞれのディレクトリに独立したファイル（Markdownまたはテンプレート）として格納される。
 
 ```
-workflows/       # ワークフロー定義
-personas/        # WHO — 役割定義
-policies/        # RULES — 禁止事項・品質基準
-instructions/    # WHAT — ステップ手順
-knowledge/       # CONTEXT — 前提知識・参照資料
-output-contracts/ # OUTPUT — 出力契約テンプレート
+builtins/{lang}/
+  workflows/           # ワークフロー定義
+  facets/
+    personas/          # WHO — 役割定義
+    policies/          # RULES — 禁止事項・品質基準
+    instructions/      # WHAT — ステップ手順
+    knowledge/         # CONTEXT — 前提知識・参照資料
+    output-contracts/  # OUTPUT — 出力契約テンプレート
+    partials/          # 他のファセットから参照される共有断片
+
+~/.takt/facets/<type>/   # ユーザー上書き（同じファセット種別）
+.takt/facets/<type>/     # プロジェクト上書き（最優先）
 ```
 
 ### 配置と各ファセットの典型例
 
-LLMに渡せるスロットは **system prompt** と **user message** の2つだけである。5つの関心はこの2つに配置される。
+TAKT の通常の agent step では Persona を system prompt に置き、Knowledge・Instruction・Output Contract・Policy を実行時の user message に組み立てる。次の図はファセット部分を抜き出したものである。実際の message にはタスク、実行ルール、前の step の結果なども含まれる。
 
 ```
 System Prompt:
@@ -56,9 +64,9 @@ User Message:
   └─────────────────────────────────────────────┘
 ```
 
-Personaはエージェントの**identity**であり、タスクによって変わらない。system promptに置くことでLLMの応答全体を方向付ける。残りの4つはステップごとに変わるため、user messageに合成する。
+Persona はエージェントの役割を定め、step ごとの指示とは分けて system prompt に置く。残りの4つは step ごとの user message に合成する。
 
-Policyをuser messageの末尾に配置するのは意図的な設計判断である。LLMは直前に読んだ内容に強く影響される（recency効果）。禁止事項やREJECT基準といった制約は、出力生成の直前にあることで遵守されやすくなる。Knowledge → Instruction → Policyという流れは「文脈を理解 → 作業を理解 → 制約を確認」という自然な認知順序にもなっている。
+TAKT の Phase 1 message は参照資料と作業内容を示した後に Policy を置く。この配置は `perform_phase1_message` テンプレートで確認できる。実行時に強制する制約は workflow の権限や遷移ルールにも定義する。
 
 以下に各ファセットの典型的なファイル例を示す。
 
@@ -306,7 +314,7 @@ system promptに配置される。役割の定義、境界、行動姿勢のみ�
 
 ### なぜこの5つか？
 
-**Persona** と **Instruction** は最低限必要なもの — エージェントが誰で、何をすべきかを定義する必要がある。しかし実際には、さらに3つの関心が独立した軸として現れる。
+**Persona** と **Instruction** は最低限必要なもの — エージェントが誰で、何をすべきかを定義する必要がある。しかし実際にはさらに3つの関心が独立した軸として現れる。
 
 - **Policy** はタスクをまたがって適用される規約・基準を捉える。「何を守るか」を定義する関心であり、禁止事項（フォールバック濫用の禁止、未使用コードの禁止）、品質基準（REJECT/APPROVE判定）、優先順位（正確性 > 速度）を含む。コーディングポリシーは機能実装でもバグ修正でも同じように適用される。ポリシーは「横断的関心事」であり、作業内容に関係なく守るべきルールを規定する。
 
@@ -327,19 +335,19 @@ Faceted Promptingの中核メカニズムは**宣言的な合成**である。�
 
 ### TAKTでの実装例
 
-[TAKT](https://github.com/nrslib/takt) は Faceted Prompting を YAML ベースの workflow 定義で実装している。builtin の各ファセットは、各 step から bare name で直接参照できる。セクションマップは「名前とファイル名が異なる」場合のカスタムエイリアス用途でのみ任意で使う。
+[TAKT](https://github.com/nrslib/takt) は Faceted Prompting を YAML ベースの workflow 定義で実装している。builtin の各ファセットは各 step から bare name で直接参照できる。セクションマップは「名前とファイル名が異なる」場合のカスタムエイリアス用途でのみ任意で使う。
 
 ```yaml
 name: my-workflow
 max_steps: 10
-initial_step: plan
+initial_step: implement
 
 steps:
   - name: implement
-    persona: coder            # WHO — builtins/{lang}/personas/coder.md
-    policy: coding            # RULES — builtins/{lang}/policies/coding.md
-    instruction: implement    # WHAT — builtins/{lang}/instructions/implement.md
-    knowledge: architecture   # CONTEXT — builtins/{lang}/knowledge/architecture.md
+    persona: coder            # WHO — builtins/{lang}/facets/personas/coder.md
+    policy: coding            # RULES — builtins/{lang}/facets/policies/coding.md
+    instruction: implement    # WHAT — builtins/{lang}/facets/instructions/implement.md
+    knowledge: architecture   # CONTEXT — builtins/{lang}/facets/knowledge/architecture.md
     edit: true
     rules:
       - condition: Implementation complete
@@ -348,12 +356,12 @@ steps:
   - name: review
     persona: architecture-reviewer   # 異なる WHO
     policy: review            # 異なる RULES
-    instruction: review       # 異なる WHAT（共有も可能）
+    instruction: review-arch  # 異なる WHAT（共有も可能）
     knowledge: architecture   # 同じ CONTEXT — 再利用
     output_contracts:
       report:
         - name: review.md
-          format: architecture-review # OUTPUT — builtins/{lang}/output-contracts/architecture-review.md
+          format: architecture-review # OUTPUT — builtins/{lang}/facets/output-contracts/architecture-review.md
     edit: false
     rules:
       - condition: Approved
@@ -372,7 +380,9 @@ instructions、policies、knowledge、output contracts の facet ファイルは
 プロジェクト固有の追加指示。
 ```
 
-canonical form はコロン後にスペースを入れない `{extends:fix}` だが、`{extends: fix}` も受理される。親名は bare facet name のみで、path reference や `@scope` reference による継承はサポートしない。親 lookup では現在の source file を候補から除外するため、project-level の `fix.md` は自身を再帰的に読むことなく lower-layer の `fix.md` を継承できる。persona facet は継承対象外である。
+継承先にはファセット名を指定する。たとえばプロジェクトの `fix.md` に `{extends:fix}` と書くと、下位の `fix.md` を継承してプロジェクト固有の指示を足せる。ペルソナファセットは継承できない。
+
+workflow step の `instruction` には一つの指示か、複数の指示を配列で指定できる。ファセットの参照とインライン指示を組み合わせてもよい。指示を再利用する場合は `{{include:instructions/<name>}}`、出力契約を再利用する場合は `{{include:output-contracts/<name>}}` を使う。`default`、`takt-default`、`takt-default-team` では要求シナリオを計画から最終確認まで引き継ぐための `scenario-based-*` ファセットを使う。
 
 ## 既存手法との違い
 
@@ -400,9 +410,9 @@ canonical form はコロン後にスペースを入れない `{extends:fix}` だ
 
 **エンジンにとって:**
 - プロンプト組み立ては決定的 — 同じワークフロー定義とファイルからは同じプロンプトが構築される
-- ポリシーの配置を最適化できる（例: recency効果を活用して末尾に配置し、制約遵守を強化）
+- ファセットごとの配置と構成を実行時に一貫して適用できる
 - 各関心を他の部分に影響を与えずにステップごとに注入・省略・上書きできる
 
 ## まとめ
 
-Faceted Promptingは、関心の分離（Separation of Concerns）をAIプロンプト工学に適用するデザインパターンである。プロンプトを5つの独立した関心 — Persona、Policy、Instruction、Knowledge、Output Contract — に分解し、宣言的に合成することで、再利用可能で保守しやすく透明なマルチエージェントワークフローを実現する。
+Faceted Promptingは関心の分離（Separation of Concerns）をAIプロンプト工学に適用するデザインパターンである。プロンプトを5つの独立した関心 — Persona、Policy、Instruction、Knowledge、Output Contract — に分解し、宣言的に合成することで、再利用可能で保守しやすく透明なマルチエージェントワークフローを実現する。
