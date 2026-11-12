@@ -1,0 +1,37 @@
+name: reviewers_2
+description: セキュリティとコードを並列にレビューし、修正の要否を判定する
+tags:
+  - review
+parallel:
+  - name: security-review
+    description: 入力や権限の境界を調べ、実際の経路にあるセキュリティの問題を報告する
+    tags:
+      - review
+    edit: false
+    persona: security-reviewer
+    policy:
+      - contract-change
+      - security-review
+    knowledge: [security, security-web, security-api, security-local, security-data, security-dependencies]
+    capabilities: readonly
+    instruction: review-security
+    output_contracts:
+      report:
+        - name: security-review.md
+          format: security-review
+  - name: coding-review
+    description: 要求と差分を照合し、実装の不具合や既存動作への影響を報告する
+    tags:
+      - review
+    edit: false
+    persona: coding-reviewer
+    policy:
+      - contract-change
+      - review
+      - coding
+    capabilities: readonly
+    instruction: review-coding
+    output_contracts:
+      report:
+        - name: coding-review.md
+          format: coding-review

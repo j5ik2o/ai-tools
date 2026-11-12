@@ -1,0 +1,19 @@
+name: review-synthesis
+description: 現在のコードで要件を満たし、指摘が解消したかを独立に判定する
+capabilities: readonly
+tags:
+  - final-gate
+  - supervise
+edit: false
+persona: supervisor
+policy:
+  - contract-change
+  - review
+pass_previous_response: false
+instruction: supervise
+output_contracts:
+  report:
+    - name: supervisor-validation.md
+      format: supervisor-validation
+    - name: summary.md
+      format: supervisor-summary

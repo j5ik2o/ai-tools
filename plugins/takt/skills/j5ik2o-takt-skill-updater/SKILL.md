@@ -13,7 +13,7 @@ description: >
 
 nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.75.0
 
 ## パス表記について
 
@@ -284,6 +284,17 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.47.0 → v0.75.0（2026-11-12）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.75.0` に更新。`v0.75.0` タグの reference snapshot を同期（`rule-utils.ts` が j5ik2o-takt-analyzer の references から削除） |
+| j5ik2o-takt-task-builder | TaskRecord / TaskExecutionConfig schema に多数のフィールドを追加：`owner_start_time`, `source_resume_point`, `restart_point`, `context_pr_number`, `goal_id`, `goal_purpose`, `goal_work_key`, `execution_id`, `stop_request`, `source_run_slug`, `resume_mode`, `deletion`, `completion`, `auto_requeue_count`, `caccia_execution_source`, `caccia_pushed_head`, `merge_task`, `merge_until`, `merge_method`, `merge_concurrency`, `merge_threat_check_max_diff_bytes`, `merge_head_repository_url`, `merge_head_repository_push_urls`, `merge_initial_head_sha`, `merge_clone_prepared`, `merge_known_remote_head_sha`, `merge_pushed_head_sha`, `merge_push_base_head_sha`, `merge_push_source`。TaskFailure に `retryable: boolean?` 追加。`source: pr_review` 時に `branch` も必須化。`RUN_RESUME_MODES = ['requeue', 'retry', 'instruct']`。`resume_point` が `WorkflowResumePointCodecSchema`（codec 経由 parse）に変更。ステータス遷移表に `owner_start_time` 追加・`goal_id + failure.retryable === false` の未開始失敗例外（※2）追加 |
+| j5ik2o-takt-workflow-builder | ビルトインワークフローテーブルを全面刷新。削除: `default-draft`, `draft`, `default-high`, `default-mini`, `default-peer-review`, `peer-review-with-fc`, `takt-default-with-fc`, `takt-default-refresh-all`, `takt-default-refresh-fast`。リネーム: `review-default` → `review`、`review-fix-default` → `review-fix`。追加: `maintenance`、`backend-maintenance`、`development-core` / `development-implement` / `development-implement-dynamic` / `development-implement-team` / `development-remediation` / `development-remediation-dynamic` / `development-remediation-team` / `development-review`、`simple` 系（8種）、`peer-review-suite` 系（4種）、`merge-prepare` / `merge-review` / `merge-review-fix` / `merge-review-fix-simple`、`caccia`, `cli`, `loop-analysis`, `final-gate`, `pure`, `review-fix-simple`, `review-remediation`, `single-review-suite`, `takt-default-team`, `takt-development-review`, `workflow-maker`, `mini-core` |
+| j5ik2o-takt-facet-builder | ビルトインファセット一覧を v0.75.0 に全面更新。Persona: `pure-reviewer`・`findings-manager`・`architect-planner`・`pr-commenter` 削除、`companion-round-adjudicator`・`director`・`exec-assistant`・`exec-worker`・`loop-analysis-reviewer`・`loop-analyzer`・`manager`・`review-adjudicator` 追加。Policy: `applicable-inputs`・`caccia-review`・`companion-review`・`companion-round-adjudication`・`contract-change`・`director`・`evidence-based-judgment` など多数追加。Instruction: シナリオベース・development 系・simple 系・merge CI 系・exec 系・workflow-maker 系・companion 系など多数追加。Knowledge: `director`・`gui`・`loop-analysis`・`manager`・`security-*` 系・`takt-test-execution` 追加。Output Contract: `caccia-decisions`・`exec-review-result`・`implementation-report` 系・`merge-ci-*`・`scenario-based-*`・`workflow-maker-*` 追加、`findings-manager`・`*-finding-contract` 系・`pure-review`・`qa-review` 削除 |
+| j5ik2o-takt-analyzer | `rule-utils.ts` が削除されたため references から自動削除（SKILL.md への参照なし）。バージョン表記の更新のみ |
+| j5ik2o-takt-optimizer | バージョン表記の更新のみ |
 
 ### v0.46.0 → v0.47.0（2026-06-18）
 
