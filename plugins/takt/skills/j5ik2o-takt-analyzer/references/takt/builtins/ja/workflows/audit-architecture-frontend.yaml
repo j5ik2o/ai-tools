@@ -4,7 +4,9 @@ max_steps: 12
 initial_step: plan
 
 loop_monitors:
-  - cycle: [supervise, review]
+  - cycle:
+      - supervise
+      - review
     threshold: 3
     judge:
       persona: supervisor
@@ -23,9 +25,15 @@ loop_monitors:
 
 steps:
   - name: plan
+    description: フロントエンドのモジュールと境界を列挙し、監査対象と優先順位を整理する
     tags:
       - plan
     persona: planner
+    policy:
+      - contract-change
+      - architecture
+      - frontend
+      - react
     knowledge:
       - frontend
       - react
@@ -43,10 +51,16 @@ steps:
         next: ABORT
 
   - name: audit
+    description: フロントエンドの監査対象を分担し、構造・依存関係・配線を並列に監査して結果を記録する
     tags:
       - review
     persona: frontend-reviewer
-    policy: review
+    policy:
+      - contract-change
+      - review
+      - architecture
+      - frontend
+      - react
     knowledge:
       - frontend
       - react
@@ -66,10 +80,17 @@ steps:
         next: supervise
 
   - name: supervise
+    description: フロントエンドの監査の網羅性と根拠を確認し、完了か再監査かを判定する
     tags:
       - review
+      - supervise
     persona: supervisor
-    policy: review
+    policy:
+      - contract-change
+      - review
+      - architecture
+      - frontend
+      - react
     knowledge:
       - frontend
       - react
@@ -84,10 +105,16 @@ steps:
         next: review
 
   - name: review
+    description: フロントエンドの未監査または根拠不足の箇所を再監査し、既存レポートへ結果を統合する
     tags:
       - review
     persona: frontend-reviewer
-    policy: review
+    policy:
+      - contract-change
+      - review
+      - architecture
+      - frontend
+      - react
     knowledge:
       - frontend
       - react

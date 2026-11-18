@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローの最適化を実行する。診断・分析は takt-analyze が担う。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.76.1
 
 ## 参照資料
 
@@ -54,12 +54,12 @@ description: >
 → タスク → 前回出力 → レポート指示 → タグ指示 → ポリシーリマインダー
 ```
 
-**注意**: ポリシーは冒頭と末尾に2回注入される（Lost in the Middle対策）。ポリシーの肥大化はトークン消費を2倍にする。
+**注意（v0.76.1〜）**: ポリシーリマインダー（末尾への2回目注入）は廃止された。ポリシーは冒頭に1回のみ注入される。ポリシーの肥大化は依然としてトークン消費に影響するが、2倍効果はなくなった。
 
 | 最適化 | 手法 | 効果 |
 |--------|------|------|
 | ペルソナ圧縮 | 冗長な記述の除去、サイズ上限内への圧縮 | 各ステップで削減 |
-| ポリシー分割 | 巨大ポリシーを用途別に分割し、必要なステップにのみ割り当て | 2倍効果（リマインダー分） |
+| ポリシー分割 | 巨大ポリシーを用途別に分割し、必要なステップにのみ割り当て | 冒頭注入1回分の削減 |
 | ナレッジ絞り込み | ステップに不要なナレッジ参照を除去 | 不要コンテキスト削減 |
 | インストラクション簡素化 | 自動注入される内容の手動記述を除去 | 重複排除 |
 | 出力契約スリム化 | 30行超の出力契約を圧縮 | レポート指示部分で削減 |
@@ -153,6 +153,7 @@ steps:
 | command quality gate の整理 | 文字列 gate と `type: command` gate を分け、command gate は agent step に限定する。不要な command gate は削除し、必要な場合は config 側の許可設定を確認する |
 | provider_options.$ref → extends 移行 | ワークフロー内の `provider_options.$ref: provider-options/edit.yaml` を `provider_options.extends: edit` に書き換える（v0.47.0〜 BREAKING: 旧 `$ref` は無効） |
 | persona_providers → provider_routing 移行 | ワークフロー内の `persona_providers:` を削除し、プロジェクト/グローバル設定の `provider_routing.personas`（または `provider_routing.tags`/`provider_routing.steps`）に移行する（v0.47.0〜非推奨） |
+| Finding Contract 廃止対応 | `finding_contract:` セクション、`findings-manager` ペルソナ/instruction/output-contract 参照を削除し、通常のレビューフローに置き換える（v0.76.1〜廃止） |
 
 **threshold推奨値:**
 - review→fix サイクル: 3回

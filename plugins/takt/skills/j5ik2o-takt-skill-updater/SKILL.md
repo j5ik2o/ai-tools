@@ -13,7 +13,7 @@ description: >
 
 nrslib/takt の新しいリリースタグに合わせて、takt-*スキル群を最新バージョンに追従させる。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.76.1
 
 ## パス表記について
 
@@ -284,6 +284,18 @@ chore: update takt-* skills for takt v{バージョン}
 ## 過去の更新履歴
 
 今後の更新時に参照できるよう、主要な変更をここに記録する。
+
+### v0.47.0 → v0.76.1（2026-11-18）
+
+| スキル | 変更内容 |
+|--------|---------|
+| 全スキル | `前提 takt バージョン: v0.76.1` に更新。`v0.76.1` タグの reference snapshot を同期 |
+| j5ik2o-takt-task-builder | バージョン表記の更新のみ（schema更新は task-schema.md で実施） |
+| j5ik2o-takt-task-builder/references/task-schema.md | TaskExecutionConfig 新フィールド追加（`goal_id`, `goal_purpose`, `goal_work_key`, `context_pr_number`, `caccia_*`, `merge_*`, `source_resume_point`, `restart_point`）。TaskRecord 新フィールド追加（`deletion`, `execution_id`, `stop_request`, `source_run_slug`, `resume_mode`, `owner_start_time`, `completion`, `auto_requeue_count`）。`resume_point` を codec-based 説明に更新。新制約追記（`resume_point`/`restart_point`/`start_step` の排他制約、`source_run_slug` 要件）。`failed` 状態の特殊ケース（`goal_id` + `failure.retryable: false`）追記 |
+| j5ik2o-takt-workflow-builder | ビルトインワークフローテーブル刷新（旧 `default*`, `dual*`, `review-default`, `takt-default-with-fc`, `peer-review-with-fc` 等を廃止。新体系 `simple-*`, `development-*`, `merge-*`, `peer-review-suite-*`, `review`, `review-fix` 等に移行）。v0.76.1 主要変更点ブロック追加（Team Leader 動的化、ステータスタグ 1-indexed 化、ポリシーリマインダー廃止、ファセットパーシャル対応、Finding Contract 廃止）。旧 v0.42.0〜v0.47.0 変更点ブロックを削除 |
+| j5ik2o-takt-facet-builder | Persona 一覧更新（`architect-planner`, `pr-commenter`, `findings-manager` 削除。`companion-round-adjudicator`, `director`, `exec-assistant`, `exec-worker`, `loop-analysis-reviewer`, `loop-analyzer`, `manager`, `review-adjudicator` 追加）。Instruction 一覧更新（`team-leader-implement`, `dual-team-leader-implement`, `findings-manager` 削除。`loop-analysis-*`, `merge-*`, `peer-review-suite`, `final-gate`, `review-remediation`, `caccia` 追加）。Output Contract 一覧更新（`findings-manager`, `*-finding-contract` 系削除。`loop-analysis`, `merge-review`, `peer-review-suite`, `final-gate` 追加）。v0.76.1 変更点注記に更新 |
+| j5ik2o-takt-analyzer | ワークフロー構造分析チェック項目にポリシーリマインダー廃止・ステータスタグ 1-indexed・Finding Contract 廃止チェックを追加 |
+| j5ik2o-takt-optimizer | ポリシーリマインダー廃止反映（「2倍効果」記述を更新）。ループ制御改善テーブルに Finding Contract 廃止対応を追加 |
 
 ### v0.46.0 → v0.47.0（2026-06-18）
 
