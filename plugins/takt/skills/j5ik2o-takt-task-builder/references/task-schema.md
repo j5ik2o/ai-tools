@@ -33,10 +33,39 @@
 | `exceeded_max_steps` | int | - | - | exceeded時のmax_steps値（自動設定） |
 | `exceeded_current_iteration` | int | - | - | exceeded時のイテレーション数（自動設定） |
 | `run_slug` | string | - | - | 実行スラグ（タスク実行ごとの一意ID） |
-| `resume_point` | object | - | - | サブワークフロー再開ポイント（自動設定） |
+| `resume_point` | object | - | - | サブワークフロー再開ポイント（自動設定、codec-based、`restart_point` と排他） |
+| `restart_point` | object | - | - | 再開ポイント（codec-based、`resume_point` / `start_step` と排他） |
 | `should_publish_branch_to_origin` | boolean | - | - | ブランチをoriginにpushするか |
 | `source` | enum | - | - | タスクソース: `pr_review` / `issue` / `manual` |
 | `pr_number` | int | - | - | PR番号（`source: pr_review` 時は必須） |
+| `goal_id` | string | - | - | ゴールID |
+| `goal_purpose` | string | - | - | ゴール目的 |
+| `goal_work_key` | string | - | - | ゴール作業キー |
+| `context_pr_number` | int | - | - | コンテキストPR番号 |
+| `caccia_execution_source` | string | - | - | Caccia実行ソース |
+| `caccia_pushed_head` | string | - | - | Cacciaプッシュヘッド |
+| `merge_task` | boolean | - | - | マージタスクフラグ |
+| `merge_until` | string | - | - | マージ対象（PRのURL等） |
+| `merge_method` | enum | - | - | マージ方法: `merge` / `squash` / `rebase` |
+| `merge_concurrency` | int | - | - | マージ並行数 |
+| `merge_threat_check_max_diff_bytes` | int | - | - | マージ脅威チェック最大diffバイト数 |
+| `merge_head_repository_url` | string | - | - | マージヘッドリポジトリURL |
+| `merge_head_repository_push_urls` | array | - | - | マージヘッドリポジトリプッシュURL一覧 |
+| `merge_initial_head_sha` | string | - | - | マージ初期ヘッドSHA |
+| `merge_clone_prepared` | boolean | - | - | マージクローン準備完了 |
+| `merge_known_remote_head_sha` | string | - | - | マージ既知リモートヘッドSHA |
+| `merge_pushed_head_sha` | string | - | - | マージプッシュ済みヘッドSHA |
+| `merge_push_base_head_sha` | string | - | - | マージプッシュベースヘッドSHA |
+| `merge_push_source` | enum | - | - | マージプッシュソース |
+| `source_resume_point` | object | - | - | ソース再開ポイント（内部状態、自動設定） |
+| `deletion` | object | - | - | 削除情報（自動設定） |
+| `execution_id` | string | - | - | 実行ID（自動設定） |
+| `stop_request` | object | - | - | 停止リクエスト（自動設定） |
+| `source_run_slug` | string | - | - | ソース実行スラグ（設定時は `resume_mode` 必須） |
+| `resume_mode` | enum | - | - | 再開モード |
+| `owner_start_time` | ISO8601 | - | - | オーナー開始時刻（自動設定） |
+| `completion` | object | - | - | 完了情報（自動設定） |
+| `auto_requeue_count` | int | - | - | 自動再キュー回数 |
 
 **※ `content`, `content_file`, `task_dir` のいずれか正確に1つが必須。**
 
@@ -56,22 +85,15 @@ failure:
 - `source: pr_review` のときは `pr_number` が必須
 - `managed_pr: true` のときは `auto_pr: true` が必須
 - `managed_pr: true` のときは `worktree` を有効化する必要がある
+- `resume_point` と `restart_point` は同時に設定不可
+- `start_step` と `restart_point` は同時に設定不可
+- `source_run_slug` を設定する場合は `resume_mode` も必須
 
 ## resume_point オブジェクト
 
-```yaml
-resume_point:
-  version: 1
-  stack:
-    - workflow: child-workflow
-      workflow_ref: references/takt/builtins/ja/workflows/default.yaml   # 任意
-      step: review
-      kind: workflow_call   # agent / system / workflow_call
-  iteration: 12
-  elapsed_ms: 38124
-```
-
-サブワークフロー再開用の内部状態。手動作成対象ではなく、自動設定値として扱う。
+サブワークフロー再開用の内部状態（codec-based）。手動作成対象ではなく、自動設定値として扱う。
+スタック構造（`workflow`、`step`、`kind`）やイテレーション・経過時間が格納されている。
+詳細な構造は `WorkflowResumePointCodecSchema` を参照（バージョンにより変更あり）。
 
 ## ステータス遷移と不変条件
 
@@ -92,6 +114,8 @@ pending ──→ running ──→ completed
 | exceeded_current_iteration | - | - | - | - | 必須※ | - |
 
 **※ `exceeded_max_steps` と `exceeded_current_iteration` は両方同時に設定するか、両方省略する。**
+
+**※ `goal_id` が設定されていて `failure.retryable` が `false` の場合、`failed` 状態でも `started_at` および `completed_at` が null になることがある。**
 
 ## task_dir パス形式
 

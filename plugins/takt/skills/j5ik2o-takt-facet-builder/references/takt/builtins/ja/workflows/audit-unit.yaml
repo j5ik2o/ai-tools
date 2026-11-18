@@ -1,16 +1,13 @@
 name: audit-unit
 description: ユニットテストの全件監査。振る舞いとカバレッジ不足を棚卸しし、コード修正なしで Issue 直貼り可能なレポートを作成する
-workflow_config:
-  provider_options:
-    codex:
-      network_access: true
-    opencode:
-      network_access: true
+capabilities: readonly
 max_steps: 12
 initial_step: plan
 
 loop_monitors:
-  - cycle: [supervise, review]
+  - cycle:
+      - supervise
+      - review
     threshold: 3
     judge:
       persona: supervisor
@@ -29,11 +26,15 @@ loop_monitors:
 
 steps:
   - name: plan
+    description: 本番コードの振る舞いと既存の単体テストを対応付け、監査対象と不足テストの優先順位を整理する
     tags:
       - plan
     edit: false
     persona: test-planner
-    policy: testing
+    policy:
+      - contract-change
+      - testing
+      - architecture
     knowledge:
       - architecture
       - unit-testing
@@ -51,13 +52,16 @@ steps:
         next: ABORT
 
   - name: audit
+    description: 対象の本番コードと単体テストを分担して並列に監査し、カバー済みと未カバーの振る舞いを記録する
     tags:
       - review
     edit: false
     persona: testing-reviewer
     policy:
+      - contract-change
       - review
       - testing
+      - architecture
     knowledge:
       - architecture
       - unit-testing
@@ -75,11 +79,16 @@ steps:
         next: supervise
 
   - name: supervise
+    description: 単体テスト監査の網羅性・根拠・Issue 化できる具体性を確認し、完了か再監査かを判定する
     tags:
       - review
+      - supervise
     edit: false
     persona: supervisor
-    policy: review
+    policy:
+      - contract-change
+      - review
+      - testing
     knowledge:
       - unit-testing
     instruction: unit-audit-supervise
@@ -91,11 +100,13 @@ steps:
         next: review
 
   - name: review
+    description: 未監査または根拠不足のコードと振る舞いを再監査し、既存レポートへ結果を統合する
     tags:
       - review
     edit: false
     persona: testing-reviewer
     policy:
+      - contract-change
       - review
       - testing
     knowledge:

@@ -1,5 +1,7 @@
 # Faceted Prompting: Separation of Concerns for AI Prompts
 
+[日本語](./faceted-prompting.ja.md)
+
 ## The Problem
 
 As multi-agent systems grow complex, prompts become monolithic. A single prompt file contains the agent's role, behavioral rules, task-specific instructions, domain knowledge, and output format — all tangled together. This creates three problems:
@@ -29,17 +31,23 @@ Faceted Prompting decomposes prompts into five orthogonal concerns:
 Each concern is a standalone file (Markdown or template) stored in its own directory:
 
 ```
-workflows/       # Workflow definitions
-personas/        # WHO — role definitions
-policies/        # RULES — prohibitions, quality standards
-instructions/    # WHAT — step procedures
-knowledge/       # CONTEXT — reference materials
-output-contracts/ # OUTPUT — output contract templates
+builtins/{lang}/
+  workflows/           # Workflow definitions
+  facets/
+    personas/          # WHO — role definitions
+    policies/          # RULES — prohibitions, quality standards
+    instructions/      # WHAT — step procedures
+    knowledge/         # CONTEXT — reference materials
+    output-contracts/  # OUTPUT — output contract templates
+    partials/          # Shared fragments referenced by other facets
+
+~/.takt/facets/<type>/   # User overrides (same facet types)
+.takt/facets/<type>/     # Project overrides (highest priority)
 ```
 
 ### Placement and Typical Examples
 
-An LLM has only two slots: **system prompt** and **user message**. The five concerns map to these two slots.
+In a typical TAKT agent step, Persona goes into the system prompt. Knowledge, Instruction, Output Contract, and Policy are assembled into the user message. This diagram shows the facet portions; the actual message also contains the task, execution rules, and prior step results.
 
 ```
 System Prompt:
@@ -56,9 +64,9 @@ User Message:
   └──────────────────────────────────────────────────┘
 ```
 
-Persona is the agent's **identity** — it doesn't change across tasks. Placing it in the system prompt shapes all LLM responses. The remaining four change per step and are composed into the user message.
+Persona defines the agent's role and is kept separate from step-specific instructions in the system prompt. The remaining four are composed into the user message for each step.
 
-Placing Policy at the end of the user message is a deliberate design choice. LLMs are strongly influenced by what they read last (recency effect). Constraints such as prohibitions and REJECT criteria are more likely to be followed when placed immediately before output generation. The flow of Knowledge → Instruction → Policy also follows a natural cognitive order: "understand the context → understand the task → confirm the constraints."
+TAKT's Phase 1 message places Policy after the reference material and step instructions, as shown in the `perform_phase1_message` template. Placement alone does not guarantee compliance; use workflow permissions and routing rules for constraints that must be enforced.
 
 Below are typical file examples for each facet.
 
@@ -332,14 +340,14 @@ Key properties:
 ```yaml
 name: my-workflow
 max_steps: 10
-initial_step: plan
+initial_step: implement
 
 steps:
   - name: implement
-    persona: coder            # WHO — builtins/{lang}/personas/coder.md
-    policy: coding            # RULES — builtins/{lang}/policies/coding.md
-    instruction: implement    # WHAT — builtins/{lang}/instructions/implement.md
-    knowledge: architecture   # CONTEXT — builtins/{lang}/knowledge/architecture.md
+    persona: coder            # WHO — builtins/{lang}/facets/personas/coder.md
+    policy: coding            # RULES — builtins/{lang}/facets/policies/coding.md
+    instruction: implement    # WHAT — builtins/{lang}/facets/instructions/implement.md
+    knowledge: architecture   # CONTEXT — builtins/{lang}/facets/knowledge/architecture.md
     edit: true
     rules:
       - condition: Implementation complete
@@ -348,12 +356,12 @@ steps:
   - name: review
     persona: architecture-reviewer   # Different WHO
     policy: review            # Different RULES
-    instruction: review       # Different WHAT (but could share)
+    instruction: review-arch  # Different WHAT (but could share)
     knowledge: architecture   # Same CONTEXT — reused
     output_contracts:
       report:
         - name: review.md
-          format: architecture-review # OUTPUT — builtins/{lang}/output-contracts/architecture-review.md
+          format: architecture-review # OUTPUT — builtins/{lang}/facets/output-contracts/architecture-review.md
     edit: false
     rules:
       - condition: Approved
@@ -372,7 +380,9 @@ Facet files for instructions, policies, knowledge, and output contracts can inhe
 Additional project-specific instructions.
 ```
 
-The canonical form has no space after the colon (`{extends:fix}`), but `{extends: fix}` is also accepted. The parent name must be a bare facet name; path references and `@scope` references are not supported for inheritance. The current source file is excluded from parent lookup, so a project-level `fix.md` can extend the lower-layer `fix.md` without recursively reading itself. Persona facets do not support inheritance.
+Name the facet to inherit. For example, `{extends:fix}` in a project's `fix.md` inherits the lower-layer `fix.md` and adds project instructions. Persona facets cannot inherit another facet.
+
+A workflow step's `instruction` accepts one instruction or an array. You can combine facet references and inline instructions. Use `{{include:instructions/<name>}}` to reuse instructions and `{{include:output-contracts/<name>}}` to reuse output contracts. `default`, `takt-default`, and `takt-default-team` use `scenario-based-*` facets to carry requirement scenarios from planning through final checks.
 
 ## How It Differs from Existing Approaches
 
@@ -400,7 +410,7 @@ The key distinction: existing approaches either decompose *tasks* (what to do) o
 
 **For the engine:**
 - Prompt assembly is deterministic — given the same workflow definition and files, the same prompt is built
-- Policy placement can be optimized (e.g., placed at the end to leverage recency effect for better constraint adherence)
+- Facet placement and composition can be applied consistently at runtime
 - Concerns can be injected, omitted, or overridden per step without touching other parts
 
 ## Summary

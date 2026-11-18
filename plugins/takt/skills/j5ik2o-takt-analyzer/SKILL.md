@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.76.1
 
 ## 参照資料
 
@@ -70,6 +70,9 @@ description: >
 | provider_options構造 | `allowed_tools` がトップレベルではなく `provider_options.claude.allowed_tools` に配置されているか（v0.30.0〜） | Warning |
 | provider_options.$ref 廃止 | `provider_options.$ref` を使用していないか（v0.47.0〜）。`extends` に移行が必要 | Warning |
 | provider_routing 移行 | `persona_providers` を使用していないか（v0.47.0〜非推奨）。`provider_routing`（`personas`/`tags`/`steps` 軸）を使用すべき | Warning |
+| Finding Contract 廃止 | `finding_contract:` セクション、`findings-manager` ペルソナ/instruction/output-contract を使用していないか（v0.76.1〜廃止） | Warning |
+| ステータスタグ 1-indexed | タグ条件が `[STEP:0]` 等の 0-indexed 形式を参照していないか（v0.76.1〜 `[STEP:1]` 開始） | Warning |
+| ポリシーリマインダー不要 | ポリシーがプロンプト末尾に重複注入されることを前提とした記述（「2回注入される」等）がファセットに残っていないか（v0.76.1〜廃止） | Info |
 | edit権限 | `edit: true`のステップに適切な`required_permission_mode`があるか | Info |
 | session設定 | 実装系ステップに`session: refresh`があるか | Info |
 
