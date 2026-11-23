@@ -1,6 +1,6 @@
 [tools]
 "github:microsoft/apm" = "latest"
-node = "24"
+node = "26"
 python = "3"
 "npm:@fission-ai/openspec" = "1.7.0"
 
