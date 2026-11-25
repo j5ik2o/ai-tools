@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.77.0
 
 ## 参照資料
 
@@ -184,27 +184,33 @@ description: >
 
 `step_complete` レコードの `matchedRuleMethod` は、ルール評価エンジンがどの手法でルールをマッチさせたかを示す。
 
-**評価順序（フォールバックチェーン）:**
+**評価順序（v0.77.0〜 YAML記述順 first-match）:**
 
 ```
-1. aggregate     → all()/any() による並列サブステップ集約
-2. phase3_tag    → Phase 3 出力からのタグ検出
-3. phase1_tag    → Phase 1 出力からのタグ検出（フォールバック）
-4. ai_judge      → ai() 条件のみをAI判定
-5. ai_judge_fallback → 全条件をAI判定（最終フォールバック）
+1. machine       → when: 式による決定論的条件（AI 不要、先行評価）
+2. auto_select   → ルールが1つのみの場合の自動選択
+3. structured_output → 構造化出力スキーマによる判定
+4. aggregate     → all()/any() による並列サブステップ集約
+5. phase3_tag    → Phase 3 出力からのタグ検出（セマンティックラベル選出）
+6. phase1_tag    → Phase 1 出力からのタグ検出（フォールバック）
+7. ai_judge      → ai() 条件のみをAI判定
+8. ai_judge_fallback → 全条件をAI判定（最終フォールバック）
 ```
+
+**重要**: v0.77.0 からルールはYAML記述順で評価され、最初にマッチしたルールが選ばれる（first-match）。`when:` による machine conditions はAI判定なしで先行評価される。セマンティックラベルの選出優先順は「構造化出力 → タグ → AI judge」。
 
 **手法別の特性:**
 
 | method | コスト | 信頼性 | 説明 |
 |--------|--------|--------|------|
+| `machine` | なし | 最高 | `when:` 式による決定論的条件（AI不要） |
+| `auto_select` | なし | 高 | ルールが1つのみの場合の自動選択 |
+| `structured_output` | なし | 高 | 構造化出力スキーマによる判定 |
 | `aggregate` | なし | 高 | 並列サブステップの完了状態で判定 |
 | `phase3_tag` | なし | 高 | 出力テンプレートのタグで確定的に判定 |
 | `phase1_tag` | なし | 中 | エージェント応答からタグ検出 |
 | `ai_judge` | API 1回 | 中 | `ai()` 条件のみをAI判定 |
 | `ai_judge_fallback` | API 1回 | 低 | 全条件をAI判定（タグ検出失敗時） |
-| `auto_select` | なし | 高 | ルールが1つのみの場合の自動選択 |
-| `structured_output` | なし | 高 | 構造化出力による判定 |
 
 > `ai_judge_fallback` の頻度が高い場合、output-contract にタグ出力指示を追加すべき。
 > `step_start` には `providerOptions` / `providerOptionsSources` も入るため、期待と異なる provider / effort 解決の原因分析に使える。

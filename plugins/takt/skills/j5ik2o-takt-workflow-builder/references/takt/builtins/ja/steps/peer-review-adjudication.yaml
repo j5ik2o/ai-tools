@@ -1,0 +1,16 @@
+name: review-adjudication
+description: レビューの指摘を証拠と照合し、今回修正する対象を確定する
+capabilities: readonly
+tags:
+  - adjudication
+edit: false
+persona: review-adjudicator
+policy: review-adjudication
+knowledge: review-adjudication
+pass_previous_response: false
+instruction:
+  - adjudicate-review-findings
+output_contracts:
+  report:
+    - name: review-resolution.md
+      format: review-decision
