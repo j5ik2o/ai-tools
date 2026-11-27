@@ -123,6 +123,7 @@ jobs:
           git status --short
 
       - name: Create pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v8
         with:
           # PERSONAL_ACCESS_TOKEN（PAT）により、作成された PR 上で他の CI（validate-plugins 等）が起動する。
@@ -141,3 +142,23 @@ jobs:
             - リリースノート: https://github.com/nrslib/takt/releases/tag/${{ needs.check.outputs.new_version }}
 
             このPRは `.github/workflows/takt-skill-auto-update.yml` により自動生成されました。内容をレビューの上マージしてください。
+
+      - name: Close superseded update PRs
+        if: steps.cpr.outputs.pull-request-url != ''
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          NEW_BRANCH: ${{ needs.check.outputs.branch }}
+          NEW_PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+        run: |
+          # 同じ種類（chore/update-takt-skills-for-v*）の古い open PR を、新しい PR のリンクを添えて閉じる
+          gh pr list --repo "${{ github.repository }}" --state open --limit 100 \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("chore/update-takt-skills-for-v")) | "\(.number) \(.headRefName)"' \
+            | while read -r number head; do
+                if [ "$head" = "$NEW_BRANCH" ]; then
+                  continue
+                fi
+                echo "Closing #$number ($head), superseded by $NEW_PR_URL"
+                gh pr close "$number" --repo "${{ github.repository }}" \
+                  --comment "新しい版の自動更新 PR に置き換わったため閉じます: $NEW_PR_URL"
+              done
