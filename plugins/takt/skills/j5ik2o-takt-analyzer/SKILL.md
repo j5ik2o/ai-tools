@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローとファセットを分析し、問題点の検出と改善提案を行う。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.77.0
 
 ## 参照資料
 
@@ -67,8 +67,7 @@ description: >
 | supervise失敗の遷移先 | `supervise` の失敗ルールが `plan` に遷移していないか。修正可能な問題は `fix` へ遷移すべきで、`supervise → plan` は根本設計変更が必要な場合のみ | Warning |
 | CI実行の責任配置 | `supervise`/`ai_review` 等の `edit: false` ステップのインストラクションがCIの直接実行を禁止し、`fix`/`implement` のレポート証跡確認のみを求めているか | Warning |
 | command quality gate | `quality_gates` の `type: command` が agent step にだけ置かれ、config 側で `workflow_command_gates.custom_scripts: true` が有効化されているか | Warning |
-| provider_options構造 | `allowed_tools` がトップレベルではなく `provider_options.claude.allowed_tools` に配置されているか（v0.30.0〜） | Warning |
-| provider_options.$ref 廃止 | `provider_options.$ref` を使用していないか（v0.47.0〜）。`extends` に移行が必要 | Warning |
+| 削除された実行設定 | `workflow_config.provider` / `model` / `provider_options`、step の `provider` / `model` / `provider_options`、`workflow_call.overrides` が残っていないか（v0.77.0〜 ロード時に拒否）。ツール許可は `capabilities`、provider・model・effort は `runtime.yaml` へ移す | Critical |
 | provider_routing 移行 | `persona_providers` を使用していないか（v0.47.0〜非推奨）。`provider_routing`（`personas`/`tags`/`steps` 軸）を使用すべき | Warning |
 | edit権限 | `edit: true`のステップに適切な`required_permission_mode`があるか | Info |
 | session設定 | 実装系ステップに`session: refresh`があるか | Info |
@@ -184,29 +183,31 @@ description: >
 
 `step_complete` レコードの `matchedRuleMethod` は、ルール評価エンジンがどの手法でルールをマッチさせたかを示す。
 
-**評価順序（フォールバックチェーン）:**
+**評価順序（v0.77.0〜 YAML記述順 first-match）:**
+
+ルール種別による固定の優先順位はない。`RuleEvaluator.evaluate()` は `rules` を YAML の上から順に調べ、最初に成立したルールを選ぶ。前方の semantic 条件が成立すれば、後方の `when` 条件は評価されない。どのルールも成立しなければ `rule_no_match` で中断する。
+
+semantic 条件（ラベル）の成否は、ステップごとに1回だけ行われるラベル選出の結果で決まる。選出は次の段階で進む（`phase_judge_stage` の `stage` 1〜3）。
 
 ```
-1. aggregate     → all()/any() による並列サブステップ集約
-2. phase3_tag    → Phase 3 出力からのタグ検出
-3. phase1_tag    → Phase 1 出力からのタグ検出（フォールバック）
-4. ai_judge      → ai() 条件のみをAI判定
-5. ai_judge_fallback → 全条件をAI判定（最終フォールバック）
+1. structured_output → 構造化出力スキーマでラベルを選ぶ
+2. phase3_tag        → Phase 3 出力のタグからラベルを選ぶ
+3. ai_judge          → AI judge でラベルを選ぶ（最終段）
 ```
 
-**手法別の特性:**
+**手法別の特性（`matchedRuleMethod` に記録される値）:**
 
-| method | コスト | 信頼性 | 説明 |
-|--------|--------|--------|------|
-| `aggregate` | なし | 高 | 並列サブステップの完了状態で判定 |
-| `phase3_tag` | なし | 高 | 出力テンプレートのタグで確定的に判定 |
-| `phase1_tag` | なし | 中 | エージェント応答からタグ検出 |
-| `ai_judge` | API 1回 | 中 | `ai()` 条件のみをAI判定 |
-| `ai_judge_fallback` | API 1回 | 低 | 全条件をAI判定（タグ検出失敗時） |
-| `auto_select` | なし | 高 | ルールが1つのみの場合の自動選択 |
-| `structured_output` | なし | 高 | 構造化出力による判定 |
+| method | コスト | 信頼性 | 記録される場面 |
+|--------|--------|--------|----------------|
+| `structured_output` | なし | 高 | semantic 条件が構造化出力で選ばれたラベルで成立 |
+| `phase3_tag` | なし | 高 | semantic 条件がタグで選ばれたラベルで成立 |
+| `ai_judge` | API 1回 | 中 | semantic 条件が AI judge で選ばれたラベルで成立 |
+| `aggregate` | なし | 高 | `all()` / `any()` が並列サブステップの結果で成立 |
+| `auto_select` | なし | 最高 | `when:` 式（状態述語）が成立（AI 不要） |
 
-> `ai_judge_fallback` の頻度が高い場合、output-contract にタグ出力指示を追加すべき。
+複合条件（`approved && when(...)` 等）は左側の条件の method が記録される。旧版の `machine` / `phase1_tag` / `ai_judge_fallback` は v0.77.0 のログには出ない。
+
+> `ai_judge` の頻度が高い場合、output-contract にタグ出力指示を追加すべき。
 > `step_start` には `providerOptions` / `providerOptionsSources` も入るため、期待と異なる provider / effort 解決の原因分析に使える。
 
 #### c) 診断分析項目
@@ -215,7 +216,7 @@ description: >
 |------|------|---------------|
 | ループホットスポット | 同一ステップの `step_start` 出現回数を集計 | 閾値超え=Warning、`loop_monitor` 未設定=Critical |
 | デッドルール | `matchedRuleIndex` の分布でマッチ0回のルールを検出 | Critical（到達不能コード） |
-| ルール評価効率 | `matchedRuleMethod` の分布を集計。`ai_judge_fallback` の割合に注目 | >50%=Warning、>80%=Critical |
+| ルール評価効率 | `matchedRuleMethod` の分布を集計。`ai_judge` の割合に注目 | >50%=Warning、>80%=Critical |
 | ABORT率 | `workflow_abort` / `workflow_complete` の比率 | >30%=Warning、>50%=Critical |
 | フェーズ別エラー | `phase_complete` の `error` フィールドを集計 | 同一フェーズで繰り返しエラー=Warning |
 | イテレーション効率 | `workflow_complete.iterations` vs `max_steps` | 常に上限近く=Warning |
@@ -235,10 +236,10 @@ description: >
 - 期間: 2026-03-01 〜 2026-03-04
 
 ### ルール評価効率
-| ステップ | phase3_tag | ai_judge | ai_judge_fallback | 改善優先度 |
-|------------|-----------|---------|-------------------|----------|
-| ai_review  | 20%       | 13%     | 67%               | 高       |
-| supervise  | 80%       | 20%     | 0%                | -        |
+| ステップ | structured_output | phase3_tag | ai_judge | 改善優先度 |
+|------------|-------------------|-----------|---------|----------|
+| ai_review  | 0%                | 33%       | 67%     | 高       |
+| supervise  | 0%                | 80%       | 20%     | -        |
 
 ### ループホットスポット
 | サイクル | 最大連続回数 | loop_monitor | 状態 |

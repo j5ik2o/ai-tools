@@ -1,18 +1,24 @@
+[English](./tutorial.md) | [日本語](./tutorial.ja.md) | [简体中文](./tutorial.zh-CN.md)
+
 # チュートリアル
 
-このチュートリアルでは、TAKT の基本的な使い方を、1 つの題材を 3 フェーズで改良しながら説明します。
+1 つの題材を 3 フェーズに分けて改良しながら、TAKT の基本的な使い方を学びます。
 
-題材は **ミニ家計メモ UI** です。最初に小さなフロントエンドを作り、次に使いやすくし、最後に表示と細部を整えます。`default` workflow はレビューやテストを含む標準構成で重めなので、最初の体験では `frontend-mini` を使います。
+題材はミニ家計メモ UI です。最初に小さなフロントエンドを作り、次に使いやすくし、最後に表示と細部を整えます。レビューやテストを含む標準の `default` workflow は処理が多いため、ここでは軽量な `frontend-mini` を使います。
+
+> **動画チュートリアル:** このチュートリアルに沿って実際に操作する様子を、
+> [Chapter 1](https://youtu.be/H_L_slDJNqs)と
+> [Chapter 2](https://youtu.be/cfM9USMkh2Y)で確認できます。
 
 ## 題材
 
-作るものは、ブラウザで動く小さな家計メモです。
+作るものはブラウザで動く小さな家計メモです。
 
-1. **フェーズ 1:** 金額・カテゴリ・メモを入力できる最小 UI を作る
-2. **フェーズ 2:** 合計金額、カテゴリ別フィルタ、削除を追加する
-3. **フェーズ 3:** モバイル表示、空状態、見た目を整える
+1. フェーズ 1: 金額・カテゴリ・メモを入力できる最小 UI を作る
+2. フェーズ 2: 合計金額、カテゴリ別フィルタ、削除、永続化を追加する
+3. フェーズ 3: モバイル表示、データがないときの表示、見た目を整える
 
-1 回で全部作らせるより、フェーズごとにタスクを積み、結果を見てから次の改善を指示する流れを体験します。
+フェーズごとにタスクを積み、結果を見てから次の改善を指示します。
 
 ## 1. GitHub なしで始める
 
@@ -26,40 +32,58 @@ git commit -m "initial commit"
 
 TAKT はタスク実行時にブランチや作業用ディレクトリを扱うため、少なくとも 1 つのコミットがある状態から始めるのが安全です。
 
+TAKT をまだインストールしていない場合は `npm install -g takt` でインストールし、provider の CLI（Claude Code など）または API キーを用意しておきます。
+
 TAKT を起動します。
 
 ```bash
 takt
 ```
 
-workflow 選択では、`frontend-mini` を選びます。表示順は環境によって多少変わりますが、`Mini` や `Frontend` のカテゴリにあります。
+初回起動時は workflow の選択前に、デフォルトのエージェントとワークフローに使う言語、続いて使用する provider を選びます。
+
+workflow 選択では`frontend-mini` を選びます。初期状態ではカテゴリだけが並びます。表示順は環境によって多少変わりますが、`frontend-mini` は `レガシー` カテゴリ配下の `フロントエンド` サブカテゴリにあります。
 
 ```text
 Select workflow:
-    🎼 default (current)
-    📁 🚀 Quick Start/
-  ❯ 📁 ⚡ Mini/
-    📁 🎨 Frontend/
+    📁 🚀 クイックスタート/
+    📁 🛠️ 開発/
+    📁 🔍 レビュー/
+    📁 🏗️ インフラストラクチャ/
+    📁 🎵 TAKT開発/
+  ❯ 📁 📦 レガシー/
 ```
+
+workflow の上で `b` キーを押すとブックマークでき、ブックマークした workflow はこの画面の先頭に `🎼 {name} [*]` として表示されます。
 
 カテゴリを開いたら、`frontend-mini` を選びます。
 
 ```text
-Select workflow:
-    default-mini
-  ❯ frontend-mini
-    backend-mini
-    dual-mini
+Select workflow in 📦 レガシー:
+    📁 ✨ Simple/
+    📁 ⚡ Mini/
+  ❯ 📁 🎨 フロントエンド/
+    📁 ⚙️ バックエンド/
+    📁 🔧 デュアル/
+    📁 🔍 レビュー/
+    🎼 cli
 ```
 
-インタラクティブモードの選択が出た場合は、まずは **アシスタント** を選びます。
+```text
+Select workflow in 🎨 フロントエンド:
+    🎼 simple-frontend
+    🎼 frontend
+  ❯ 🎼 frontend-mini
+    🎼 frontend-maintenance
+```
+
+続いてインタラクティブモードの選択が表示されます。まずは **アシスタント** を選びます。
 
 ```text
 対話モードを選択してください:
   ❯ アシスタント
+    Grill Me
     ペルソナ
-    クワイエット
-    パススルー
 ```
 
 ## 2. フェーズ 1: 最小 UI を作る
@@ -72,7 +96,7 @@ TAKT と会話して、最初のタスクを説明します。
 > まずは index.html と CSS と JavaScript のシンプルな構成で作って。
 ```
 
-TAKT が確認質問や整理を返します。内容が固まったら `/go` でタスク指示を作成します。
+TAKT が確認の質問をしたり、要件を整理したりします。内容が固まったら `/go` でタスク指示を作成します。
 
 ```text
 > /go 最初のフェーズなので、永続化や集計はまだ入れず、最小 UI に絞る
@@ -82,13 +106,17 @@ TAKT が確認質問や整理を返します。内容が固まったら `/go` �
 
 ```text
 どうしますか？
-    実行する
-    Issueを建てる
   ❯ タスクにつむ
+    Issueを建てる
+    その場で実行する
     会話を続ける
 ```
 
-`タスクにつむ` は、生成された指示を `.takt/tasks/` に保存します。すぐに現在の作業ツリーへ変更を入れたい場合は `実行する` も使えますが、通常はタスクに積んでから `takt run` で実行します。
+`タスクにつむ` が初期選択なので、Enter を押すと、生成された指示を `.takt/tasks.yaml` に保存する手順に進みます。このチュートリアルではタスクに積んでから `takt run` で実行します。
+
+`その場で実行する` を選ぶと、ワークフローが終わるまでこの TUI は使えなくなることと、通常はタスクにつんで `takt run` で実行することが案内されます。確認の既定値は N（`[y/N]`）です。y を選んだ場合だけ、カレントディレクトリで実行を始めます。N・Enter・Esc では実行せず、選択位置を保ったまま同じメニューへ戻ります。メニューで Esc を押すと会話入力へ戻ります。
+
+**タスクにつむ** を選ぶと、続いて worktree の設定を確認されます。`Auto-create PR?` の既定は Yes です。GitHub なしで進める場合は `n` を選んでください。
 
 積んだタスクを実行します。
 
@@ -105,20 +133,24 @@ takt list
 完了したタスクを選ぶと、操作メニューが出ます。まずは **View diff** で差分を確認し、その後 **Try merge** を選びます。
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
   ❯ View diff
     Instruct
+    Merge from root
+    Pull from remote
     Try merge
     Merge & cleanup
     Delete
 ```
 
-`Try merge` は、タスクブランチの変更をコミットせずに手元へ取り込みます。手元で画面や差分を確認し、問題なければ自分でコミットできます。
+`Try merge` はタスクブランチの変更をコミットせずに手元へ取り込みます。手元で画面や差分を確認し、問題なければ自分でコミットできます。
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
     Instruct
+    Merge from root
+    Pull from remote
   ❯ Try merge
     Merge & cleanup
     Delete
@@ -126,37 +158,38 @@ Completed task actions:
 
 ## 3. フェーズ 2: 機能を足す
 
-フェーズ 1 の結果を確認して、次の改善を積みます。新しいタスクとして `takt` から始めてもよいですし、完了タスクに対して `takt list` の **Instruct** を使ってもよいです。
+フェーズ 1 の結果を確認して、次の改善をタスクに積みます。`takt` から新しいタスクを作っても、`takt list` で完了タスクの **Instruct** を使っても構いません。
 
-既存結果を踏まえて改善する場合は、`takt list` で完了タスクを選び、**Instruct** を選びます。
+既存結果を踏まえて改善する場合は`takt list` で完了タスクを選び、**Instruct** を選びます。
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
   ❯ Instruct
+    Merge from root
+    Pull from remote
     Try merge
     Merge & cleanup
     Delete
 ```
 
-Instruct では、前回の差分や実行レポートを踏まえて追加指示を相談できます。
+Instruct では前回の差分や実行レポートを踏まえて追加指示を相談できます。
 
 ```text
 > フェーズ 2 として、合計金額、カテゴリ別フィルタ、行の削除を追加して。
 > 入力済みデータは LocalStorage に保存して、リロードしても残るようにして。
 ```
 
-内容が固まったら `/go` します。
+内容が固まったら `/go` を実行します。
 
 ```text
 > /go 既存 UI を大きく作り直さず、今の構成に足す形にする
 ```
 
-選択肢では、再び **タスクにつむ** を選びます。
+選択肢では再び **タスクにつむ** を選びます。
 
 ```text
 どうしますか？
-    実行する
   ❯ タスクにつむ
     会話を続ける
 ```
@@ -168,11 +201,11 @@ takt run
 takt list
 ```
 
-この段階でも、まずは **View diff**、必要なら **Try merge**、気に入らなければ **Instruct** という順で進めます。
+この段階でもまずは **View diff**、必要なら **Try merge**、気に入らなければ **Instruct** という順で進めます。
 
 ## 4. フェーズ 3: 仕上げる
 
-最後に見た目と使い勝手を整えます。ここも **Instruct** で既存成果を見せながら追加指示を作るのが向いています。
+最後に見た目と使い勝手を整えます。ここでも **Instruct** を使えば、これまでの成果を踏まえて追加指示を作れます。
 
 ```text
 > フェーズ 3 として、モバイル幅でも崩れないようにして。
@@ -190,7 +223,6 @@ takt list
 
 ```text
 どうしますか？
-    実行する
   ❯ タスクにつむ
     会話を続ける
 ```
@@ -204,9 +236,11 @@ takt run
 最後に `takt list` で確認し、問題なければ **Merge & cleanup**、手元で確認してから決めたい場合は **Try merge** を使います。
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
     Instruct
+    Merge from root
+    Pull from remote
     Try merge
   ❯ Merge & cleanup
     Delete
@@ -229,7 +263,7 @@ takt list
 
 ## 5. GitHub Issue を作ってからタスクに積む
 
-GitHub リポジトリで作業している場合は、TAKT との会話から GitHub Issue を作り、その Issue をタスクとして積めます。
+GitHub リポジトリで作業している場合はTAKT との会話から GitHub Issue を作り、その Issue をタスクとして積めます。
 
 事前に GitHub CLI を認証しておきます。
 
@@ -260,16 +294,18 @@ TAKT と会話して、Issue にしたい内容を整理します。
 
 ```text
 どうしますか？
-    実行する
-  ❯ Issueを建てる
     タスクにつむ
+  ❯ Issueを建てる
+    その場で実行する
     会話を続ける
 ```
 
-Issue 作成後、その内容をタスクにも積みます。メニューから続けて保存できる場合は **タスクにつむ** を選びます。Issue 番号が分かっている場合は、次のように追加できます。
+`Issueを建てる` を選ぶと、作成前に「タスクにつみますか？ [Y/n]」と確認されます。ここでは Y または Enter で進めてください。Issue が作成され、タスクの保存と worktree の設定に進みます。n では Issue だけを作成し、タスクは保存しません。Esc では何も作らず、選択位置を保ったまま同じ提案のメニューへ戻ります。そのメニューで Esc を押すと会話入力へ戻ります。`--pr` のセッションには Issue の項目は表示されません。
+
+Issue 番号が分かっている場合は、次のように追加することもできます。
 
 ```bash
-takt add #1
+takt add '#1'
 ```
 
 あとはローカル運用と同じです。
@@ -283,15 +319,15 @@ GitHub Issue を経由すると、要件・議論・実装タスクの対応関�
 
 ## 6. Codex などと会話して Issue を作り、TAKT に渡す
 
-TAKT の外で Codex などの開発支援 AI と会話しながら Issue を作った場合も、TAKT には Issue 番号だけを渡せます。
+TAKT の外で Codex などの開発支援 AI と会話しながら Issue を作った場合もTAKT には Issue 番号だけを渡せます。
 
 まず、Codex などで GitHub Issue を作成します。ここでは `#1` が作られたとします。
 
 ```bash
-takt add #1
+takt add '#1'
 ```
 
-`takt add #1` は GitHub Issue のタイトル・本文・コメントを取得し、TAKT の pending タスクとして保存します。
+`takt add '#1'` は GitHub Issue のタイトル・本文・コメントを取得し、TAKT の pending タスクとして保存します。
 
 実行します。
 
@@ -305,7 +341,7 @@ takt run
 takt list
 ```
 
-この流れでは、Issue 作成までは普段使っている AI や GitHub 上のやり取りに任せ、実装・レビュー・修正ループを TAKT に担当させます。
+普段使っている AI や GitHub 上のやり取りで Issue を作成し、その後の実装・レビュー・修正ループを TAKT に任せる流れです。
 
 ## 次に読むもの
 

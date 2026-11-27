@@ -14,7 +14,7 @@ description: >
 
 TAKTワークフロー（ワークフローYAML）とその関連ファセットファイルを作成する。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.77.0
 
 ## 参照資料
 
@@ -55,53 +55,48 @@ taktのコードベースとドキュメントは `references/takt/` にある�
 | `backend.yaml` | plan→write_tests→implement→ai_review→reviewers→fix→supervise | バックエンド特化 |
 | `backend-cqrs.yaml` / `backend-cqrs-mini.yaml` | CQRS+ESバックエンド開発 | CQRS/ES特化 |
 | `frontend.yaml` | plan→write_tests→implement→ai_review→reviewers→fix→supervise | フロントエンド特化 |
-| `frontend-maintenance.yaml` | plan→write_tests→implement→ai_review→reviewers→fix→supervise | 既存フロントエンド保守 |
-| `backend-mini.yaml` / `dual-mini.yaml` / `dual-cqrs-mini.yaml` / `frontend-mini.yaml` | plan→implement→supervise | 最小構成 |
-| `review-default.yaml` / `review-backend.yaml` / `review-dual.yaml` / `review-frontend.yaml` | レビューワークフロー | コードレビュー |
-| `review-fix-default.yaml` / `review-fix-backend.yaml` / `review-fix-dual.yaml` / `review-fix-frontend.yaml` | レビュー→修正ループ | レビュー＋修正 |
-| `takt-default.yaml` / `review-takt-default.yaml` / `review-fix-takt-default.yaml` | TAKT開発用 | TAKT開発 |
-| `takt-default-with-fc.yaml` | Finding Contract付き takt-default（plan→write_tests→draft→peer-review-with-fc→supervise） | TAKT開発（Finding Contract有効） |
-| `peer-review-with-fc.yaml` | Finding Contract付き peer-review（6並列レビュー + findings-manager照合）、`callable: true` | Finding Contract付き peer-review |
+| `frontend-maintenance.yaml` | 既存フロントエンド保守スコープ | フロントエンド保守 |
+| `backend-maintenance.yaml` | 既存バックエンド保守スコープ | バックエンド保守 |
+| `maintenance.yaml` | 汎用保守ワークフロー | 保守全般 |
+| `backend-mini.yaml` / `dual-mini.yaml` / `dual-cqrs-mini.yaml` / `frontend-mini.yaml` | plan→implement→supervise | 最小構成（開発系） |
+| `mini-core.yaml` | 最小コア構成 | 最小構成（コア） |
+| `simple.yaml` | シンプル実装 | 軽量実装 |
+| `simple-backend.yaml` / `simple-core.yaml` / `simple-cqrs.yaml` / `simple-dual.yaml` / `simple-dual-cqrs.yaml` / `simple-frontend.yaml` / `simple-mini.yaml` | simple 系バリアント | 軽量実装（特化） |
+| `pure.yaml` | 純粋なコアフロー | 純粋実装 |
+| `cli.yaml` | CLI ツール向け | CLI 開発 |
+| `development-core.yaml` | コア開発フロー | 開発コア |
+| `development-implement.yaml` / `development-implement-dynamic.yaml` / `development-implement-team.yaml` | 実装フロー（通常/動的/チーム） | 実装特化 |
+| `development-remediation.yaml` / `development-remediation-dynamic.yaml` / `development-remediation-team.yaml` | 修正フロー（通常/動的/チーム） | 修正特化 |
+| `development-review.yaml` | 開発レビューフロー | 開発レビュー |
+| `review.yaml` / `review-fix.yaml` / `review-fix-simple.yaml` | レビュー / レビュー→修正 | コードレビュー |
+| `review-backend.yaml` / `review-dual.yaml` / `review-frontend.yaml` | バックエンド/デュアル/フロントエンドレビュー | コードレビュー（特化） |
+| `review-fix-backend.yaml` / `review-fix-dual.yaml` / `review-fix-frontend.yaml` | レビュー→修正（特化系） | レビュー＋修正 |
+| `review-remediation.yaml` | レビュー→修正（リメディエーション） | 修正ループ |
+| `single-review-suite.yaml` | 単一レビュースイート | レビュースイート |
+| `peer-review-suite-base.yaml` / `peer-review-suite-cqrs.yaml` / `peer-review-suite-frontend.yaml` / `peer-review-suite-frontend-cqrs.yaml` | ピアレビュースイート（基本/CQRS/フロントエンド系） | ピアレビュー |
+| `final-gate.yaml` | 最終ゲート | リリースゲート |
+| `loop-analysis.yaml` | ループ分析フロー | ループ分析 |
+| `merge-prepare.yaml` | マージ前準備 | マージ前 |
+| `merge-review.yaml` / `merge-review-ci.yaml` / `merge-review-fix.yaml` / `merge-review-fix-simple.yaml` | マージレビュー（通常/CI/修正） | マージレビュー |
+| `caccia.yaml` | Caccia 自動化フロー | Caccia |
+| `takt-default.yaml` / `review-takt-default.yaml` / `review-fix-takt-default.yaml` | TAKT 開発用 | TAKT 開発 |
+| `takt-default-team.yaml` | チーム構成 TAKT 開発 | TAKT チーム開発 |
+| `takt-development-review.yaml` | TAKT 開発レビュー | TAKT レビュー |
+| `auto-improvement-loop.yaml` | system step と `managed_pr` を使う自己改善ループ | 自己改善 |
+| `workflow-maker.yaml` | ワークフロー自動生成 | ワークフロー作成 |
 | `audit-architecture.yaml` / `audit-architecture-backend.yaml` / `audit-architecture-dual.yaml` / `audit-architecture-frontend.yaml` | アーキテクチャ監査 | 品質監査 |
 | `audit-e2e.yaml` / `audit-security.yaml` / `audit-unit.yaml` | E2E/セキュリティ/ユニットテスト監査 | 品質監査 |
 | `terraform.yaml` | インフラストラクチャ | Terraform |
 | `research.yaml` / `deep-research.yaml` | 調査・研究 | リサーチ |
 | `magi.yaml` / `compound-eye.yaml` | 特殊構成 | 多視点分析 |
 
-**v0.42.0 で追加・拡張された代表例**:
-- `default-draft.yaml`, `draft.yaml`: managed PR 前提のドラフト運用
-- `default-high.yaml`: 深めのレビュー・検証を含む高負荷プロファイル
-- `default-mini.yaml`: 標準系の最小構成
-- `default-peer-review.yaml`, `peer-review.yaml`: peer review を明示した分岐
-- `auto-improvement-loop.yaml`: system step と `managed_pr` を使う自己改善ループ
-- `review-backend-cqrs.yaml`, `review-dual-cqrs.yaml`, `review-fix-backend-cqrs.yaml`, `review-fix-dual-cqrs.yaml`: CQRS 系 review / review-fix
-- `takt-default-refresh-fast.yaml`, `takt-default-refresh-all.yaml`: TAKT 自身の refresh 系ワークフロー
-
-**v0.43.0 で追加・拡張された代表例**:
-- `frontend-maintenance.yaml`: 既存システム尊重・保守スコープ管理を前提にしたフロントエンド保守ワークフロー
-- `default-peer-review.yaml`, `peer-review.yaml`: `coding-review` 並列レビューを追加
-- `quality_gates` の `type: command`: step 完了後に worktree 内でコマンド gate を実行可能（設定で `workflow_command_gates.custom_scripts: true` が必要）
-
-**v0.44.0 で追加・拡張された代表例**:
-- `coding-review` 並列レビュー（`coding-reviewer` ペルソナ + `review-coding` instruction + `coding-review` output contract）を全ビルトイン review / review-fix / 開発系ワークフロー（backend, frontend, dual, terraform とその variants）の並列レビュー段に拡大。意図的に最小構成の `*-mini` と `compound-eye` は対象外
-- 新 provider `kiro`（kiro-cli）追加。provider 指定可能箇所（config の `provider`、`provider_options.<provider>` 等）で `kiro` を利用可能。初期実装では `model` を CLI フラグとして渡さない
-
-**v0.46.0 で追加・拡張された代表例**:
-- `requirements-reviewer` ペルソナ・`review-requirements` instruction・`requirements-review` output contract を削除。代わりに新設の `pure-reviewer` ペルソナ（`review-pure` instruction + `pure-review` output contract）が peer-review / review / review-fix 系ワークフローへ組み込まれた。`pure-reviewer` は専門領域に閉じず「今マージしてよいか」のみを判断する汎用レビュアー
-- `provider_options.$ref` 対応。`provider_options` ブロックをワークフローファイルからの相対パスで共通 YAML に外出しできる（inline 値が同じ leaf を上書き）
-- ビルトイン `provider-options/` プリセット追加（`provider-options/edit.yaml`, `review-files.yaml`, `review-readonly.yaml`, `review-web.yaml`）。これらを `$ref` で参照することで claude / opencode 双方の `allowed_tools` を一括指定可能
-- `provider_options.opencode.allowed_tools` 追加。OpenCode のツール許可リストを step / workflow 単位で指定可能（ツール名は `read`, `glob`, `grep`, `bash`, `websearch`, `webfetch` のように lowercase）
-- `provider_options.kiro.agent` 追加。Kiro CLI の custom agent 名を step / workflow 単位で指定可能（`kiro-cli chat --agent` として渡される。`TAKT_PROVIDER_OPTIONS_KIRO_AGENT` 環境変数でも指定可能）
-- `team_leader.max_parts` → `max_concurrency`（上限 3） + `max_total_parts`（上限 20）に分割（旧 `max_parts` は `max_concurrency` の互換エイリアスとして引き続き受け付ける）
-
-**v0.47.0 で追加・拡張された代表例**:
-- **BREAKING**: `provider_options.$ref` → `provider_options.extends` にリネーム。値もファイルパス（`provider-options/edit.yaml`）から bare name（`edit`）へ変更。旧 `$ref` は無効になるため、カスタムワークフローは `extends` に移行が必要
-- **BREAKING**: `persona_providers` が非推奨。代わりに `provider_routing`（プロジェクト/グローバル設定）を使用する。`provider_routing.personas`（raw ペルソナキーで照合）、`provider_routing.tags`（step tags で照合）、`provider_routing.steps`（step 名で照合）の3軸でルーティング可能。解決優先順: step > `provider_routing.steps` > `provider_routing.tags` > `provider_routing.personas` > `persona_providers`（非推奨）> workflow > CLI
-- ビルトイン `provider-options/` ディレクトリが `builtins/{lang}/workflows/provider-options/` から `builtins/{lang}/provider-options/` へ移動。`extends: edit` のように bare name で参照する（3層リゾルバー: `.takt/provider-options/` → `~/.takt/provider-options/` → builtin）
-- Finding Contract（`finding_contract:` セクション）追加。review findings の構造化ライフサイクル管理（ledger、severity、deduplication）。新ワークフロー `takt-default-with-fc`（Finding Contract付き takt-default）・`peer-review-with-fc`（Finding Contract付き peer-review）を追加
-- Step tags（`tags:` フィールド）をステップ・parallel サブステップに追加可能。全ビルトインワークフローが `plan`, `coding`, `review`, `implementation`, `edit` 等のタグを持つ。`provider_routing.tags` でタグ単位のプロバイダー/モデル指定に使用
-- `peer-review-with-fc.yaml`: Finding Contract 有効版 peer-review（6並列 + findings-manager による照合）。`subworkflow: { callable: true }` で `takt-default-with-fc` から呼び出される
-- Trace discovery 強化（`WorkflowTraceTaskMetadata`）: タスクメタデータ（source, issue/PR番号, branch, slug, summary）が OTel span・trace discovery に伝播され、Grafana Tempo 等で実行と関連付け可能に
+**v0.77.0 の主な変更点**:
+- **削除**: `default-draft`, `default-high`, `default-mini`, `default-peer-review`, `draft`, `peer-review-with-fc`, `review-default`, `review-fix-default`, `takt-default-refresh-all`, `takt-default-refresh-fast`, `takt-default-with-fc`
+- **追加**: `development-*`, `simple-*`, `merge-*`, `peer-review-suite-*`, `loop-analysis`, `final-gate`, `caccia`, `cli`, `workflow-maker`, `takt-default-team`, `takt-development-review`, `maintenance`, `backend-maintenance` 等（40本超）
+- **Finding Contract 機能削除**: `peer-review-with-fc`, `takt-default-with-fc` と関連ファセット（`findings-manager` 系）が削除された。`finding_contract:` ブロックは現バージョンでは使用不可
+- **`capabilities` キーワード追加**: ワークフロー YAML で provider option を指定できるのは `capabilities`（プリセット名の参照のみ）だけになった。ビルトインプリセットは `readonly` / `edit` / `enable-skills`
+- **実行設定の削除**: `workflow_config.provider` / `model` / `provider_options`、step の `provider` / `model` / `provider_options`、`workflow_call.overrides` はロード時に拒否される。provider・model・effort 等は `runtime.yaml` に移す
+- **`uses: <name>` ステップフラグメント**: `steps/<name>.yaml` に置いた step 定義を名前で参照して再利用可能（v0.77.0〜）
 
 **再利用判断**: ビルトインのファセットで足りる場合はカスタムファセットを作らない。
 
@@ -115,11 +110,8 @@ description: ワークフローの説明
 max_steps: 30
 initial_step: plan
 
-# ワークフロー全体の設定
-workflow_config:
-  provider_options:
-    codex:
-      network_access: true
+# ワークフロー全体の既定ケーパビリティ（v0.77.0〜。step の capabilities は既定値を置き換える）
+capabilities: readonly  # ビルトイン: readonly / edit / enable-skills
 
 # セクションマップ（カスタムファセットがある場合のみ）
 personas:
@@ -138,15 +130,7 @@ steps:
     edit: false
     persona: planner          # ビルトイン参照（bare name）
     knowledge: architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
-          - WebSearch
-          - WebFetch
+    capabilities: readonly    # 読み取り・検索・シェル・Web 検索
     instruction: plan
     output_contracts:
       report:
@@ -160,6 +144,8 @@ steps:
 
   - name: implement
     edit: true
+    required_permission_mode: edit
+    capabilities: edit        # readonly の既定値を上書きし Edit / Write を許可する
     persona: coder
     policy: [coding, testing]
     session: refresh
@@ -169,18 +155,17 @@ steps:
         next: review
 ```
 
-**`provider_options.extends` による共通化（v0.47.0〜、旧 `$ref` は廃止）**: `provider_options` は bare name でビルトインプリセットや `.takt/provider-options/` のカスタム YAML を参照できる。inline 値が同じ leaf を上書きする。ビルトインプリセット: `edit`, `review-readonly`, `review-files`, `review-web`。
+**`capabilities` によるツール許可（v0.77.0〜、step の `provider_options` は廃止）**: `capabilities` はプリセット名（または名前のリスト）だけを受け付け、inline の options ブロックは書けない。プリセットは `.takt/provider-options/` → `~/.takt/provider-options/` → builtin の順に解決される。受け付ける leaf は `allowed_tools` / `network_access` / `sandbox` / `skills` のみで、`effort` や `base_url` 等を含むプリセットはロード時に失敗する（それらは `runtime.yaml` に書く）。`edit: true` だけでは Edit / Write は許可されないため、編集するステップには `capabilities: edit` を付ける。
 
 ```yaml
-# プリセットを参照（claude + opencode の両方に allowed_tools が設定される）
-provider_options:
-  extends: review-readonly
+# ワークフロー既定は readonly、実装ステップだけ edit + skills
+capabilities: readonly
 
-# プリセットを参照しつつ一部を上書き
-provider_options:
-  extends: edit
-  opencode:
-    allowed_tools: [read, grep, bash]
+steps:
+  - name: implement
+    capabilities: [edit, enable-skills]   # リストは左から右にマージ（後勝ち）
+
+# 独自のツール許可はプリセット YAML（.takt/provider-options/<name>.yaml）を作って名前で参照する
 ```
 
 **注意**: 旧用語エイリアス（`movements`, `initial_movement`, `max_movements`, `piece_config`, `piece_categories`）は引き続き使用不可。正式名のみ使用する。
@@ -203,12 +188,16 @@ provider_options:
         rules:
           - condition: approved
           - condition: needs_fix
-      - name: qa-review
+      - name: testing-review
         edit: false
         tags: [review]
-        persona: qa-reviewer
-        policy: [review, qa]
-        instruction: review-qa
+        persona: testing-reviewer
+        policy: [review, testing]
+        instruction: review-test
+        output_contracts:
+          report:
+            - name: 06-testing-review.md
+              format: testing-review
         rules:
           - condition: approved
           - condition: needs_fix
@@ -221,52 +210,6 @@ provider_options:
 
 **注意**: サブステップの `rules` は結果分類用。`next` は無視され、親の `rules` が遷移先を決定する。
 
-#### Finding Contract 例（v0.47.0〜）
-
-ワークフロートップレベルに `finding_contract:` を追加すると、review findings の構造化ライフサイクル管理（ledger、severity、deduplication）が有効になる。`peer-review-with-fc.yaml` のような callable ワークフローを `call:` ステップで呼び出す構成が推奨。
-
-```yaml
-name: takt-default-with-fc
-description: Finding Contract付きワークフロー例
-initial_step: plan
-max_steps: 30
-
-finding_contract:
-  ledger_path: .takt/findings-ledger.yaml      # 既知/修正済みfindingを蓄積するledger
-  raw_findings_path: .takt/raw-findings.yaml   # レビュー結果の生findings出力先
-  manager:
-    persona: findings-manager                   # ビルトイン: finding照合・判定ペルソナ
-    instruction: findings-manager               # ビルトイン: findings-manager instruction
-    output_contract: findings-manager           # ビルトイン: findings-manager output contract
-
-steps:
-  - name: plan
-    tags: [plan]
-    edit: false
-    persona: planner
-    instruction: plan
-    rules:
-      - condition: 実装可能
-        next: implement
-
-  - name: implement
-    tags: [coding]
-    edit: true
-    persona: coder
-    instruction: implement
-    rules:
-      - condition: 実装完了
-        next: peer-review
-
-  - name: peer-review
-    call: peer-review-with-fc   # Finding Contract付き callable ワークフロー
-    rules:
-      - condition: approved
-        next: supervise
-      - condition: needs_fix
-        next: fix
-```
-
 #### 設計判断ガイド
 
 | 判断ポイント | 基準 |
@@ -275,14 +218,11 @@ steps:
 | `session: refresh` | 実装系ステップで新規セッション開始 |
 | `pass_previous_response: false` | レビュー結果を直接読ませたくない場合 |
 | `required_permission_mode` | edit権限が必要な場合に `edit` を指定 |
-| `provider_options.claude.allowed_tools` | ステップ単位でClaudeの使用ツールを制限 |
-| `provider_options.opencode.allowed_tools` | ステップ単位でOpenCodeの使用ツールを制限（lowercase: `read`, `glob`, `grep`, `bash` 等） |
-| `provider_options.kiro.agent` | Kiro CLI の custom agent 名を指定（`kiro-cli chat --agent` として渡される） |
-| `provider_options.extends` | bare name でプリセット YAML を参照（3層リゾルバー: `.takt/provider-options/` → `~/.takt/provider-options/` → builtin。inline 値が leaf を上書き。旧 `$ref` は v0.47.0 で廃止） |
-| `provider_options.<provider>.effort` | 思考深度を上げる場合に指定。モデル互換性を確認する |
+| `capabilities`（step / parallel サブステップ） | ステップ単位のツール許可。`readonly` / `edit` / `enable-skills` またはカスタムプリセット名。step の値はワークフロー既定を置き換える。`system` / `workflow_call` ステップでは指定不可 |
+| provider / model / effort / Kiro agent 等 | ワークフロー YAML には書けない（v0.77.0〜 拒否）。`runtime.yaml` に書く |
 | `quality_gates` | agent step の完了条件。文字列 gate と `type: command` gate を混在可能 |
 | `tags` | step / parallel サブステップのタグ配列（例: `[plan]`, `[coding]`, `[review]`）。`provider_routing.tags` でタグ単位のプロバイダー/モデル指定に使用 |
-| `finding_contract` | ワークフロートップレベルに追加して Finding Contract を有効化。`ledger_path`, `raw_findings_path`, `manager`（`persona`/`instruction`/`output_contract`）を指定する |
+| `capabilities`（トップレベル） | 全ステップの既定ケーパビリティ（v0.77.0〜）。ワークフロー YAML で唯一の provider option 指定方法 |
 
 #### ルール設計
 
@@ -298,6 +238,44 @@ steps:
 
 特殊遷移先: `COMPLETE`（成功終了）、`ABORT`（失敗終了）
 
+#### ステップフラグメント（`uses: <name>`）（v0.77.0〜）
+
+別のステップ定義を名前で参照して再利用する。フラグメントは `steps/<name>.yaml` に1ステップずつ置く（プロジェクトは `.takt/steps/`、ビルトインは `builtins/ja/steps/`）。
+
+```yaml
+steps:
+  - name: plan
+    uses: development-core-plan   # builtins/ja/steps/development-core-plan.yaml
+    with:                         # フラグメントの params に値を渡す（必須パラメータはすべて指定）
+      plan_policy: [design-planning]
+      plan_knowledge: [architecture]
+      plan_instruction: plan
+      plan_report_format: plan
+    rules:                        # uses するステップは自前の rules が必須
+      - condition: 要件が明確で実装可能
+        next: implement
+      - condition: 要件が不明確、情報不足
+        next: ABORT
+```
+
+- `uses:` で参照したフラグメントのフィールドはそのステップに展開される（ロード時、スキーマ検証の前）
+- inline で指定した同名フィールドは `uses:` の値を上書きする
+- フラグメント自身は `rules` を持てない。遷移先は呼び出し側のワークフローが決める
+
+#### 全ステップ共通ルール（`all_steps.rules`）
+
+`workflows/rules/<ref>.md` の Markdown ルールを、すべての agent ステップの Phase 1 指示に差し込む。遷移条件（`rules:`）ではない。
+
+```yaml
+all_steps:
+  rules:
+    - findings-handling             # 文字列参照（既定位置は自動実行ルールの後）
+    - ref: plain-terminology
+      position: before_instruction  # Instructions セクションの直前に置く
+```
+
+解決順: `.takt/workflows/rules/` → `~/.takt/workflows/rules/` → builtin（`builtins/ja/workflows/rules/`）。
+
 #### サブワークフロー呼び出し（`call:` ステップ）
 
 別のワークフローをサブルーチンとして呼び出す。
@@ -305,17 +283,17 @@ steps:
 ```yaml
 steps:
   - name: run-sub
+    kind: workflow_call
     call: sub-workflow-name    # 呼び出し先ワークフロー名
-    overrides:                  # プロバイダ/モデル上書き（任意）
-      provider_options:
-        claude:
-          model: claude-opus-4-5
+    args:                       # 呼び出し先の subworkflow.params に渡す値（任意）
+      impl_knowledge: cqrs-es
     rules:
       - condition: completed
         next: next-step
 ```
 
 - 呼び出し先には `subworkflow: { callable: true }` が必要
+- `overrides` による provider / model 上書きは v0.77.0 で廃止（子は親の解決済み実行コンテキストを継承する）
 - 再帰呼び出し検知あり、最大ネスト深度: 5
 
 #### システムステップ（`kind: system`）

@@ -1,16 +1,13 @@
 name: audit-e2e
 description: E2E の全件監査。ユーザーフローとカバレッジ不足を棚卸しし、コード修正なしで Issue 直貼り可能なレポートを作成する
-workflow_config:
-  provider_options:
-    codex:
-      network_access: true
-    opencode:
-      network_access: true
+capabilities: readonly
 max_steps: 12
 initial_step: plan
 
 loop_monitors:
-  - cycle: [supervise, review]
+  - cycle:
+      - supervise
+      - review
     threshold: 3
     judge:
       persona: supervisor
@@ -29,10 +26,14 @@ loop_monitors:
 
 steps:
   - name: plan
+    description: 全ユーザーフローと既存の E2E テストを対応付け、監査対象と不足シナリオの優先順位を整理する
     tags:
       - plan
     persona: test-planner
-    policy: testing
+    policy:
+      - contract-change
+      - testing
+      - architecture
     knowledge:
       - architecture
       - e2e-testing
@@ -49,13 +50,16 @@ steps:
         next: ABORT
 
   - name: audit
+    description: 対象フローを分担してコードと E2E テストを並列に監査し、カバレッジと不足を記録する
     tags:
       - review
     edit: false
     persona: testing-reviewer
     policy:
+      - contract-change
       - review
       - testing
+      - architecture
     knowledge:
       - architecture
       - e2e-testing
@@ -73,11 +77,16 @@ steps:
         next: supervise
 
   - name: supervise
+    description: E2E 監査の網羅性・根拠・Issue 化できる具体性を確認し、完了か再監査かを判定する
     tags:
       - review
+      - supervise
     edit: false
     persona: supervisor
-    policy: review
+    policy:
+      - contract-change
+      - review
+      - testing
     knowledge:
       - e2e-testing
     instruction: e2e-audit-supervise
@@ -89,11 +98,13 @@ steps:
         next: review
 
   - name: review
+    description: 未監査または根拠不足のフローとシナリオを再監査し、既存レポートへ結果を統合する
     tags:
       - review
     edit: false
     persona: testing-reviewer
     policy:
+      - contract-change
       - review
       - testing
     knowledge:

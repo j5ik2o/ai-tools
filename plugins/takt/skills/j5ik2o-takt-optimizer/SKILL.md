@@ -17,7 +17,7 @@ description: >
 
 既存のTAKTワークフローの最適化を実行する。診断・分析は takt-analyze が担う。
 
-> **前提 takt バージョン**: v0.47.0
+> **前提 takt バージョン**: v0.77.0
 
 ## 参照資料
 
@@ -51,15 +51,13 @@ description: >
 **エンジンのプロンプト構築順序（参照: engine.md）:**
 ```
 ペルソナ → ポリシー → コンテキスト → ナレッジ → インストラクション
-→ タスク → 前回出力 → レポート指示 → タグ指示 → ポリシーリマインダー
+→ タスク → 前回出力 → レポート指示 → タグ指示
 ```
-
-**注意**: ポリシーは冒頭と末尾に2回注入される（Lost in the Middle対策）。ポリシーの肥大化はトークン消費を2倍にする。
 
 | 最適化 | 手法 | 効果 |
 |--------|------|------|
 | ペルソナ圧縮 | 冗長な記述の除去、サイズ上限内への圧縮 | 各ステップで削減 |
-| ポリシー分割 | 巨大ポリシーを用途別に分割し、必要なステップにのみ割り当て | 2倍効果（リマインダー分） |
+| ポリシー分割 | 巨大ポリシーを用途別に分割し、必要なステップにのみ割り当て | 不要コンテキスト削減 |
 | ナレッジ絞り込み | ステップに不要なナレッジ参照を除去 | 不要コンテキスト削減 |
 | インストラクション簡素化 | 自動注入される内容の手動記述を除去 | 重複排除 |
 | 出力契約スリム化 | 30行超の出力契約を圧縮 | レポート指示部分で削減 |
@@ -149,9 +147,8 @@ steps:
 | supervise失敗遷移の修正 | `supervise` 失敗時に `plan` へ遷移するルールを `fix` に変更する。`supervise → plan` ループは高コストで非生産的になりやすい |
 | edit=false ビルド禁止の追記 | `edit: false` のステップが参照するインストラクションに「ビルドコマンドを実行しないこと」の禁止セクション（`## やらないこと`）を追加する |
 | loop monitor judge の instruction 正規化 | `loop_monitors.judge.instruction` をビルトインファセット参照（`loop-monitor-ai-antipattern-fix`, `loop-monitor-reviewers-fix`）へ統一し、旧 judge テンプレート記法を除去する |
-| allowed_tools の provider_options 移行 | トップレベルの `allowed_tools` を `provider_options.claude.allowed_tools` に移動する（v0.30.0〜） |
 | command quality gate の整理 | 文字列 gate と `type: command` gate を分け、command gate は agent step に限定する。不要な command gate は削除し、必要な場合は config 側の許可設定を確認する |
-| provider_options.$ref → extends 移行 | ワークフロー内の `provider_options.$ref: provider-options/edit.yaml` を `provider_options.extends: edit` に書き換える（v0.47.0〜 BREAKING: 旧 `$ref` は無効） |
+| provider_options → capabilities 移行 | ワークフロー内の `provider_options`（`extends` / `$ref` / inline の `allowed_tools`）を `capabilities: <preset>` に書き換え、provider・model・effort は `runtime.yaml` へ移す（v0.77.0〜 BREAKING: `provider_options` はロード時に拒否） |
 | persona_providers → provider_routing 移行 | ワークフロー内の `persona_providers:` を削除し、プロジェクト/グローバル設定の `provider_routing.personas`（または `provider_routing.tags`/`provider_routing.steps`）に移行する（v0.47.0〜非推奨） |
 
 **threshold推奨値:**
@@ -219,7 +216,7 @@ takt-analyze のログ診断結果を入力として、実データに基づく�
 |-------------------|----------------|
 | ループホットスポット（Warning/Critical） | `loop_monitor` の `threshold` 調整、ルール条件の見直し |
 | デッドルール（Critical） | 到達不能ルールの除去 |
-| ルール評価効率が低い（`ai_judge_fallback` 高頻度） | タグベースルールへの書き換え、output-contract にタグ出力指示を追加 |
+| ルール評価効率が低い（`ai_judge` 高頻度） | タグベースルールへの書き換え、output-contract にタグ出力指示を追加 |
 | ABORT率が高い | ABORT原因の `reason` に応じたフロー改善（`max_steps` 調整、ABORT条件の追加） |
 | フェーズ別エラーの繰り返し | エラー頻発フェーズのインストラクション・ペルソナの改善 |
 | イテレーション効率が低い | `max_steps` の適正値算出、ステップ統合の検討 |

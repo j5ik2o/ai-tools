@@ -1,10 +1,14 @@
-[日本語](./tutorial.ja.md)
+[English](./tutorial.md) | [日本語](./tutorial.ja.md) | [简体中文](./tutorial.zh-CN.md)
 
 # Tutorial
 
 This tutorial walks through the basic TAKT flow by improving one small project over three phases.
 
 The example project is a **mini expense memo UI**. You will first build a small frontend, then make it more useful, then polish the layout and interaction details. The `default` workflow is the standard workflow and can be relatively heavy because it includes broader review and test-oriented steps, so this first tutorial uses `frontend-mini`.
+
+> **Video tutorial:** Follow the same tutorial in the hands-on walkthroughs:
+> [Chapter 1](https://youtu.be/HUcFFvOy39I) and
+> [Chapter 2](https://youtu.be/UIlM2iM-rmA).
 
 ## Example Project
 
@@ -14,7 +18,7 @@ You will build a small browser-based expense memo.
 2. **Phase 2:** Add total amount, category filtering, deletion, and persistence
 3. **Phase 3:** Polish mobile layout, empty states, focus states, and visual design
 
-Instead of asking TAKT to do everything at once, you queue one phase, inspect the result, and then instruct the next improvement.
+Queue one phase at a time, inspect the result, and then instruct the next improvement.
 
 ## 1. Start Without GitHub
 
@@ -28,40 +32,58 @@ git commit -m "initial commit"
 
 TAKT works with branches and task workspaces during execution, so starting from a repository with at least one commit is the safer path.
 
+If you have not installed TAKT yet, install it with `npm install -g takt` and make sure a provider CLI (such as Claude Code) or an API key is available.
+
 Start TAKT.
 
 ```bash
 takt
 ```
 
-Choose `frontend-mini` as the workflow. The exact order may vary by environment, but it is usually under the `Mini` or `Frontend` category.
+On first launch, TAKT asks which language to use for default agents and workflows, then which provider to use, before the workflow selection appears.
+
+Choose `frontend-mini` as the workflow. The initial screen lists only categories; the exact order may vary by environment, but `frontend-mini` is under the `Legacy` category's `Frontend` subcategory.
 
 ```text
 Select workflow:
-    🎼 default (current)
     📁 🚀 Quick Start/
-  ❯ 📁 ⚡ Mini/
-    📁 🎨 Frontend/
+    📁 🛠️ Development/
+    📁 🔍 Review/
+    📁 🏗️ Infrastructure/
+    📁 🎵 TAKT Development/
+  ❯ 📁 📦 Legacy/
 ```
+
+Pressing `b` on a workflow bookmarks it; bookmarked workflows appear at the top of this screen as `🎼 {name} [*]`.
 
 Open the category and select `frontend-mini`.
 
 ```text
-Select workflow:
-    default-mini
-  ❯ frontend-mini
-    backend-mini
-    dual-mini
+Select workflow in 📦 Legacy:
+    📁 ✨ Simple/
+    📁 ⚡ Mini/
+  ❯ 📁 🎨 Frontend/
+    📁 ⚙️ Backend/
+    📁 🔧 Dual/
+    📁 🔍 Review/
+    🎼 cli
 ```
 
-If TAKT asks for an interactive mode, choose **assistant** first.
+```text
+Select workflow in 🎨 Frontend:
+    🎼 simple-frontend
+    🎼 frontend
+  ❯ 🎼 frontend-mini
+    🎼 frontend-maintenance
+```
+
+TAKT then asks for an interactive mode. Choose **Assistant** first.
 
 ```text
 Select interactive mode:
-  ❯ assistant
-    persona
-    quiet
-    passthrough
+  ❯ Assistant
+    Grill Me
+    Persona
 ```
 
 ## 2. Phase 1: Build the Smallest UI
@@ -80,17 +102,21 @@ TAKT may ask clarifying questions or organize the task. When the scope is clear,
 > /go This is phase 1, so do not add persistence or summaries yet. Keep it to the smallest usable UI.
 ```
 
-After the task instruction is generated, TAKT shows actions. Choose **Queue as task**.
+After the task instruction is generated, TAKT shows actions. Choose **Save as Task**.
 
 ```text
 What would you like to do?
-    Execute now
-    Create GitHub Issue
-  ❯ Queue as task
-    Continue conversation
+  ❯ Save as Task
+    Create Issue
+    Execute here now
+    Continue editing
 ```
 
-`Queue as task` saves the generated instruction under `.takt/tasks/`. `Execute now` is useful for quick experiments, but the normal tutorial flow is to queue the task and run it with `takt run`.
+`Save as Task` is selected initially. Press Enter to proceed to saving the generated instruction in `.takt/tasks.yaml`. This tutorial queues tasks and runs them with `takt run`.
+
+`Execute here now` first explains that this TUI will be unavailable until the workflow finishes and that the normal flow is to save the task and use `takt run`. Its confirmation defaults to No (`[y/N]`). Only y starts execution in the current directory; N, Enter, or Esc returns to the same menu with the selection preserved. Esc in the menu returns to conversation input.
+
+After choosing **Save as Task**, TAKT asks for worktree settings. `Auto-create PR?` defaults to Yes; answer `n` if you are proceeding without GitHub.
 
 Run the queued task.
 
@@ -107,9 +133,11 @@ takt list
 Select the completed task. TAKT shows actions for that task. Start with **View diff**, then use **Try merge** if the result looks worth trying locally.
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
   ❯ View diff
     Instruct
+    Merge from root
+    Pull from remote
     Try merge
     Merge & cleanup
     Delete
@@ -118,9 +146,11 @@ Completed task actions:
 `Try merge` brings the task branch changes into your working tree without committing them. You can inspect the UI and diff locally, then commit manually if you are satisfied.
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
     Instruct
+    Merge from root
+    Pull from remote
   ❯ Try merge
     Merge & cleanup
     Delete
@@ -133,9 +163,11 @@ After checking the phase 1 result, queue the next improvement. You can start a n
 To build on the previous result, run `takt list`, select the completed task, and choose **Instruct**.
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
   ❯ Instruct
+    Merge from root
+    Pull from remote
     Try merge
     Merge & cleanup
     Delete
@@ -154,13 +186,12 @@ When the instruction is ready, use `/go`.
 > /go Add these features to the existing structure instead of rebuilding the UI from scratch.
 ```
 
-Choose **Queue as task** again.
+Choose **Save as Task** again.
 
 ```text
 What would you like to do?
-    Execute now
-  ❯ Queue as task
-    Continue conversation
+  ❯ Save as Task
+    Continue editing
 ```
 
 Run and inspect the result.
@@ -188,13 +219,12 @@ Use `/go` to finalize the instruction.
 > /go
 ```
 
-Choose **Queue as task**.
+Choose **Save as Task**.
 
 ```text
 What would you like to do?
-    Execute now
-  ❯ Queue as task
-    Continue conversation
+  ❯ Save as Task
+    Continue editing
 ```
 
 Run the task.
@@ -206,9 +236,11 @@ takt run
 Use `takt list` to inspect the result. If you are satisfied, choose **Merge & cleanup**. If you want to inspect the changes in your working tree before deciding, choose **Try merge**.
 
 ```text
-Completed task actions:
+Action for takt/20260201-015714-mini-expense-memo-ui:
     View diff
     Instruct
+    Merge from root
+    Pull from remote
     Try merge
   ❯ Merge & cleanup
     Delete
@@ -221,7 +253,7 @@ takt
   -> choose frontend-mini
   -> talk with assistant
   -> /go
-  -> Queue as task
+  -> Save as Task
 takt run
 takt list
   -> View diff
@@ -258,20 +290,22 @@ When the content is ready, use `/go`.
 > /go
 ```
 
-Review the generated task instruction and choose **Create GitHub Issue**.
+Review the generated task instruction and choose **Create Issue**.
 
 ```text
 What would you like to do?
-    Execute now
-  ❯ Create GitHub Issue
-    Queue as task
-    Continue conversation
+    Save as Task
+  ❯ Create Issue
+    Execute here now
+    Continue editing
 ```
 
-After creating the Issue, queue it as a task. If the menu lets you continue, choose **Queue as task**. If you already know the Issue number, use `takt add`.
+`Create Issue` asks `Save as a task too? [Y/n]` before creating anything. For this tutorial, answer Y or Enter to create the Issue and continue to task saving and worktree settings. n creates only the Issue without saving a task. Esc creates nothing and returns to the same proposal's menu with the selection preserved; Esc in that menu returns to conversation input. The Issue option is hidden in `--pr` sessions.
+
+If you already know the Issue number, you can also use `takt add`.
 
 ```bash
-takt add #1
+takt add '#1'
 ```
 
 Then continue with the same local flow.
@@ -290,10 +324,10 @@ If you create a GitHub Issue while talking with Codex or another development ass
 Assume Codex created Issue `#1`.
 
 ```bash
-takt add #1
+takt add '#1'
 ```
 
-`takt add #1` fetches the GitHub Issue title, body, and comments, then saves them as a pending TAKT task.
+`takt add '#1'` fetches the GitHub Issue title, body, and comments, then saves them as a pending TAKT task.
 
 Run it.
 
