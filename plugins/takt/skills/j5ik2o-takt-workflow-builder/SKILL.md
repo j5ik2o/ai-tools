@@ -94,8 +94,9 @@ taktのコードベースとドキュメントは `references/takt/` にある�
 - **削除**: `default-draft`, `default-high`, `default-mini`, `default-peer-review`, `draft`, `peer-review-with-fc`, `review-default`, `review-fix-default`, `takt-default-refresh-all`, `takt-default-refresh-fast`, `takt-default-with-fc`
 - **追加**: `development-*`, `simple-*`, `merge-*`, `peer-review-suite-*`, `loop-analysis`, `final-gate`, `caccia`, `cli`, `workflow-maker`, `takt-default-team`, `takt-development-review`, `maintenance`, `backend-maintenance` 等（40本超）
 - **Finding Contract 機能削除**: `peer-review-with-fc`, `takt-default-with-fc` と関連ファセット（`findings-manager` 系）が削除された。`finding_contract:` ブロックは現バージョンでは使用不可
-- **`capabilities` キーワード追加**: `workflow_config.provider_options` の代わりに `capabilities: readonly` / `capabilities: edit` 等のプリセットを使用可能（v0.77.0〜）
-- **`uses: <name>` ステップフラグメント**: 別の step 定義を名前で参照して再利用可能（v0.77.0〜）
+- **`capabilities` キーワード追加**: ワークフロー YAML で provider option を指定できるのは `capabilities`（プリセット名の参照のみ）だけになった。ビルトインプリセットは `readonly` / `edit` / `enable-skills`
+- **実行設定の削除**: `workflow_config.provider` / `model` / `provider_options`、step の `provider` / `model` / `provider_options`、`workflow_call.overrides` はロード時に拒否される。provider・model・effort 等は `runtime.yaml` に移す
+- **`uses: <name>` ステップフラグメント**: `steps/<name>.yaml` に置いた step 定義を名前で参照して再利用可能（v0.77.0〜）
 
 **再利用判断**: ビルトインのファセットで足りる場合はカスタムファセットを作らない。
 
@@ -109,8 +110,8 @@ description: ワークフローの説明
 max_steps: 30
 initial_step: plan
 
-# ワークフロー全体の設定（v0.77.0〜 capabilities プリセットを推奨）
-capabilities: readonly  # または edit, web など
+# ワークフロー全体の既定ケーパビリティ（v0.77.0〜。step の capabilities は既定値を置き換える）
+capabilities: readonly  # ビルトイン: readonly / edit / enable-skills
 
 # セクションマップ（カスタムファセットがある場合のみ）
 personas:
@@ -129,15 +130,7 @@ steps:
     edit: false
     persona: planner          # ビルトイン参照（bare name）
     knowledge: architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
-          - WebSearch
-          - WebFetch
+    capabilities: readonly    # 読み取り・検索・シェル・Web 検索
     instruction: plan
     output_contracts:
       report:
@@ -151,6 +144,8 @@ steps:
 
   - name: implement
     edit: true
+    required_permission_mode: edit
+    capabilities: edit        # readonly の既定値を上書きし Edit / Write を許可する
     persona: coder
     policy: [coding, testing]
     session: refresh
@@ -160,18 +155,17 @@ steps:
         next: review
 ```
 
-**`provider_options.extends` による共通化（v0.47.0〜、旧 `$ref` は廃止）**: `provider_options` は bare name でビルトインプリセットや `.takt/provider-options/` のカスタム YAML を参照できる。inline 値が同じ leaf を上書きする。ビルトインプリセット: `edit`, `review-readonly`, `review-files`, `review-web`。
+**`capabilities` によるツール許可（v0.77.0〜、step の `provider_options` は廃止）**: `capabilities` はプリセット名（または名前のリスト）だけを受け付け、inline の options ブロックは書けない。プリセットは `.takt/provider-options/` → `~/.takt/provider-options/` → builtin の順に解決される。受け付ける leaf は `allowed_tools` / `network_access` / `sandbox` / `skills` のみで、`effort` や `base_url` 等を含むプリセットはロード時に失敗する（それらは `runtime.yaml` に書く）。`edit: true` だけでは Edit / Write は許可されないため、編集するステップには `capabilities: edit` を付ける。
 
 ```yaml
-# プリセットを参照（claude + opencode の両方に allowed_tools が設定される）
-provider_options:
-  extends: review-readonly
+# ワークフロー既定は readonly、実装ステップだけ edit + skills
+capabilities: readonly
 
-# プリセットを参照しつつ一部を上書き
-provider_options:
-  extends: edit
-  opencode:
-    allowed_tools: [read, grep, bash]
+steps:
+  - name: implement
+    capabilities: [edit, enable-skills]   # リストは左から右にマージ（後勝ち）
+
+# 独自のツール許可はプリセット YAML（.takt/provider-options/<name>.yaml）を作って名前で参照する
 ```
 
 **注意**: 旧用語エイリアス（`movements`, `initial_movement`, `max_movements`, `piece_config`, `piece_categories`）は引き続き使用不可。正式名のみ使用する。
@@ -194,12 +188,16 @@ provider_options:
         rules:
           - condition: approved
           - condition: needs_fix
-      - name: qa-review
+      - name: testing-review
         edit: false
         tags: [review]
-        persona: qa-reviewer
-        policy: [review, qa]
-        instruction: review-qa
+        persona: testing-reviewer
+        policy: [review, testing]
+        instruction: review-test
+        output_contracts:
+          report:
+            - name: 06-testing-review.md
+              format: testing-review
         rules:
           - condition: approved
           - condition: needs_fix
@@ -220,14 +218,11 @@ provider_options:
 | `session: refresh` | 実装系ステップで新規セッション開始 |
 | `pass_previous_response: false` | レビュー結果を直接読ませたくない場合 |
 | `required_permission_mode` | edit権限が必要な場合に `edit` を指定 |
-| `provider_options.claude.allowed_tools` | ステップ単位でClaudeの使用ツールを制限 |
-| `provider_options.opencode.allowed_tools` | ステップ単位でOpenCodeの使用ツールを制限（lowercase: `read`, `glob`, `grep`, `bash` 等） |
-| `provider_options.kiro.agent` | Kiro CLI の custom agent 名を指定（`kiro-cli chat --agent` として渡される） |
-| `provider_options.extends` | bare name でプリセット YAML を参照（3層リゾルバー: `.takt/provider-options/` → `~/.takt/provider-options/` → builtin。inline 値が leaf を上書き。旧 `$ref` は v0.47.0 で廃止） |
-| `provider_options.<provider>.effort` | 思考深度を上げる場合に指定。モデル互換性を確認する |
+| `capabilities`（step / parallel サブステップ） | ステップ単位のツール許可。`readonly` / `edit` / `enable-skills` またはカスタムプリセット名。step の値はワークフロー既定を置き換える。`system` / `workflow_call` ステップでは指定不可 |
+| provider / model / effort / Kiro agent 等 | ワークフロー YAML には書けない（v0.77.0〜 拒否）。`runtime.yaml` に書く |
 | `quality_gates` | agent step の完了条件。文字列 gate と `type: command` gate を混在可能 |
 | `tags` | step / parallel サブステップのタグ配列（例: `[plan]`, `[coding]`, `[review]`）。`provider_routing.tags` でタグ単位のプロバイダー/モデル指定に使用 |
-| `capabilities` | ワークフロー全体のケーパビリティプリセット（v0.77.0〜）。`readonly` / `edit` / `web` 等。`workflow_config.provider_options` の代替として使用可能 |
+| `capabilities`（トップレベル） | 全ステップの既定ケーパビリティ（v0.77.0〜）。ワークフロー YAML で唯一の provider option 指定方法 |
 
 #### ルール設計
 
@@ -245,20 +240,41 @@ provider_options:
 
 #### ステップフラグメント（`uses: <name>`）（v0.77.0〜）
 
-別のステップ定義を名前で参照して再利用する。
+別のステップ定義を名前で参照して再利用する。フラグメントは `steps/<name>.yaml` に1ステップずつ置く（プロジェクトは `.takt/steps/`、ビルトインは `builtins/ja/steps/`）。
 
 ```yaml
 steps:
   - name: plan
-    uses: simple-plan     # builtins または .takt/step-fragments/<name>.yaml を参照
-    rules:
-      - condition: 実装可能
+    uses: development-core-plan   # builtins/ja/steps/development-core-plan.yaml
+    with:                         # フラグメントの params に値を渡す（必須パラメータはすべて指定）
+      plan_policy: [design-planning]
+      plan_knowledge: [architecture]
+      plan_instruction: plan
+      plan_report_format: plan
+    rules:                        # uses するステップは自前の rules が必須
+      - condition: 要件が明確で実装可能
         next: implement
+      - condition: 要件が不明確、情報不足
+        next: ABORT
 ```
 
-- `uses:` で参照したフラグメントのフィールドはそのステップに展開される
+- `uses:` で参照したフラグメントのフィールドはそのステップに展開される（ロード時、スキーマ検証の前）
 - inline で指定した同名フィールドは `uses:` の値を上書きする
-- `builtins/ja/workflows/rules/` 配下のルールフラグメントも `rules_ref: <name>` で参照可能
+- フラグメント自身は `rules` を持てない。遷移先は呼び出し側のワークフローが決める
+
+#### 全ステップ共通ルール（`all_steps.rules`）
+
+`workflows/rules/<ref>.md` の Markdown ルールを、すべての agent ステップの Phase 1 指示に差し込む。遷移条件（`rules:`）ではない。
+
+```yaml
+all_steps:
+  rules:
+    - findings-handling             # 文字列参照（既定位置は自動実行ルールの後）
+    - ref: plain-terminology
+      position: before_instruction  # Instructions セクションの直前に置く
+```
+
+解決順: `.takt/workflows/rules/` → `~/.takt/workflows/rules/` → builtin（`builtins/ja/workflows/rules/`）。
 
 #### サブワークフロー呼び出し（`call:` ステップ）
 
@@ -267,17 +283,17 @@ steps:
 ```yaml
 steps:
   - name: run-sub
+    kind: workflow_call
     call: sub-workflow-name    # 呼び出し先ワークフロー名
-    overrides:                  # プロバイダ/モデル上書き（任意）
-      provider_options:
-        claude:
-          model: claude-opus-4-5
+    args:                       # 呼び出し先の subworkflow.params に渡す値（任意）
+      impl_knowledge: cqrs-es
     rules:
       - condition: completed
         next: next-step
 ```
 
 - 呼び出し先には `subworkflow: { callable: true }` が必要
+- `overrides` による provider / model 上書きは v0.77.0 で廃止（子は親の解決済み実行コンテキストを継承する）
 - 再帰呼び出し検知あり、最大ネスト深度: 5
 
 #### システムステップ（`kind: system`）
